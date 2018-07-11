@@ -362,3 +362,124 @@ class Snapshot:
 
 
 
+
+
+
+class EOStable:
+    """Class for accessing Gadget EoS tables"""    
+    def __init__(self):
+        self.ND = 0
+        self.NS = 0
+        self.rho = npy.zeros(self.ND)
+        self.S = npy.zeros(self.NS)
+        self.P = npy.zeros(self.ND*self.NS)
+        self.T = npy.zeros(self.ND*self.NS)
+        self.U = npy.zeros(self.ND*self.NS)
+        self.cs = npy.zeros(self.ND*self.NS)
+        
+    def load(self, fname):
+        data = ([])
+        with open(fname, 'r') as file:
+            for line in file:
+                data = npy.append(data, line.strip('\n').split(' '))
+        data = data[data != ''].astype(float)
+        self.ND = data[0].astype(int)
+        self.NS = data[1].astype(int)
+        self.rho = data[2:2+self.ND]
+        self.S = data[2+self.ND : 2+self.ND+self.NS]
+        self.P = data[2+self.ND+self.NS : 2+self.ND+self.NS+self.ND*self.NS
+                     ].reshape(self.NS,self.ND)
+        self.T = data[2+self.ND+self.NS+self.ND*self.NS
+                      : 2+self.ND+self.NS+2*self.ND*self.NS
+                     ].reshape(self.NS,self.ND)
+        self.U = data[2+self.ND+self.NS+2*self.ND*self.NS
+                      : 2+self.ND+self.NS+3*self.ND*self.NS
+                     ].reshape(self.NS,self.ND)
+        self.cs = data[2+self.ND+self.NS+3*self.ND*self.NS
+                       : 2+self.ND+self.NS+4*self.ND*self.NS
+                      ].reshape(self.NS,self.ND)
+
+    def view(self, q='T', Slow=None, Shigh=None, rholow=None, rhohigh=None):
+        if Slow is None:
+            Slow = self.S.min()
+        if Shigh is None:
+            Shigh = self.S.max()
+        if rholow is None:
+            rholow = self.rho.min()
+        if rhohigh is None:
+            rhohigh = self.rho.max()
+        if q == 'T':
+            print 'S:', self.S[npy.logical_and(self.S >= Slow,self.S <= Shigh)]
+            print 'rho:', self.rho[npy.logical_and(self.rho
+                                   >= rholow,self.rho<=rhohigh)
+                                  ]
+            print 'T:', (self.T[npy.logical_and(self.S >= Slow,self.S <= Shigh)
+                               ])[:, npy.logical_and(self.rho >= rholow,
+                                                     self.rho <= rhohigh)
+                                 ]
+        if q == 'P':
+            print 'S:', self.S[npy.logical_and(self.S >= Slow,self.S <= Shigh)]
+            print 'rho:', self.rho[npy.logical_and(self.rho >= rholow,
+                                                   self.rho <= rhohigh)
+                                  ]
+            print 'P:', (self.P[npy.logical_and(self.S >= Slow,
+                                                self.S<=Shigh)
+                               ])[:, npy.logical_and(self.rho >= rholow,
+                                                     self.rho <= rhohigh)
+                                 ]
+        if q == 'U':
+            print 'S:', self.S[npy.logical_and(self.S >= Slow,self.S <= Shigh)]
+            print 'rho:', self.rho[npy.logical_and(self.rho >= rholow,
+                                                   self.rho <= rhohigh)
+                                  ]
+            print 'U:', (self.U[npy.logical_and(self.S >= Slow,
+                                                self.S <= Shigh)
+                               ])[:, npy.logical_and(self.rho >= rholow,
+                                                     self.rho <= rhohigh)
+                                 ]
+        if q == 'cs':
+            print 'S:', self.S[npy.logical_and(self.S >= Slow,self.S <= Shigh)]
+            print 'rho:', self.rho[npy.logical_and(self.rho >= rholow,
+                                                   self.rho<=rhohigh)]
+            print 'cs:', (self.cs[npy.logical_and(self.S >= Slow,
+                                                  self.S <= Shigh)
+                                 ])[:, npy.logical_and(self.rho >= rholow,
+                                                       self.rho <= rhohigh)
+                                   ]
+
+
+
+
+if __name__ == "__main__":
+    import sys
+
+    file = 'snapshot_000'
+    if len(sys.argv) > 1:
+        file = sys.argv[1]
+
+    snap0 = Snapshot()
+    print snap0.header.flag_entr_ics
+
+    snap0.load(file, thermo=False)
+
+    print snap0.header.flag_entr_ics, snap0.header.flag_metals
+    #print file, snap0.U.max()/1.e11, 0.5*npy.sqrt(snap0.vx**2+snap0.vy**2+snap0.vx**2).max()
+
+
+    print snap0.N
+    #print snap0.header.num_files
+
+    #print snap0.id[:5], snap0.id[-5:], snap1.id[:5], snap1.id[-5:]
+    #print snap0.m[:5], snap0.m[-5:], snap1.m[:5], snap1.m[-5:]
+    #print snap0.x[:5], snap0.x[-5:], snap1.x[:5], snap1.x[-5:]
+    #print snap0.vx[:5], snap0.vx[-5:]
+    
+    
+    #snap0.identify()
+
+    #plt.scatter(snap0.x[snap0.fors == 1], snap0.y[snap0.fors == 1], c='b')
+    #plt.scatter(snap0.x[snap0.iron == 1], snap0.y[snap0.iron == 1], c='orange')
+    #plt.show()
+
+    #snap0.load(file+'_iptlecg',thermo=True)
+    #snap0.calc_vap_frac()
