@@ -1,0 +1,933 @@
+from .main import *
+from .snaptools import Snapshot
+from .eos import *
+
+from scipy import interpolate
+import seagen
+
+datadir='./data/'
+
+
+G_mks = 6.67E-11 # Gravitational constant  m3/kg/s2
+
+G = 6.67E-8 # Gravitational constant  cm3/g/s2
+Mearth = 5.972E27 # Earth's mass g
+Rearth = 6371.E5  # Earth's radius cm
+Rcmb = 348000000. # CMB radius in cm (from PREM)
+
+
+class planet_profile:
+    """1D planet profile class"""
+    def __init__(self):
+        self.M = 0.
+        self.cf = 0.
+        self.rarr = npy.array([])
+        self.density = npy.array([])
+        self.pressure = npy.array([])
+        self.temperature = npy.array([])
+        self.entropy = npy.array([])
+        self.mat = npy.array([])
+    
+    def write(self,file='profile.dat'):
+        npy.savetxt(file,npy.transpose([self.rarr, self.mat, self.entropy, self.density, self.pressure, self.temperature]))
+        
+    def load(self,file='profile.dat'):
+        (self.rarr, self.mat, self.entropy, self.density, self.pressure, self.temperature) = npy.loadtxt(file,unpack=True)
+
+
+
+
+def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3.02,mtolerance=1e-3,layer1='iron',layer2='forsterite',mantlepotT=False,plot=False,fixcoreT=False,verbose=False):
+    
+    mcore = corefraction * mass
+    mmantle = (1-corefraction) * mass
+
+    mtotal = mcore + mmantle
+
+    Pcenter = 0
+    
+    if layer1 == 'iron':
+        ly1EOS = IronEOS
+    elif layer1 == 'alloy':
+        ly1EOS = AlloyEOS
+    else:
+        print('Unknown core EOS')
+        return
+    
+    if layer2 == 'forsterite':
+        ly2EOS = ForsteriteEOS
+    else:
+        print('Unknown mantle EOS')
+        return
+    
+    if mantlepotT:
+        refP = Pmin
+        refP_T = npy.zeros(ly2EOS.NT)
+        refP_S = npy.zeros(ly2EOS.NT)
+        refP_rho = npy.zeros(ly2EOS.NT)
+        #it0 = npy.where(ly2EOS.T >= ly2EOS.T0REF)[0]
+        id0 = npy.arange(ly2EOS.ND)#npy.where(NewEOS.rho >= 0.8*NewEOS.R0REF)[0]
+        for iit in range(0,ly2EOS.NT):
+            refP_T[iit] = ly2EOS.T[iit]
+            refP_S[iit] = npy.interp(refP/1.E10,ly2EOS.P[iit,id0],ly2EOS.S[iit,id0])
+            refP_rho[iit] = npy.interp(refP/1.E10,ly2EOS.P[iit,id0],ly2EOS.rho[id0])
+        Smantle = npy.interp(mantlepotT,refP_T,refP_S)*1e3
+    
+    ##Score *= 1e-3   #convert to MJ/K/kg
+    ##Smantle *= 1e-3
+    
+    # first extract the isentropes for the planet from the EOS tables
+    mantle = isentrope_class(Smantle)
+
+    # loop across all densities and extract the values for the requested isentrope
+    for i in range(0,ly2EOS.ND):
+        ind = npy.where((ly2EOS.S[:,i] > 0))[0]
+        interpfunction = interpolate.interp1d(ly2EOS.S[ind,i],ly2EOS.P[ind,i]) # MJ/K/kg, GPa
+        mantle.pressure = npy.append(mantle.pressure,interpfunction(Smantle/1.E3)) # GPa
+        interpfunction = interpolate.interp1d(ly2EOS.S[ind,i],ly2EOS.T[ind]) # MJ/K/kg, GPa
+        mantle.temperature = npy.append(mantle.temperature,interpfunction(Smantle/1.E3)) # GPa
+    mantle.density = ly2EOS.rho # g/cm3
+
+    Tcmb_accept = False
+    
+    while not Tcmb_accept:
+        
+        core = isentrope_class(Score)
+
+        # loop across all densities and extract the values for the requested isentrope
+        for i in range(0,ly1EOS.ND):
+            ind = npy.where((ly1EOS.S[:,i] > 0))[0]
+            interpfunction = interpolate.interp1d(ly1EOS.S[ind,i],ly1EOS.P[ind,i]) # MJ/K/kg, GPa
+            core.pressure = npy.append(core.pressure,interpfunction(Score/1.E3)) # GPa
+            interpfunction = interpolate.interp1d(ly1EOS.S[ind,i],ly1EOS.T[ind]) # MJ/K/kg, K
+            core.temperature = npy.append(core.temperature,interpfunction(Score/1.E3)) # K
+        core.density = ly1EOS.rho # g/cm3
+
+
+        if plot:
+            fig = plt.figure(figsize=(7,5))
+            plt.plot(PREM.pressure,PREM.temperature,'-.',color='xkcd:deep blue',label='PREM profile')
+            plt.plot(mantle.pressure,mantle.temperature,'-',color='xkcd:purple',label='mantle isentrope',markersize=10)
+            plt.plot(core.pressure,core.temperature,'-',color='xkcd:tangerine',label='core isentrope',markersize=10)
+
+            plt.plot(ly2EOS.mc.Pl,ly2EOS.mc.T,'-',color='black',label='forsterite MC',markersize=10)
+            plt.plot(ly1EOS.mc.Pl,ly1EOS.mc.T,'--',color='black',label='iron MC',markersize=10)
+
+            plt.ylim(0.,max(PREM.temperature))
+            plt.xlim(0,max(PREM.pressure))
+            plt.xlabel('Pressure (GPa)')
+            plt.ylabel('Temperature (K)')
+            plt.legend()
+            plt.show()
+
+
+        factors = npy.array([0.0008,0.0014,0.002,0.05,0.08,0.16,0.3,0.5,0.8,0.8])
+        densities  = npy.array([7.1,7.15,7.2,7.25,7.5,8.5,11.,13.,16.,20.])
+        masses = npy.array([0.00001,0.00002,0.0002,0.002,0.01,0.02,0.5,1.0,2.0,5.])
+
+        changefac = npy.interp(mtotal/Mearth,masses,factors)
+        rhocenter = npy.interp(mtotal/Mearth,masses,densities)
+
+        if verbose:
+            print('m:',mtotal/Mearth,'fac:',changefac,' rho:',rhocenter )
+
+        r_est = (mtotal/(4./3.*npy.pi*rhocenter/2.))**(1./3.)
+        dR = npy.floor(r_est/1e5)*1e5 / 3000
+        if dR < 0.025e5:
+            dR = 0.025e5
+
+        #dM = menclosed/msteps
+        menclosed = 0.
+        rhoi = Pi = 0.
+
+        rhoi = rhocenter
+
+        #if rhocenter:
+        #if Pcenter:
+        #    Pi = Pcenter
+        darr = npy.full(1,rhoi)
+        parr = npy.full(1,Pi)
+
+        itercount = 0
+        maxiter = 20000
+        maxiterm = 4000
+
+        if mtolerance < 5e-4:
+            changefac *= 0.2
+            maxiterm *= 3
+            dR *= 0.3
+        elif mtolerance < 1e-3:
+            changefac *= 0.4
+            maxiterm *= 1.2
+            dR *= 0.8
+
+        if verbose:
+            print('dR: ',dR/1e5, 'km')
+
+        while npy.abs(mtotal-menclosed)/mtotal > mtolerance and itercount < maxiter:
+            # USE MKS FOR THIS INTEGRAL
+            if (itercount%100 == 0 and verbose) or (itercount%10000 == 0 and itercount!=0):
+                print(parr[0],darr[0],menclosed/mtotal)
+            rarr = npy.zeros(1)
+            ii=1
+            ri = rarr[0]
+
+            darr = npy.full(1,rhoi) # Pa
+            parr = npy.full(1,npy.interp(rhoi,core.density,core.pressure)*1.E10) # 
+            #if rhocenter:
+            #else:
+            #    parr = npy.full(1,Pi) # Pa
+            #    darr = npy.full(1,npy.interp(Pi/1.E10,core.pressure,core.density)*1.E3) # kg/m3
+
+            tarr = npy.full(1,npy.interp(rhoi,core.density,core.temperature)) # K
+            #tarr = npy.full(1,npy.interp(parr[0]/1.E10,core.pressure,core.temperature)) # K
+            menclosed = 0.
+
+            ri = rarr[0]
+            ii=1
+
+            coreiter=0
+
+            while menclosed < mcore and parr[ii-1] > Pmin and coreiter < maxiterm:
+                ri +=dR # m
+                rarr = npy.append(rarr,ri)
+                mlayer = 4.*npy.pi*rarr[ii]*rarr[ii]*dR*darr[ii-1] # g
+                if ii == 1:
+                    dp = G*darr[ii-1]*dR/rarr[ii]/rarr[ii] # Pa
+                else:
+                    dp = G*menclosed*darr[ii-1]*dR/rarr[ii]/rarr[ii] # Pa
+                parr = npy.append(parr, parr[ii-1]-dp) # 
+                di = npy.interp(parr[ii]/1.E10,core.pressure,core.density) # g/cm3
+                darr = npy.append(darr,di) # g/cm3
+                ti = npy.interp(parr[ii]/1.E10,core.pressure,core.temperature) # K
+                tarr = npy.append(tarr,ti) # K
+                menclosed = menclosed + mlayer # kg
+                #print(npy.mod(ii,10))
+                #print(ii,mlayer,menclosed/Mearth,di,ri,dp,parr[ii]/1.E10)
+                ii += 1
+                coreiter += 1
+            iendcore=ii-1
+
+            dmantle = npy.interp(parr[ii-1]/1.E10,mantle.pressure,mantle.density) # g/m3
+
+            mantleiter = 0
+
+            while parr[ii-1] > Pmin and mantleiter< maxiterm:
+                ri += dR # m
+                rarr = npy.append(rarr,ri)
+                mlayer = 4.*npy.pi*rarr[ii]*rarr[ii]*dR*darr[ii-1] # kg
+                if ii == iendcore+1:
+                    if menclosed > 0:
+                        dp = G*menclosed*dmantle*dR/rarr[ii]/rarr[ii] # Pa
+                    else:
+                        dp = G*dmantle*dR/rarr[ii]/rarr[ii] # Pa
+                else:
+                    dp = G*menclosed*darr[ii-1]*dR/rarr[ii]/rarr[ii] # Pa
+                parr = npy.append(parr, parr[ii-1]-dp) # Pa
+                di = npy.interp(parr[ii-1]/1.E10,mantle.pressure,mantle.density) # g/cm3
+                darr = npy.append(darr,di) # g/cm3
+                ti = npy.interp(parr[ii-1]/1.E10,mantle.pressure,mantle.temperature) # K
+                tarr = npy.append(tarr,ti) # kg/m3
+                ii=ii+1
+                mantleiter += 1
+                menclosed = menclosed + mlayer # kg    
+
+            if menclosed < mtotal:
+                #rhoi *= 1.0+2*mtolerance*changefac
+                #Pi *= 1.0+2*mtolerance*changefac
+                rhoi *= 1.0 + (0.04*(mtotal-menclosed)/mtotal + 1.8*mtolerance)*changefac
+                #Pi *= 1.0+2*mtolerance*changefac
+            elif menclosed > mtotal:
+                #rhoi *= 1.0-1*mtolerance*changefac
+                #Pi *= 1.0-1*mtolerance*changefac
+                rhoi *= 1.0 - (0.02*(menclosed-mtotal)/mtotal + 0.5*mtolerance)*changefac
+                #Pi *= 1.0-1*mtolerance*changefac
+
+            itercount += 1
+            
+        if not fixcoreT:
+            Tcmb_accept = True
+    
+        if tarr[iendcore] < npy.interp(parr[iendcore]/1.E10,mantle.pressure,mantle.temperature):
+            print('WARNING! Core colder than mantle!   {:10.3f}  {:10.3f}  | S: {:.3f}'.format(tarr[iendcore],npy.interp(parr[iendcore]/1.E10,mantle.pressure,mantle.temperature),Score))
+            if fixcoreT:
+                Score += 0.01
+        else:
+            Tcmb_accept = True
+    
+    print('Iterations:    ',itercount,'\n')        
+
+    planet = planet_profile()
+    planet.M = menclosed
+    planet.cf = mcore/menclosed
+    planet.rarr = rarr
+    planet.density = darr
+    planet.pressure = parr
+    planet.temperature = tarr
+    planet.mat = npy.where(npy.arange(len(rarr))<=iendcore,0,1)
+    planet.entropy = npy.where(npy.arange(len(rarr))<=iendcore,Score,Smantle)*1e7
+    
+    print('MODEL PLANET:')
+    print('Score (kJ/K/kg)         = {:10.3f}'.format(Score))
+    print('Smantle (kJ/K/kg)       = {:10.3f}'.format(Smantle))
+    print('Tcmb (K)                = {:10.3f}  [{:10.3f}]'.format(tarr[iendcore],npy.interp(parr[iendcore]/1.E10,mantle.pressure,mantle.temperature)))
+    print('Mantle Tp (K)           = {:10.3f}'.format(tarr[-1])) #min(tarr)
+    print('Pcenter (GPa)           = {:10.3f}'.format(parr[0]/1.E10))
+    print('Tcenter (K)             = {:10.3f}'.format(tarr[0]))
+    print('rho center (g/cm3)      = {:10.3f}'.format(darr[0]))
+    print('Core radius (km, Rcmb)  = {:10.3f}{:10.3f}'.format(rarr[iendcore]/1.e5,rarr[iendcore]/Rcmb))
+    print('CMB pressure (GPa)      = {:10.3f}'.format(parr[iendcore]/1.E10))
+    print('Radius (km, Rearth)     = {:10.3f}{:10.3f}'.format(rarr[-1]/1.e5,rarr[-1]/Rearth))
+    print('Surface pressure (GPa)  = {:10.3f}'.format(parr[-1]/1.E10))
+    print('Surface gravity (m/s2)  = {:10.3f}'.format(G*menclosed/rarr[-1]/rarr[-1]/100.))
+    print('Vesc (km/s)             = {:10.3f}'.format(npy.sqrt(2*G*menclosed/rarr[-1])/1.E5))
+    print('Mass/Mearth, Mcore/Mass = {:10.5f}{:10.4f}'.format(menclosed/Mearth, mcore/menclosed))
+    
+    return planet,core,mantle
+
+
+
+
+def make_SPH_planet(mass=Mearth,corefraction=0.3,Pmin=1.e6,Score=1.81,Smantle=3.03,mtolerance=1e-3,layer1='alloy',layer2='forsterite',mantlepotT=False,plot=False,resolution=5e5,fixcoreT=False,verbose=False):
+    
+    planet,core,mantle = make_1D_planet(plot=plot,mantlepotT=mantlepotT,layer1=layer1,layer2=layer2,mass=mass,corefraction=corefraction,Pmin=Pmin,Score=Score,Smantle=Smantle,mtolerance=mtolerance,fixcoreT=fixcoreT,verbose=verbose)
+    
+    partmass = Mearth / resolution
+
+    Np = int(planet.M / partmass)
+    
+    if verbose:
+        print(partmass,Np)
+        print(planet.rarr)
+    
+    #planet.rarr[0]=1e-10
+    particleplanet=seagen.GenSphere(Np,planet.rarr[1:],planet.density[1:],A1_T_prof=planet.temperature[1:],A1_P_prof=planet.pressure[1:],A1_mat_prof=planet.mat[1:],verbosity=0, A1_m_rel_prof=1.0*npy.ones(len(planet.mat[1:])))#, A1_force_more_shells=[False,True])
+    setattr(particleplanet,"S",npy.where(particleplanet.mat==0,core.entropy*1e7,mantle.entropy*1e7))
+
+    if verbose:
+        print(npy.unique(particleplanet.A1_m))
+        print( (particleplanet.A1_m.max()-npy.mean(particleplanet.A1_m))/npy.mean(particleplanet.A1_m), (particleplanet.A1_m.min()-npy.mean(particleplanet.A1_m))/npy.mean(particleplanet.A1_m) )
+
+    if plot:
+        zcut=50e5
+        plt.scatter(particleplanet.A1_x[npy.abs(particleplanet.z)<zcut]/1e5,particleplanet.A1_y[npy.abs(particleplanet.z)<zcut]/1e5,c=particleplanet.rho[npy.abs(particleplanet.z)<zcut])
+        plt.axis('equal')
+        plt.colorbar()
+        plt.show()
+
+    print('N:',particleplanet.N_picle)
+    massresid = partmass-npy.unique(particleplanet.A1_m)
+    if verbose:
+        print('pm:',massresid.min()/partmass,massresid.max()/partmass)
+
+    sn = Snapshot()
+    sn.ic_from_seagen(particleplanet)
+    
+    if verbose:
+        print(sn.m.sum()/Mearth,sn.m.std()/Mearth)
+
+    sn.m = npy.ones(len(sn.m))*partmass
+
+    if verbose:
+        print(sn.m.sum()/Mearth,sn.m.std()/Mearth)
+
+    #Path(os.path.expanduser('~') + '/Work/Gadget2020EoS/equil/SEApN5e5M1e-1Fo70S303FeSi30S181').mkdir(parents=True, exist_ok=True)
+
+    #sn.write(os.path.expanduser('~') + '/Work/Gadget2020EoS/equil/SEApN5e5M1e-1Fo70S303FeSi30S181/planetIC.G2')
+
+    #planet.write(os.path.expanduser('~') + '/Work/Gadget2020EoS/equil/SEApN5e5M1e-1Fo70S303FeSi30S181/planetprofile.dat')
+    
+    return planet,core,mantle,sn,particleplanet
+
+
+
+
+# <b>PREM</b>
+# PREM is a one-dimensional average structure model for the Earth developed from seismic data. The original reference is:<br>
+# <b>Dziewonski, A. M., and D. L. Anderson. 1981. "Preliminary reference Earth model." Phys. Earth Plan. Int. 25:297-356.</b>
+# 
+# The 1D model has been updated by Panning and Romanowicz (2006). Download the Modified PREM model from the <a href="http://ds.iris.edu/spud/earthmodel/9785674">IRIS web site</a>.
+#Durek, J. J., and G. Ekstrom (1996) Modified PREM (Preliminary Reference Earth Model), doi:10.17611/DP/9785674, http://ds.iris.edu/spud/earthmodel/9785674.
+
+# make a class to hold the PREM data
+class PREM:
+    """Class to hold PREM data and other 1-D Earth variables."""  # this is a documentation string for this class
+    def __init__(self): # self is the default name of the object for internal referencing of the variables in the class
+        """A function to initialize the class object.""" # this is a documentation string for this function
+        self.NR = 0 # number of radius points
+        self.radius = npy.zeros(self.NR) 
+        self.density = npy.zeros(self.NR)   
+        self.pwavevel = npy.zeros(self.NR)   
+        self.swavevel = npy.zeros(self.NR)
+        self.pressure = npy.zeros(self.NR)
+        self.temperature = npy.zeros(self.NR)
+        # not going to use all the variables in the file
+        self.units = '' # I like to keep a text note in a structure about the units
+        
+        self.load()
+
+    def load(self,PREM_filename=datadir+'PREM500_IDV.csv'):
+        # Read in PREM: Preliminary Earth Reference Model
+
+        self.radius = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2,usecols=[0]) # radius in m
+        self.density = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2,usecols=[1]) # density in kg/m3
+        self.pwavevel = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2,usecols=[2]) # p-wave velocity m/s
+        self.swavevel = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2,usecols=[3]) # s-wave velocity m/s
+        self.NR = len(PREM.radius) # number of radius points
+        self.units = 'radius (m), density (kg/m3), pwavevel (m/s), swavevel (m/s)'
+        
+        # start at the surface and integrate via a for loop to the center of the planet
+        
+        # calculate the thickness of each layer in the PREM model using the roll function
+        PREM_dr = npy.roll(self.radius,-1)-self.radius 
+        PREM_dr[self.NR-1] = 0. # we are not using the last entry in the list because there are NR-1 layers
+        #print(PREM_dr)
+        
+        # calculate the mass of each layer
+        # density x area x thickness of each layer
+        PREM_mass_rad = self.density*(4.*npy.pi*self.radius*self.radius*PREM_dr) 
+        
+        # core radius
+        ir0 = npy.where(self.density < 6000.)[0]
+        PREM_rcore = self.radius[ir0[0]]
+                
+        self.pressure = npy.zeros(self.NR) # make array of zeros for pressure of the same length as the arrays in the PREM model
+        # The first entry is the middle of the planet, so start at the surface and integrate inwards
+        for i in range(self.NR-2,0,-1):
+            self.pressure[i] = self.pressure[i+1]+G_mks*npy.sum(PREM_mass_rad[0:i-1])*self.density[i]*PREM_dr[i]/self.radius[i]/self.radius[i]
+        
+        PREM_mass_enclosed = npy.zeros(self.NR) # make a new array
+        for i in range(1,self.NR):
+            PREM_mass_enclosed[i] = npy.sum(PREM_mass_rad[0:i])
+        
+        # use SESAME units
+        self.pressure = self.pressure/1.E9 # GPa
+
+# initialize an empty PREM object
+#PREM = PREMclass()
+
+# read the data into the class parameters
+
+
+def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='iron'):
+    if particleplanet:
+        inclpart = True
+        if not hasattr(particleplanet, 'r'):
+            particleplanet.r = npy.sqrt(particleplanet.x**2 + particleplanet.y**2 + particleplanet.z**2)
+        
+    if planet.M >= 0.1*Mearth:
+        showPREM = True
+    else:
+        showPREM = False
+
+    if coreEOS == 'iron':
+        cEOS = IronEOS
+    elif coreEOS == 'alloy':
+        cEOS = AlloyEOS
+    else:
+        print('Unknown core EOS')
+        return
+        
+    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(8,12))
+    plt.subplots_adjust(wspace=0.25)
+    #------------------------------
+    ai=0
+    aj=0
+    axes[ai,aj].set_xlabel('Radius (km)')
+    axes[ai,aj].set_ylabel('Density (g/cm$^3$)')
+    if inclpart:
+        axes[ai,aj].scatter(particleplanet.r/1e5,particleplanet.rho,s=6,c=particleplanet.S/1e7,vmax=4.)
+    axes[ai,aj].plot(planet.rarr/1.e5,planet.density,'-',color='xkcd:purple',label='Planet model')
+    if showPREM:
+        axes[ai,aj].plot(PREM.radius/1.e3,PREM.density/1.e3,'-.',color='xkcd:deep blue',label='PREM (Earth)')
+    axes[ai,aj].set_title(str(planet.M/Mearth)[0:6]+" (Mearth) Total Mass")
+
+    #------------------------------
+    ai=0
+    aj=1
+    axes[ai,aj].set_xlabel('Radius (km)')
+    axes[ai,aj].set_ylabel('Pressure (GPa)')
+
+    if inclpart:
+        axes[ai,aj].scatter(particleplanet.r/1e5,particleplanet.P/1e10,s=6,c=particleplanet.S/1e7,vmax=4.)
+    axes[ai,aj].plot(planet.rarr/1.e5,planet.pressure/1.e10,'-',color='xkcd:purple',label='Planet model')
+    if showPREM:
+        axes[ai,aj].plot(PREM.radius/1.e3,PREM.pressure,'-.',color='xkcd:deep blue',label='PREM (Earth)')
+    axes[ai,aj].set_title(str(planet.cf)[0:6]+" Core Mass Fraction")
+
+    #------------------------------
+    ai=1
+    aj=0
+    axes[ai,aj].set_xlabel('Radius (km)')
+    axes[ai,aj].set_ylabel('Temperature (K)')
+
+    if inclpart:
+        axes[ai,aj].scatter(particleplanet.r/1e5,particleplanet.T,s=6,c=particleplanet.S/1e7,vmax=4.)
+    axes[ai,aj].plot(planet.rarr/1.e5,planet.temperature,'-',color='xkcd:purple',label='Planet model')
+    if showPREM:
+        axes[ai,aj].plot(PREM.radius/1.e3,PREM.temperature,'-.',color='xkcd:deep blue',label='Anzellini et al. 2013 (Earth)')
+
+    #------------------------------
+    ai=1
+    aj=1
+
+    axes[ai,aj].set_xlabel('Pressure (GPa)')
+    axes[ai,aj].set_ylabel('Temperature (K)')
+    axes[ai,aj].plot(ForsteriteEOS.mc.Pl,ForsteriteEOS.mc.T,'-',color='black',label='Forsterite melt curve',markersize=10)
+    axes[ai,aj].plot(cEOS.mc.Pl,cEOS.mc.T,'--',color='black',label=coreEOS+' melt curve')
+
+    if inclpart:
+        axes[ai,aj].scatter(particleplanet.P/1e10,particleplanet.T,s=6,c=particleplanet.S/1e7,vmax=4.)
+    axes[ai,aj].plot(planet.pressure/1.e10,planet.temperature,'-',color='xkcd:purple',label='Planet model')
+    if showPREM:
+        axes[ai,aj].plot(PREM.pressure,PREM.temperature,'-.',color='xkcd:deep blue',label='Anzellini et al. 2013 (Earth)')
+
+
+    axes[ai,aj].set_ylim(0,1.2*max(planet.temperature))
+    axes[ai,aj].set_xlim(0,1.2*max(planet.pressure/1.e10))
+
+    #------------------------------
+    ai=2
+    aj=0
+
+    axes[ai,aj].set_ylabel('Pressure (GPa)')
+    axes[ai,aj].set_xlabel('Entropy (kJ K$^{-1}$ kg$^{-1}$)')
+
+    axes[ai,aj].plot(ForsteriteEOS.mc.Sl*1e3,ForsteriteEOS.mc.Pl,'-',color='black',label='forsterite PB')
+    axes[ai,aj].plot(cEOS.mc.Sl*1e3,cEOS.mc.Pl,'--',color='black',label=coreEOS+' PB')
+    axes[ai,aj].plot(ForsteriteEOS.mc.Ss*1e3,ForsteriteEOS.mc.Ps,'-',color='black',markersize=10)
+    axes[ai,aj].plot(cEOS.mc.Ss*1e3,cEOS.mc.Ps,'--',color='black')
+
+    axes[ai,aj].plot(ForsteriteEOS.vc.Sl*1e3,ForsteriteEOS.vc.Pl,'-',color='black',markersize=10)
+    axes[ai,aj].plot(cEOS.vc.Sl*1e3,cEOS.vc.Pl,'--',color='black',markersize=10)
+    axes[ai,aj].plot(ForsteriteEOS.vc.Sv*1e3,ForsteriteEOS.vc.Pv,'-',color='black',markersize=10) #label='forsterite VD'
+    axes[ai,aj].plot(cEOS.vc.Sv*1e3,cEOS.vc.Pv,'--',color='black',markersize=10) #label='iron VD'
+
+    if inclpart:
+        axes[ai,aj].scatter(particleplanet.S/1e7,particleplanet.P/1e10,s=6,c=particleplanet.S/1e7,vmax=4.)
+    axes[ai,aj].plot(planet.entropy/1e7,planet.pressure/1.e10,'-',color='xkcd:purple',label='Planet model')
+
+    axes[ai,aj].set_xlim(1,10.)
+    axes[ai,aj].set_ylim(0,max(planet.pressure/1.e10))
+
+    #------------------------------
+    ai=2
+    aj=1
+
+    axes[ai,aj].set_ylabel('Pressure (GPa)')
+    axes[ai,aj].set_xlabel('Entropy (kJ K$^{-1}$ kg$^{-1}$)')
+
+    axes[ai,aj].plot(ForsteriteEOS.mc.Sl*1e3,ForsteriteEOS.mc.Pl,'-',color='black',label='forsterite PB')
+    axes[ai,aj].plot(ForsteriteEOS.mc.Ss*1e3,ForsteriteEOS.mc.Ps,'-',color='black',markersize=10)
+    axes[ai,aj].plot(cEOS.mc.Sl*1e3,cEOS.mc.Pl,'--',color='black',label=coreEOS+' PB')
+    axes[ai,aj].plot(cEOS.mc.Ss*1e3,cEOS.mc.Ps,'--',color='black')
+
+    axes[ai,aj].plot(ForsteriteEOS.vc.Sl*1e3,ForsteriteEOS.vc.Pl,'-',color='black',markersize=10)
+    axes[ai,aj].plot(cEOS.vc.Sl*1e3,cEOS.vc.Pl,'--',color='black',markersize=10)
+    axes[ai,aj].plot(ForsteriteEOS.vc.Sv*1e3,ForsteriteEOS.vc.Pv,'-',color='black',markersize=10) #label='forsterite VD'
+    axes[ai,aj].plot(cEOS.vc.Sv*1e3,cEOS.vc.Pv,'--',color='black',markersize=10) #label='iron VD'
+
+    if inclpart:
+        axes[ai,aj].scatter(particleplanet.S/1e7,particleplanet.P/1e10,s=6,c=particleplanet.S/1e7,vmax=4.)
+    axes[ai,aj].plot(planet.entropy/1e7,planet.pressure/1.e10,'-',color='xkcd:purple',label='Planet model')
+
+    axes[ai,aj].set_xlim(1,10.)
+    axes[ai,aj].set_ylim(1e-5,max(planet.pressure/1.e10))
+    axes[ai,aj].semilogy()
+
+    # don't show a plot in lower right
+    #axes[2,1].axis("off")
+
+    axes[0,0].legend()
+    axes[0,1].legend()
+    axes[1,0].legend()
+    axes[1,1].legend()
+    axes[2,0].legend()
+    axes[2,1].legend()
+
+    # this saves a pdf file -- vector graphics are preferred
+    if path:
+        plt.savefig(path, format='pdf', dpi=300,transparent=True)
+
+    if show:
+        plt.show()
+        
+
+
+class EquilRun:
+    def __init__(self):
+        self.M = 0
+        self.N = 0
+        self.nsnaps = 0
+        self.data = None
+        self.prof1D = planet_profile()
+        self.radp = npy.empty(0)
+        self.radp1 = npy.empty(0)
+        self.radmax = npy.empty(0)
+        self.times = npy.empty(0)
+        self.Sc = npy.empty(0)
+        self.Sm = npy.empty(0)
+        #P = npy.empty(0)
+        #T = npy.empty(0)
+        self.rhoc = npy.empty(0)
+        self.rhom = npy.empty(0)
+        self.ke = npy.empty(0)
+        #ie = npy.empty(0)
+        self.pe = npy.empty(0)
+        self.v = npy.empty(0)
+    
+    def load(self, loc, thermo=False, inter=1, fname1D='planetprofile.dat',names1='equil_',names2='equilB_', icfile='planetIC.sw.hdf5'):
+        """for gadget standard set names1 to 'snapshot_' and names2 to None"""
+        N1 = N2 = 0
+        f1 = f2 = []
+        
+        if names1:
+            f1 = sorted(glob.glob(loc+names1+'*[!yml]'))
+            N = [(f1[x].split('/')[-1]).split('_')[1].split('.')[0] for x in range(len(f1))]
+            print(N)
+            N1 = int(sorted(npy.array(N).astype(int))[-1])
+        if names2:
+            f2 = sorted(glob.glob(loc+names2+'*[!yml]'))
+            N = [(f2[x].split('/')[-1]).split('_')[1].split('.')[0] for x in range(len(f2))]
+            N2 = int(sorted(npy.array(N).astype(int))[-1])
+        
+        print(N1,N2)
+        
+        fnums = npy.arange(0,N1+N2,1)
+        print(loc,fnums[::5])
+        
+        files = npy.array(f1+f2)[::inter]
+        files = npy.append(npy.array(loc+icfile),files)
+        self.nsnaps = len(files)
+        self.data = npy.ndarray((self.nsnaps,),dtype=object)
+        
+        self.prof1D.load(loc+fname1D) 
+        
+        radp = []
+        radp1 = []
+        radmax = []
+        times = []
+        Sc = []
+        Sm = []
+        P = []
+        T = []
+        rhoc = []
+        rhom = []
+        ke = []
+        pe = []
+        ie = []
+        v = []
+        
+        for i in range(self.nsnaps):
+            honly = True #False #True
+            if i==0 or i==1 or i==self.nsnaps:
+                honly = False
+            self.data[i] = Snapshot()
+            print(files[i])
+            self.data[i].load(files[i],headonly=honly,thermo=thermo)
+            
+            #rr = npy.sqrt( (s.x - (s.x[s.pot==s.pot.min()])[0])**2 + (s.y - (s.y[s.pot==s.pot.min()])[0])**2 + (s.z - (s.z[s.pot==s.pot.min()])[0])**2)
+            #rr = npy.sqrt( (s.x-s.x.mean())**2 + (s.y-s.y.mean())**2 + (s.z-s.z.mean())**2 )
+            rr = npy.sqrt( (self.data[i].x-npy.average(self.data[i].x,weights=self.data[i].m))**2 + (self.data[i].y-npy.average(self.data[i].y,weights=self.data[i].m))**2 + (self.data[i].z-npy.average(self.data[i].z,weights=self.data[i].m))**2 )
+            radp.append(npy.median(npy.sort(rr)[-int(0.02*self.data[i].N):-1]))
+            radp1.append(npy.median(npy.sort(rr)[-int(0.01*self.data[i].N):-1]))
+            radmax.append(rr.max())
+            #if npy.ndim(self.data[i].header.time)==0:
+            #    times.append(self.data[i].header.time/3600.)
+            #else:
+            #    times.append(self.data[i].header.time[0]/3600.)
+            Sc.append((self.data[i].S[self.data[i].id<GADGET_EOS_OFFSET]).mean())
+            Sm.append((self.data[i].S[self.data[i].id>=GADGET_EOS_OFFSET]).mean())
+            #P.append(s.P.mean())
+            #T.append(s.T.mean())
+            rhoc.append(self.data[i].rho[self.data[i].id<GADGET_EOS_OFFSET].mean())
+            rhom.append(self.data[i].rho[self.data[i].id>=GADGET_EOS_OFFSET].mean())
+            ke.append( (self.data[i].m*0.5*(self.data[i].vx**2 + self.data[i].vy**2 + self.data[i].vz**2)).sum() )
+            #ie.append( (self.data[i].m*self.data[i].U).sum() )
+            pe.append( (self.data[i].m * 0.5*self.data[i].pot).sum() )
+            v.append( npy.sqrt( (self.data[i].vx**2 + self.data[i].vy**2 + self.data[i].vz**2).mean() ) ) #+s.vy**2+s.vz**2
+        
+        #print(times)
+        self.radp = npy.array(radp)
+        self.radp1 = npy.array(radp1)
+        self.radmax = npy.array(radmax)
+        self.times = npy.array(times)
+        self.Sc = npy.array(Sc)
+        self.Sm = npy.array(Sm)
+        #P = npy.array(P)
+        #T = npy.array(T)
+        self.rhoc = npy.array(rhoc)
+        self.rhom = npy.array(rhom)
+        self.ke = npy.array(ke)
+        #ie = npy.array(ie)
+        self.pe = npy.array(pe)
+        self.v = npy.array(v)
+        
+        self.vesc = npy.sqrt( 2*G*self.data[i].m.sum()/radmax[0] )
+        #minpe = self.pe.min()
+        #pe = pe - minpe
+        
+        #energy = ke+ie+pe
+        
+
+    
+    def equil_mov_plot(n,scale='Mm'):
+        recenter = True
+        thermo=False
+        ncol=4
+        tmax = 24 #24. #12
+        if times[-1]<tmax:
+            tmax=times[-1]*1.01
+        
+        rhomin=5e-2 #5e5
+        rhomax=10.
+        Smin = 1.5
+        Smax = 4. #10.
+        
+        zcutl = -0.2 #2.5
+        zcuth = 0.2 #2.5
+        vcut = 1e18
+        
+        lpos=16.6
+        
+        Ng=401j
+        Ngz=61j
+        #xmin=-8
+        #xmax=8
+        #ymin=-8
+        #ymax=8
+        #zmin=-8
+        #zmax=8
+        cmap = plt.get_cmap('plasma').copy()
+        cmap.set_under('k')
+        
+        if scale=='Mm':
+            scf = 1e8
+        elif scale=='km':
+            scf = 1e5
+        elif scale=='earth' or scale=='Earth':
+            scf = 6.371e8
+        else:
+            scf = scale
+        axlim = 4*int(npy.ceil((self.data[0].x.max()-self.data[0].x.min())/scf/8.)) 
+        zcut = axlim/200.*scf
+
+        zmin=-axlim/10.
+        zmax=axlim/10.
+        zi=npy.linspace(zmin,zmax,int(Ngz.imag))
+        X,Y,Z = npy.mgrid[-axlim:axlim:(Ng),-axlim:axlim:(Ng),zmin:zmax:(Ngz)]
+        
+        
+        print(n)
+        #ke[n] i = ( (self.data[i].m*0.5*(self.data[i].vx**2 + s.vy**2 + s.vz**2)).sum() )
+        ##iei = ( (s.m*s.U).sum() )
+        #pei = ( (s.m * 0.5*s.pot).sum() ) - minpe
+        #if code=='gadget':
+        #    ti = ( s.header.time )/3600.
+        #elif code=='swift':
+        #    ti = ( s.header.time )[0]/3600.
+        #rr = npy.sqrt( (s.x-s.x.mean())**2 + (s.y-s.y.mean())**2 + (s.z-s.z.mean())**2 )
+        #rr = npy.sqrt( (s.x-npy.average(s.x,weights=s.m))**2 + (s.y-npy.average(s.y,weights=s.m))**2 + (s.z-npy.average(s.z,weights=s.m))**2 )
+        #rr = npy.sqrt( (s.x - (s.x[s.pot==s.pot.min()])[0])**2 + (s.y - (s.y[s.pot==s.pot.min()])[0])**2 + (s.z - (s.z[s.pot==s.pot.min()])[0])**2)
+        #radpi = (npy.median(npy.sort(rr)[-int(0.02*s.N):-1]))
+        #radp1i = (npy.median(npy.sort(rr)[-int(0.01*s.N):-1]))
+        #radmaxi = (rr.max())
+        #Sci = ((s.S[s.id<GADGET_EOS_OFFSET]).mean())
+        #Smi = ((s.S[s.id>=GADGET_EOS_OFFSET]).mean())
+        #rhoci = (s.rho[s.id<GADGET_EOS_OFFSET].mean())
+        #rhomi = (s.rho[s.id>=GADGET_EOS_OFFSET].mean())
+        #veli = ( npy.sqrt( (s.vx**2 + s.vy**2 + s.vz**2).mean() ) )
+        #print(ti)
+        
+    
+        #if recenter:
+        x = self.data[i].x - (self.data[i].x[self.data[i].pot==self.data[i].pot.min()])[0]
+        y = self.data[i].y - (self.data[i].y[self.data[i].pot==self.data[i].pot.min()])[0]
+        z = self.data[i].z - (self.data[i].z[self.data[i].pot==self.data[i].pot.min()])[0]
+        rr = npy.sqrt(x**2+y**2+z**2)
+        
+        vi = scipy.interpolate.griddata((x[self.data[i].vx<vcut]/scf,y[self.data[i].vx<vcut]/scf,z[self.data[i].vx<vcut]/scf),self.data[i].rho[self.data[i].vx<vcut],(X,Y,Z),method='linear',fill_value=1.e-18)
+        
+        coz = (z[self.data[i].pot==self.data[i].pot.min()])[0]
+        nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
+    
+        
+        plt.clf()
+        
+        # density plot (fluid)
+        gs = gridspec.GridSpec(2, ncol)
+        plt.subplot(gs[0, 0])
+        #plt.subplot2grid((2, ncol), (0, 0))
+        plt.minorticks_on()    
+        
+        im = plt.imshow(vi[:,:,nn].T,origin='lower',extent=[-axlim,axlim,-axlim,axlim],cmap=cmap,norm=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False))
+        plt.ylabel('$y$ (Mm)')
+        ax=plt.gca()
+        ax.tick_params(colors='w',which='both',labelcolor='k')
+        ax.spines['top'].set_color('w')
+        ax.spines['bottom'].set_color('w')
+        ax.spines['left'].set_color('w')
+        ax.spines['right'].set_color('w')
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(10.00))
+        ax.xaxis.set_minor_locator(ticker.MultipleLocator(2.00))
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(10.00))
+        ax.yaxis.set_minor_locator(ticker.MultipleLocator(2.00))
+        ax.xaxis.set_ticklabels('')
+        
+        cbar_ax = fig.add_axes([0.240, 0.58, 0.008, 0.41])
+        cbar = fig.colorbar(im, cax=cbar_ax,label=r'$\rho$ (g$\,$cm$^{-3}$)')
+        cbar_ax.yaxis.set_label_coords(5.,0.5)
+        #plt.colorbar(fraction=0.0466,pad=0.01,label=r'$\rho$ (g$\,$cm$^{-3}$)')
+        
+        # entropy plot (particle)
+        plt.subplot(gs[1,0])
+        #plt.subplot2grid((2, ncol), (1, 0))
+        plt.minorticks_on()
+        
+        Splt = plt.scatter( (x)[(z>-zcut)*(z<zcut)]/scf, (y)[(z>-zcut)*(z<zcut)]/scf,s=0.5,marker='o',c=self.data[i].S[(z>-zcut)*(s.z<zcut)]/1e7,edgecolor='none',vmin=Smin,vmax=Smax)
+        #plt.scatter( (s.x)[(s.z>zcutl)*(s.z<zcuth)*(s.id<GADGET_EOS_OFFSET)], (s.y)[(s.z>zcutl)*(s.z<zcuth)*(s.id<GADGET_EOS_OFFSET)],s=0.5,marker='o',c=s.S[(s.z>zcutl)*(s.z<zcuth)*(s.id<GADGET_EOS_OFFSET)]/1e7,edgecolor='none')
+        plt.axis([-axlim,axlim,-axlim,axlim])
+        plt.text(0.94,0.94,'{:.1f}'.format(ti),ha='right',va='top',fontsize=8,color='k',transform=plt.gca().transAxes)
+        plt.ylabel('$y$ (Mm)')
+        plt.xlabel('$x$ (Mm)')
+        ax=plt.gca()
+        ax.set_aspect(aspect=1.)
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(10.00))
+        ax.xaxis.set_minor_locator(ticker.MultipleLocator(2.00))
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(10.00))
+        ax.yaxis.set_minor_locator(ticker.MultipleLocator(2.00))
+        cbar_ax = fig.add_axes([0.240, 0.1, 0.008, 0.41])
+        cbar = fig.colorbar(Splt, cax=cbar_ax,label=r'$S$ (J$\,$K$^{-1}\,$g$^{-1}$)')
+        cbar_ax.yaxis.set_label_coords(5.,0.5)
+        
+        gs.update(top=0.99,bottom=0.1,left=0.065,right=0.98,hspace=0.16,wspace=0.4)
+        
+        
+        #radius plot
+        gs2 = gridspec.GridSpec(2, ncol)
+        plt.subplot(gs2[0, 1])
+        #plt.subplot2grid((2, ncol), (0, 1))#, rowspan=2,colspan=2)
+        plt.minorticks_on()
+        
+        plt.axvline(ti,c='0.5')
+        plt.plot(self.data[:].header.time,(radp/(radp1[0]))[times<tmax],color='xkcd:deep rose',lw=1.,label='outer 2%') #,marker='+'
+        plt.plot(times[times<tmax],(radp1/(radp1[0]))[times<tmax],color='xkcd:purple',lw=1.,label='outer 1%')
+        plt.plot(times[times<tmax],(radmax/(radp1[0]))[times<tmax],color='xkcd:tangerine',lw=1.,label='max')
+        
+        plt.plot(ti,(radp[n]/(radp1[0])),ms=2,marker='o', color='xkcd:deep rose')
+        plt.plot(ti,(radp1[n]/(radp1[0])),ms=2,marker='o', color='xkcd:purple')
+        plt.plot(ti,(radmax[n]/(radp1[0])),ms=2,marker='o', color='xkcd:tangerine')
+    
+        #plt.ylim([0.,1.02])
+        plt.xlim(xmin=0)
+        plt.xlim(xmax=tmax)
+        #plt.xlabel('Time (hrs)')
+        plt.ylabel(u'R/R$_\mathrm{init}$')
+        plt.legend()
+        ax=plt.gca()
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(5.))
+        ax.xaxis.set_minor_locator(ticker.MultipleLocator(1.))
+    
+        
+        #density profile plot
+        plt.subplot(gs2[0, 2])
+        plt.minorticks_on()
+        
+        plt.plot(planet1D.rarr/Rearth,planet1D.density,color='xkcd:purple',lw=1.) #,marker='+'
+        plt.scatter(rr/Rearth,self.data[i].rho,s=1,marker='o', c=s.id, vmax=400000000)
+        
+        plt.ylim([0.,1.1*planet1D.density.max()])
+        plt.xlim([0.,1.05*planet1D.rarr.max()/Rearth])
+        #plt.xlabel('Radius (R$_\oplus$)')
+        plt.ylabel(u'Density (g$\,$cm$^{-3}$)')
+        
+    
+        #entropy profile plot
+        plt.subplot(gs2[1, 2])
+        plt.minorticks_on()
+        
+        plt.plot(planet1D.rarr/Rearth,planet1D.entropy/1e7,color='xkcd:purple',lw=1.) #,marker='+'
+        plt.scatter(rr/Rearth,self.data[i].S/1e7,s=1,marker='o', c=s.id, vmax=400000000)
+        
+        plt.ylim([0.,1.2*planet1D.entropy.max()/1e7])
+        plt.xlim([0.,1.05*planet1D.rarr.max()/Rearth])
+        plt.xlabel('Radius (R$_\oplus$)')
+        plt.ylabel(u'Entropy (J$\,$K$^{-1}\,$g$^{-1}$)')
+        
+    
+        #velocity plot
+        plt.subplot(gs2[0, 3])
+        #plt.subplot2grid((2, ncol), (0, 2))#, rowspan=2,colspan=2)
+        plt.minorticks_on()
+        
+        plt.axvline(ti,c='0.5')
+        plt.plot(times[times<tmax],(v/vesc)[times<tmax],color='xkcd:purple',lw=1.) #,marker='+'
+        
+        plt.plot(ti,(veli/vesc),ms=2,marker='o', color='xkcd:purple')
+        
+        #plt.ylim([0.,1.02])
+        plt.xlim(xmin=0)
+        plt.xlim(xmax=tmax)
+        plt.xlabel('Time (hrs)')
+        plt.ylabel(u'v$_\mathrm{rms}$/v$_\mathrm{esc}$')
+        plt.legend()
+        ax=plt.gca()
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(5.))
+        ax.xaxis.set_minor_locator(ticker.MultipleLocator(1.))
+    
+    
+        #mean entropy plot
+        plt.subplot(gs2[1, 1])
+        #plt.subplot2grid((2, ncol), (1, 1))#, rowspan=2,colspan=2)
+        plt.minorticks_on()
+        
+        plt.axvline(ti,c='0.5')
+        plt.plot(times[times<tmax],(Sm/Sm[0])[times<tmax],color='xkcd:purple',lw=1.,label='mantle') #,marker='+'
+        plt.plot(times[times<tmax],(Sc/Sc[0])[times<tmax],color='xkcd:tangerine',lw=1.,label='core') #,marker='+'
+        
+        plt.plot(ti,(Smi/Sm[0]),ms=2,marker='o', color='xkcd:purple')
+        plt.plot(ti,(Sci/Sc[0]),ms=2,marker='o', color='xkcd:tangerine')
+        
+        #plt.ylim([0.,1.02])
+        plt.xlim(xmin=0)
+        plt.xlim(xmax=tmax)
+        plt.xlabel('Time (hrs)')
+        plt.ylabel(u'S/S$_\mathrm{init}$')
+        plt.legend()
+        ax=plt.gca()
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(5.))
+        ax.xaxis.set_minor_locator(ticker.MultipleLocator(1.))
+    
+        
+        #energy plot
+        if thermo:
+            plt.subplot(gs2[1, 3])
+            #plt.subplot2grid((2, ncol), (1, 2))#, rowspan=2,colspan=2)
+            plt.minorticks_on()
+    
+            plt.plot(times[times<23.97],(energy/(energy[0]))[times<23.97],color='k',lw=1.) #,marker='+'
+            plt.plot(times[times<23.97],(pe/(energy[0]))[times<23.97],color='xkcd:purple',lw=1.)
+            plt.plot(times[times<23.97],((ke+pe)/(energy[0]))[times<23.97],color='xkcd:tangerine',lw=1.)
+    
+            plt.fill_between(times[times<=ti],0./(energy[0]),(pe[times<=ti])/(energy[0]), color=cmap(0.15),alpha=0.65)
+            plt.fill_between(times[times<=ti],pe[times<=ti]/(energy[0]),(ke+pe)[times<=ti]/(energy[0]), color=cmap(0.73),alpha=0.94)
+            plt.fill_between(times[times<=ti],(ke+pe)[times<=ti]/(energy[0]),energy[times<=ti]/(energy[0]), color=cmap(0.43),alpha=0.82)
+    
+            plt.plot(ti,pei/(energy[0]),ms=2,marker='o', color='xkcd:purple')
+            plt.plot(ti,(pei+kei)/(energy[0]),ms=2,marker='o', color='xkcd:tangerine')
+            plt.plot(ti,(pei+kei+iei)/(energy[0]),ms=2,marker='o', color='xkcd:deep rose')
+    
+            #plt.text(lpos,(0.5*penergy[times>lpos])[0]/(energy[0]),'Potential',color='purple',size=8,ha='right',va='center')
+            #plt.text(lpos,((0.5*kenergy+penergy)[times>lpos])[0]/(energy[0]),'Kinetic',color='orangered',size=8,ha='right',va='center')
+            #plt.text(lpos,((0.5*ienergy+kenergy+penergy)[times>lpos])[0]/(energy[0]),'Internal',color='mediumvioletred',size=8,ha='right',va='center')
+    
+            #plt.ylim([0.,1.02])
+            plt.xlim(xmin=0)
+            plt.xlim(xmax=tmax)
+            plt.xlabel('Time (hrs)')
+            plt.ylabel('Fraction of event energy')
+            ax=plt.gca()
+            ax.xaxis.set_major_locator(ticker.MultipleLocator(5.)) #2.5
+            ax.xaxis.set_minor_locator(ticker.MultipleLocator(1.))
+    
+        gs2.update(top=0.99,bottom=0.1,right=0.98,hspace=0.14,wspace=0.38)
