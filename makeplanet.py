@@ -1,19 +1,22 @@
 from .main import *
 from .snaptools import Snapshot
-from .eos import *
+from . import eos
+#from .eos import *
 
+import numpy as npy
 from scipy import interpolate
+import matplotlib
+import matplotlib.pyplot as plt
 import seagen
-
-datadir='./data/'
 
 
 G_mks = 6.67E-11 # Gravitational constant  m3/kg/s2
 
-G = 6.67E-8 # Gravitational constant  cm3/g/s2
+#G = 6.67E-8 # Gravitational constant  cm3/g/s2
 Mearth = 5.972E27 # Earth's mass g
 Rearth = 6371.E5  # Earth's radius cm
 Rcmb = 348000000. # CMB radius in cm (from PREM)
+
 
 
 class planet_profile:
@@ -28,16 +31,68 @@ class planet_profile:
         self.entropy = npy.array([])
         self.mat = npy.array([])
     
-    def write(self,file='profile.dat'):
+    def write(self, file='profile.dat'):
         npy.savetxt(file,npy.transpose([self.rarr, self.mat, self.entropy, self.density, self.pressure, self.temperature]))
         
-    def load(self,file='profile.dat'):
+    def load(self, file='profile.dat'):
         (self.rarr, self.mat, self.entropy, self.density, self.pressure, self.temperature) = npy.loadtxt(file,unpack=True)
 
 
+def planet_density(m):
+    """
+    Estimate density from planet mass.
+    Based on Müller et al., A&A 686, A296 (2024).
+    """
+    if m < 3.8:
+        d = 5.12 * m**0.12
+    elif m < 183:
+        d = 16.6 * m**-0.76
+    else:
+        d = 4.39e-4 * m**1.26
+    return d
 
 
-def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3.02,mtolerance=1e-3,layer1='iron',layer2='forsterite',mantlepotT=False,plot=False,fixcoreT=False,verbose=False):
+def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3.02,
+        mtolerance=1e-3,layer1='iron',layer2='forsterite',layers=[],S=[],mantlepotT=False,
+        plot=False,fixcoreT=False, rhocent=None, verbose=False):
+    """
+    Create a 1D planet profile
+    
+    mass - list of layer masses (inside to out) or total mass of 2 layer planet
+    corefraction - core mass fraction for 2 layer planet
+    Pmin - surface pressure (Pa)
+    Score - core entropy for 2 layer planet
+    Smantle - 2nd layer entropy for 2 layer planet
+    mtolerance - tolerance for total mass of planet
+    layer1 - 1st layer material for 2 layer planet
+    layer 2 - 2nd layer material for 2 layer planet
+    layers - list of materials for layers (inside to out)
+    S - list of layer entropies (inside to out)
+    mantlepotT - mantle potential temperature for 2 layer planet
+    plot - plot pressure-temperature profile?
+    fixcoreT - ensure outer core is at least as hot as inner mantle (2nd layer)?
+    rhocent - initial central density to use (optional, use for troublesome cases)
+    verbose - print extra information
+    
+    """
+    if len(layers) != len(S):
+        print('error: number of layers must match:', len(layers), len(S))
+    if not layers or len(layers)==2:
+        if layers:
+            layer1 = layers[0]
+            layer2 = layers[1]
+            Score = S[0]
+            Smantle = S[1]
+            totmass = sum(mass)
+            corefraction = mass[0]/totmass
+            mass = totmass
+        return make_1D_2L_planet(mass=mass,corefraction=corefraction,Pmin=Pmin,Score=Score,Smantle=Smantle,mtolerance=mtolerance,layer1=layer1,layer2=layer2,mantlepotT=mantlepotT,plot=plot,fixcoreT=fixcoreT,verbose=verbose,rhocent=rhocent)
+    else:
+        print('error: not implemented yet')
+
+def make_1D_2L_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3.02,
+        mtolerance=1e-3,layer1='iron',layer2='forsterite',mantlepotT=False,plot=False,
+        fixcoreT=False,verbose=False, rhocent=None):
     
     mcore = corefraction * mass
     mmantle = (1-corefraction) * mass
@@ -46,17 +101,21 @@ def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3
 
     Pcenter = 0
     
-    if layer1 == 'iron':
-        ly1EOS = IronEOS
-    elif layer1 == 'alloy':
-        ly1EOS = AlloyEOS
-    else:
+    ly1EOS = eos.select(layer1)
+#    if layer1 in eos.ironnames:
+#        ly1EOS = eos.ANEOSIron
+#    elif layer1 in eos.alloynames:
+#        ly1EOS = eos.ANEOSFeSiAlloy
+#    elif layer1 in eos.forsteritenames:
+#        ly1EOS = eos.ANEOSForsterite
+    if ly1EOS is None:
         print('Unknown core EOS')
         return
     
-    if layer2 == 'forsterite':
-        ly2EOS = ForsteriteEOS
-    else:
+    ly2EOS = eos.selct(layer2)
+#    if layer2 in eos.forsteritenames:
+#        ly2EOS = ForsteriteEOS
+    if ly2EOS is None:
         print('Unknown mantle EOS')
         return
     
@@ -66,43 +125,47 @@ def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3
         refP_S = npy.zeros(ly2EOS.NT)
         refP_rho = npy.zeros(ly2EOS.NT)
         #it0 = npy.where(ly2EOS.T >= ly2EOS.T0REF)[0]
-        id0 = npy.arange(ly2EOS.ND)#npy.where(NewEOS.rho >= 0.8*NewEOS.R0REF)[0]
+        id0 = npy.arange(ly2EOS.ND)
         for iit in range(0,ly2EOS.NT):
             refP_T[iit] = ly2EOS.T[iit]
             refP_S[iit] = npy.interp(refP/1.E10,ly2EOS.P[iit,id0],ly2EOS.S[iit,id0])
             refP_rho[iit] = npy.interp(refP/1.E10,ly2EOS.P[iit,id0],ly2EOS.rho[id0])
         Smantle = npy.interp(mantlepotT,refP_T,refP_S)*1e3
     
-    ##Score *= 1e-3   #convert to MJ/K/kg
-    ##Smantle *= 1e-3
-    
     # first extract the isentropes for the planet from the EOS tables
-    mantle = isentrope_class(Smantle)
+    mantle = eos.isentrope_class(Smantle,layer2)
 
-    # loop across all densities and extract the values for the requested isentrope
-    for i in range(0,ly2EOS.ND):
-        ind = npy.where((ly2EOS.S[:,i] > 0))[0]
-        interpfunction = interpolate.interp1d(ly2EOS.S[ind,i],ly2EOS.P[ind,i]) # MJ/K/kg, GPa
-        mantle.pressure = npy.append(mantle.pressure,interpfunction(Smantle/1.E3)) # GPa
-        interpfunction = interpolate.interp1d(ly2EOS.S[ind,i],ly2EOS.T[ind]) # MJ/K/kg, GPa
-        mantle.temperature = npy.append(mantle.temperature,interpfunction(Smantle/1.E3)) # GPa
-    mantle.density = ly2EOS.rho # g/cm3
+#    # loop across all densities and extract the values for the requested isentrope
+#    for i in range(0,ly2EOS.ND):
+#        ind = npy.where((ly2EOS.S[:,i] > 0))[0]
+#        interpfunction = interpolate.interp1d(ly2EOS.S[ind,i],ly2EOS.P[ind,i]) # MJ/K/kg, GPa
+#        mantle.pressure = npy.append(mantle.pressure,interpfunction(Smantle/1.E3)) # GPa
+#        interpfunction = interpolate.interp1d(ly2EOS.S[ind,i],ly2EOS.T[ind]) # MJ/K/kg, GPa
+#        mantle.temperature = npy.append(mantle.temperature,interpfunction(Smantle/1.E3)) # GPa
+#    mantle.density = ly2EOS.rho # g/cm3
 
+##    # arrays for selecting/interpolating starting conditions and iteration multipliers - hacky
+##    masses = npy.array([1e-5,2e-5,0.0002,0.002,0.01,0.02,0.5,1.0,2.0,5.])
+##    factors = npy.array([0.0008,0.0014,0.002,0.05,0.08,0.16,0.3,0.5,0.8,0.8])
+##    if layer1 in eos.ironnames+eos.alloynames:
+##        densities  = npy.array([7.1,7.15,7.2,7.25,7.5,8.5,11.,13.,16.,20.])
+##    elif layer1 in eos.forsteritenames:
+##        densities  = npy.array([3.,3.,3.,3.,3.9,3.9,4.,13.,16.,20.])
+    
     Tcmb_accept = False
     
+    # overall loop to allow core temperature adjustment (no max iterations!)
     while not Tcmb_accept:
         
-        core = isentrope_class(Score)
+        core = eos.isentrope_class(Score,layer1)
 
-        # loop across all densities and extract the values for the requested isentrope
-        for i in range(0,ly1EOS.ND):
-            ind = npy.where((ly1EOS.S[:,i] > 0))[0]
-            interpfunction = interpolate.interp1d(ly1EOS.S[ind,i],ly1EOS.P[ind,i]) # MJ/K/kg, GPa
-            core.pressure = npy.append(core.pressure,interpfunction(Score/1.E3)) # GPa
-            interpfunction = interpolate.interp1d(ly1EOS.S[ind,i],ly1EOS.T[ind]) # MJ/K/kg, K
-            core.temperature = npy.append(core.temperature,interpfunction(Score/1.E3)) # K
-        core.density = ly1EOS.rho # g/cm3
-
+#        for i in range(0,ly1EOS.ND):
+#            ind = npy.where((ly1EOS.S[:,i] > 0))[0]
+#            interpfunction = interpolate.interp1d(ly1EOS.S[ind,i],ly1EOS.P[ind,i]) # MJ/K/kg, GPa
+#            core.pressure = npy.append(core.pressure,interpfunction(Score/1.E3)) # GPa
+#            interpfunction = interpolate.interp1d(ly1EOS.S[ind,i],ly1EOS.T[ind]) # MJ/K/kg, K
+#            core.temperature = npy.append(core.temperature,interpfunction(Score/1.E3)) # K
+#        core.density = ly1EOS.rho # g/cm3
 
         if plot:
             fig = plt.figure(figsize=(7,5))
@@ -121,36 +184,35 @@ def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3
             plt.show()
 
 
-        factors = npy.array([0.0008,0.0014,0.002,0.05,0.08,0.16,0.3,0.5,0.8,0.8])
-        densities  = npy.array([7.1,7.15,7.2,7.25,7.5,8.5,11.,13.,16.,20.])
-        masses = npy.array([0.00001,0.00002,0.0002,0.002,0.01,0.02,0.5,1.0,2.0,5.])
-
-        changefac = npy.interp(mtotal/Mearth,masses,factors)
-        rhocenter = npy.interp(mtotal/Mearth,masses,densities)
+        #changefac = npy.interp(mtotal/Mearth,masses,factors)
+        #rhocenter = npy.interp(mtotal/Mearth,masses,densities)
+        if rhocent:
+            rhocenter = rhocent
+        else:
+            rhocenter = 2*planet_density(mtotal/Mearth)
+        changefac = 0.00003*rhocenter**4.2
 
         if verbose:
             print('m:',mtotal/Mearth,'fac:',changefac,' rho:',rhocenter )
 
         r_est = (mtotal/(4./3.*npy.pi*rhocenter/2.))**(1./3.)
         dR = npy.floor(r_est/1e5)*1e5 / 3000
+        # ensure dR is not too small
         if dR < 0.025e5:
             dR = 0.025e5
 
         #dM = menclosed/msteps
         menclosed = 0.
         rhoi = Pi = 0.
-
         rhoi = rhocenter
 
-        #if rhocenter:
-        #if Pcenter:
         #    Pi = Pcenter
         darr = npy.full(1,rhoi)
         parr = npy.full(1,Pi)
 
         itercount = 0
-        maxiter = 20000
-        maxiterm = 4000
+        maxiter = 50000
+        maxiterm = 5000
 
         if mtolerance < 5e-4:
             changefac *= 0.2
@@ -162,8 +224,9 @@ def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3
             dR *= 0.8
 
         if verbose:
-            print('dR: ',dR/1e5, 'km')
+            print('dR: ', dR/1e5, 'km')
 
+        # outer loop to find the correct total mass
         while npy.abs(mtotal-menclosed)/mtotal > mtolerance and itercount < maxiter:
             # USE MKS FOR THIS INTEGRAL
             if (itercount%100 == 0 and verbose) or (itercount%10000 == 0 and itercount!=0):
@@ -187,7 +250,8 @@ def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3
             ii=1
 
             coreiter=0
-
+            
+            # inner loop 1 to make core of required mass
             while menclosed < mcore and parr[ii-1] > Pmin and coreiter < maxiterm:
                 ri +=dR # m
                 rarr = npy.append(rarr,ri)
@@ -212,6 +276,7 @@ def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3
 
             mantleiter = 0
 
+            # inner loop 2 to add mantle up to surface pressure
             while parr[ii-1] > Pmin and mantleiter< maxiterm:
                 ri += dR # m
                 rarr = npy.append(rarr,ri)
@@ -232,6 +297,7 @@ def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3
                 mantleiter += 1
                 menclosed = menclosed + mlayer # kg    
 
+            # adjust initial density if total mass wrong
             if menclosed < mtotal:
                 #rhoi *= 1.0+2*mtolerance*changefac
                 #Pi *= 1.0+2*mtolerance*changefac
@@ -288,21 +354,61 @@ def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3
 
 
 
-def make_SPH_planet(mass=Mearth,corefraction=0.3,Pmin=1.e6,Score=1.81,Smantle=3.03,mtolerance=1e-3,layer1='alloy',layer2='forsterite',mantlepotT=False,plot=False,resolution=5e5,fixcoreT=False,verbose=False):
+def make_SPH_planet(mass=Mearth,corefraction=0.3,Pmin=1.e6,Score=1.81,Smantle=3.03,
+        mtolerance=1e-3,layer1='alloy',layer2='forsterite',layers=[],S=[],mantlepotT=False,plot=False,
+        resolution=5e5,fixcoreT=False,rhocent=None,verbose=False,profile=None):
+    """
+    mass - list of layer masses (inside to out) or total mass of 2 layer planet
+    corefraction - core mass fraction for 2 layer planet
+    resolution - number of particles per Earth mass
+    Pmin - surface pressure (Pa)
+    Score - core entropy for 2 layer planet
+    Smantle - 2nd layer entropy for 2 layer planet
+    mtolerance - tolerance for total mass of planet
+    layer1 - 1st layer material for 2 layer planet
+    layer 2 - 2nd layer material for 2 layer planet
+    layers - list of materials for layers (inside to out)
+    S - list of layer entropies (inside to out)
+    mantlepotT - mantle potential temperature for 2 layer planet
+    plot - plot pressure-temperature profile and x-y slice?
+    fixcoreT - ensure outer core is at least as hot as inner mantle (2nd layer)?
+    rhocent - initial central density to use (optional, use for troublesome cases)
+    verbose - print extra information
+    profile - 1D profile from which to make planet (if not supplied 1D prof will be generated)
+    """
     
-    planet,core,mantle = make_1D_planet(plot=plot,mantlepotT=mantlepotT,layer1=layer1,layer2=layer2,mass=mass,corefraction=corefraction,Pmin=Pmin,Score=Score,Smantle=Smantle,mtolerance=mtolerance,fixcoreT=fixcoreT,verbose=verbose)
+    if profile:
+        planet = profile
+    else:
+        if len(layers) != len(S):
+            print('error: number of layers must match:', len(layers), len(S))
+            return
+        if len(layers)==2:
+            layer1 = layers[0]
+            layer2 = layers[1]
+            Score = S[0]
+            Smantle = S[1]
+            totmass = sum(mass)
+            corefraction = mass[0]/totmass
+            mass = totmass
+        planet,core,mantle = make_1D_planet(plot=plot,mantlepotT=mantlepotT,layer1=layer1,layer2=layer2,mass=mass,corefraction=corefraction,Pmin=Pmin,Score=Score,Smantle=Smantle,mtolerance=mtolerance,fixcoreT=fixcoreT,verbose=verbose,layers=layers,S=S,rhocent=rhocent)
+            
     
-    partmass = Mearth / resolution
+    partmass = Mearth / resolution   # mass per particle
 
-    Np = int(planet.M / partmass)
+    Np = int(planet.M / partmass)    # desired total number of particles
     
     if verbose:
         print(partmass,Np)
         print(planet.rarr)
     
     #planet.rarr[0]=1e-10
-    particleplanet=seagen.GenSphere(Np,planet.rarr[1:],planet.density[1:],A1_T_prof=planet.temperature[1:],A1_P_prof=planet.pressure[1:],A1_mat_prof=planet.mat[1:],verbosity=0, A1_m_rel_prof=1.0*npy.ones(len(planet.mat[1:])))#, A1_force_more_shells=[False,True])
-    setattr(particleplanet,"S",npy.where(particleplanet.mat==0,core.entropy*1e7,mantle.entropy*1e7))
+    # use seagen to generate spherical planet particles
+    particleplanet = seagen.GenSphere(Np,planet.rarr[1:],planet.density[1:],A1_T_prof=planet.temperature[1:],A1_P_prof=planet.pressure[1:],A1_mat_prof=planet.mat[1:],verbosity=0, A1_m_rel_prof=1.0*npy.ones(len(planet.mat[1:])))#, A1_force_more_shells=[False,True])
+    if len(layers)==2 or len(layers)==0:
+        setattr(particleplanet,"S",npy.where(particleplanet.mat==0,core.entropy*1e7,mantle.entropy*1e7))
+    else:
+        print('error: multi-layers not implemented yet')
 
     if verbose:
         print(npy.unique(particleplanet.A1_m))
@@ -320,25 +426,22 @@ def make_SPH_planet(mass=Mearth,corefraction=0.3,Pmin=1.e6,Score=1.81,Smantle=3.
     if verbose:
         print('pm:',massresid.min()/partmass,massresid.max()/partmass)
 
+    # load particle planet into planit snapshot
     sn = Snapshot()
     sn.ic_from_seagen(particleplanet)
     
     if verbose:
         print(sn.m.sum()/Mearth,sn.m.std()/Mearth)
 
-    sn.m = npy.ones(len(sn.m))*partmass
+    sn.m = npy.ones(len(sn.m))*partmass   # set all particle masses to calculated value
 
     if verbose:
         print(sn.m.sum()/Mearth,sn.m.std()/Mearth)
-
-    #Path(os.path.expanduser('~') + '/Work/Gadget2020EoS/equil/SEApN5e5M1e-1Fo70S303FeSi30S181').mkdir(parents=True, exist_ok=True)
-
-    #sn.write(os.path.expanduser('~') + '/Work/Gadget2020EoS/equil/SEApN5e5M1e-1Fo70S303FeSi30S181/planetIC.G2')
-
-    #planet.write(os.path.expanduser('~') + '/Work/Gadget2020EoS/equil/SEApN5e5M1e-1Fo70S303FeSi30S181/planetprofile.dat')
     
-    return planet,core,mantle,sn,particleplanet
-
+    if not profile:
+        return planet,core,mantle,sn,particleplanet
+    else:
+        return sn, particleplanet
 
 
 
@@ -349,7 +452,6 @@ def make_SPH_planet(mass=Mearth,corefraction=0.3,Pmin=1.e6,Score=1.81,Smantle=3.
 # The 1D model has been updated by Panning and Romanowicz (2006). Download the Modified PREM model from the <a href="http://ds.iris.edu/spud/earthmodel/9785674">IRIS web site</a>.
 #Durek, J. J., and G. Ekstrom (1996) Modified PREM (Preliminary Reference Earth Model), doi:10.17611/DP/9785674, http://ds.iris.edu/spud/earthmodel/9785674.
 
-# make a class to hold the PREM data
 class PREM:
     """Class to hold PREM data and other 1-D Earth variables."""  # this is a documentation string for this class
     def __init__(self): # self is the default name of the object for internal referencing of the variables in the class
@@ -373,7 +475,7 @@ class PREM:
         self.density = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2,usecols=[1]) # density in kg/m3
         self.pwavevel = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2,usecols=[2]) # p-wave velocity m/s
         self.swavevel = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2,usecols=[3]) # s-wave velocity m/s
-        self.NR = len(PREM.radius) # number of radius points
+        self.NR = len(self.radius) # number of radius points
         self.units = 'radius (m), density (kg/m3), pwavevel (m/s), swavevel (m/s)'
         
         # start at the surface and integrate via a for loop to the center of the planet
@@ -402,11 +504,20 @@ class PREM:
         
         # use SESAME units
         self.pressure = self.pressure/1.E9 # GPa
+        
+        Anzellini_filename = datadir+'Anzellini-2013-Science-coretemp.csv'
+        Anzellini_pressure  = npy.loadtxt(Anzellini_filename,delimiter=',',skiprows=0,usecols=[0]) # GPa
+        Anzellini_temperature  = npy.loadtxt(Anzellini_filename,delimiter=',',skiprows=0,usecols=[1]) # K
+        # we want to use this data with PREM but it doesn't have the same number of points
+        # interpolate the Anzellini profile to match the PREM profile
+        # the following defines a function = y(x)
+        interp_func = interpolate.interp1d(Anzellini_pressure,Anzellini_temperature,fill_value="extrapolate") 
+        PREM.temperature = interp_func(PREM.pressure)
+
 
 # initialize an empty PREM object
 #PREM = PREMclass()
 
-# read the data into the class parameters
 
 
 def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='iron'):
@@ -417,14 +528,16 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
         
     if planet.M >= 0.1*Mearth:
         showPREM = True
+        PREM=PREM()
     else:
         showPREM = False
 
-    if coreEOS == 'iron':
-        cEOS = IronEOS
-    elif coreEOS == 'alloy':
-        cEOS = AlloyEOS
-    else:
+    cEOS = eos.select(coreEOS)
+#    if coreEOS in eos.ironnames:
+#        cEOS = IronEOS
+#    elif coreEOS == eos.alloynames:
+#        cEOS = AlloyEOS
+    if cEOS is None:
         print('Unknown core EOS')
         return
         
@@ -552,6 +665,7 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
     if show:
         plt.show()
         
+
 
 
 class EquilRun:
@@ -746,7 +860,7 @@ class EquilRun:
         z = self.data[i].z - (self.data[i].z[self.data[i].pot==self.data[i].pot.min()])[0]
         rr = npy.sqrt(x**2+y**2+z**2)
         
-        vi = scipy.interpolate.griddata((x[self.data[i].vx<vcut]/scf,y[self.data[i].vx<vcut]/scf,z[self.data[i].vx<vcut]/scf),self.data[i].rho[self.data[i].vx<vcut],(X,Y,Z),method='linear',fill_value=1.e-18)
+        vi = interpolate.griddata((x[self.data[i].vx<vcut]/scf,y[self.data[i].vx<vcut]/scf,z[self.data[i].vx<vcut]/scf),self.data[i].rho[self.data[i].vx<vcut],(X,Y,Z),method='linear',fill_value=1.e-18)
         
         coz = (z[self.data[i].pot==self.data[i].pot.min()])[0]
         nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]

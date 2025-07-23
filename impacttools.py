@@ -1,5 +1,12 @@
-from .main import *
+#from .main import *
 from .snaptools import Snapshot
+
+import numpy as npy
+import scipy
+import h5py
+import glob
+import matplotlib
+import matplotlib.pyplot as plt
 
 
 class ImpSnapshot(Snapshot):
@@ -13,9 +20,9 @@ class Impact:
         self.v = None
         self.b = None
         self.nsnaps = 0
-        self.data = None
+        self.snap = self.data = None
         
-    def load(self,loc,thermo=False,inter=1,compress=True,code='gadget'):
+    def load(self,loc,thermo=False,inter=1,compress=True,code='swift'):
         Nf2 = 0
         if code=='swift':
             flist = sorted(glob.glob(loc+'snapshot_*.hdf5'))
@@ -25,7 +32,10 @@ class Impact:
             flist2 = sorted(glob.glob(loc+'xsnapshot_*'))
         Nf1 = [(flist[x].split('/')[-1]).split('_')[1].split('.')[0] for x in range(len(flist))]
         Nf2 = [(flist2[x].split('/')[-1]).split('_')[1].split('.')[0] for x in range(len(flist2))]
-        Nf = int(sorted(npy.array(Nf1).astype(int))[-1])
+        if len(Nf1)>0:
+            Nf = int(sorted(npy.array(Nf1).astype(int))[-1])
+        else:
+            Nf = 0
         if len(Nf2)>0:
             Nf2 = int(sorted(npy.array(Nf2).astype(int))[-1])
         else:
@@ -37,18 +47,20 @@ class Impact:
                 files = npy.append(npy.arange(0,Nf2+1,inter),npy.arange(0,Nf+1,inter))
             else:
                 files = npy.arange(0,Nf+1,inter)
-        else:
+        elif self.nsnaps>0:
             files = npy.array([0,Nf])
+        else:
+            files = []
         self.data = npy.ndarray((len(files),),dtype=object)
 
         for i in range(len(self.data)):
-            honly = True #False #True
+            honly = True
             if i==0 or i==len(self.data)-1:
                 honly = False
             self.data[i] = ImpSnapshot()
             #try:
             if code=='swift' or code=='Swift':
-                print(files[i])
+                #print(files[i])
                 if i<Nf2:
                     self.data[i].load(loc+'xsnapshot_{:>04d}.hdf5'.format(int(files[i])),headonly=honly,thermo=thermo,compress=compress)
                 else:
@@ -60,7 +72,9 @@ class Impact:
 
 
     def plotseq(self, n=4, type='materials', seq=None, times=None, scale='Mm', potmin=True, tcut = 3600., zoom=1.):
-        #tcut = 3600.   #time cut for pre-contact treatment
+        """
+        tcut -- time cut for pre-contact treatment
+        """
         if not (seq or times):
             if self.nsnaps>n:
                 seq = npy.logspace(0,npy.log10(len(self.data)-1),n).astype(int)
@@ -77,28 +91,37 @@ class Impact:
             scf = 6.371e8
         else:
             scf = scale
-        axlim = 4*int(npy.ceil((self.data[0].x.max()-self.data[0].x.min())/scf/8.)) / zoom 
+        axlim = 4*int(npy.ceil((self.data[0].x.max()-self.data[0].x.min())/scf/8.)) 
         zcut = axlim/200.*scf
-    
-        # number of cells for grid
-        Ng = 601j
-        Ngz = 21j
 
         # region to grid/plot
         zmin=-axlim/10.
         zmax=axlim/10.
 
+        axlim /= zoom
+    
+        # number of cells for grid
+        Ng = 601j
+        Ngz = 21j
+
+
         zi=npy.linspace(zmin,zmax,int(Ngz.imag))
         X,Y,Z = npy.mgrid[-axlim:axlim:(Ng),-axlim:axlim:(Ng),zmin:zmax:(Ngz)]
 
         # density limits
-        rhomin=5e-5
+        rhomin=5e-6
         rhomax=10.
         # entropy limits
         cmin=1.5
-        cmax=10.
+        cmax=10.    
+        #phase flag limits
+        phmin=2.5
+        phmax=8.5
 
-        cmap=plt.get_cmap('plasma').copy()
+        cmap=plt.get_cmap('plasma')#.copy()
+        cmapphase = plt.get_cmap('plasma', 6)#.copy()
+        cmapphase=matplotlib.colors.ListedColormap(cmapphase.colors[[0,1,2,3,4,5],:])
+        cmapphase.set_under('w')
         if type=='density' or type=='rho':        
             cmap.set_under('k')
         else:
@@ -124,12 +147,12 @@ class Impact:
             vcut=2*self.data[j].vel.max()
 
             if type=='materials' or type=='mat':
-                plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=-(self.data[j].id/BODYOFF).astype(int)[modz<zcut],alpha=1.)
+                im = plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=-(self.data[j].id/PROJ_ID_OFFSET).astype(int)[modz<zcut],alpha=1.)
             elif type=='density' or type=='rho':        
                 if self.data[j].header.time<tcut:
-                    vcut=-5.e5 #8
-                    rhoit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zcut)]/scf,y[(self.data[j].vx>vcut)*(modz<zcut)]/scf,z[(self.data[j].vx>vcut)*(modz<zcut)]/scf),self.data[j].rho[(self.data[j].vx>vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                rhoi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zcut)]/scf,y[(self.data[j].vx<vcut)*(modz<zcut)]/scf,z[(self.data[j].vx<vcut)*(modz<zcut)]/scf),self.data[j].rho[(self.data[j].vx<vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=1.e-18)
+                    vcut=0.5*self.data[0].vel.min() #-5.e5 #8
+                    rhoit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zcut)]/scf,y[(self.data[j].vx>vcut)*(modz<zcut)]/scf,z[(self.data[j].vx>vcut)*(modz<zcut)]/scf),self.data[j].rho[(self.data[j].vx>vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=rhomin/1000.)
+                rhoi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zcut)]/scf,y[(self.data[j].vx<vcut)*(modz<zcut)]/scf,z[(self.data[j].vx<vcut)*(modz<zcut)]/scf),self.data[j].rho[(self.data[j].vx<vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=rhomin/1000.)
                 if self.data[j].header.time<tcut:
                     rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
                 if self.data[j].header.time != 0 and potmin:
@@ -148,14 +171,14 @@ class Impact:
                 ax.spines['left'].set_color('w')
                 ax.spines['right'].set_color('w')
     
-            elif type=='entropy' or type=='ent':        
-                if self.data[j].header.time<tcut: #100 #500
-                    vcut=-5.e5 #8
+            elif type in ['entropy','ent','S']:        
+                if self.data[j].header.time<tcut:
+                    vcut=0.5*self.data[0].vel.min() #-5.e5
                     vit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zcut)]/scf,y[(self.data[j].vx>vcut)*(modz<zcut)]/scf,z[(self.data[j].vx>vcut)*(modz<zcut)]/scf),self.data[j].S[(self.data[j].vx>vcut)*(modz<zcut)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
                     rhoit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zcut)]/scf,y[(self.data[j].vx>vcut)*(modz<zcut)]/scf,z[(self.data[j].vx>vcut)*(modz<zcut)]/scf),self.data[j].rho[(self.data[j].vx>vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=1.e-18)
                 vi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zcut)]/scf,y[(self.data[j].vx<vcut)*(modz<zcut)]/scf,z[(self.data[j].vx<vcut)*(modz<zcut)]/scf),self.data[j].S[(self.data[j].vx<vcut)*(modz<zcut)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
                 rhoi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zcut)]/scf,y[(self.data[j].vx<vcut)*(modz<zcut)]/scf,z[(self.data[j].vx<vcut)*(modz<zcut)]/scf),self.data[j].rho[(self.data[j].vx<vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                if self.data[j].header.time<tcut: #100 #500
+                if self.data[j].header.time<tcut:
                     vi = npy.where(vi>vit,vi,vit)
                     rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
                 if self.data[j].header.time != 0 and potmin:
@@ -169,6 +192,12 @@ class Impact:
                 cols[..., -1] = alphas    
                 ax = plt.gca()
                 im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],vmin=cmin,vmax=cmax,cmap=cmap)
+            elif type=='phase':
+                self.data[j].calc_phase()
+                phase = npy.where(self.data[j].phase<=6,self.data[j].phase-1,self.data[j].phase)
+                phase = npy.where(phase<2,6,phase)
+                im = plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=phase[modz<zcut],alpha=1.,cmap=cmapphase,norm=matplotlib.colors.Normalize(vmin=phmin,vmax=phmax,clip=False),rasterized=True)
+    #s=0.8
 
             if i>0:
                 plt.gca().set_yticklabels([])
@@ -205,8 +234,11 @@ class Impact:
                     cbar = fig.colorbar(im,cax=cbar_ax,orientation='horizontal')
                     if type=='density' or type=='rho':
                         cbar_ax.xaxis.set_label_text(r'$\rho$ (g$\,$cm$^{-3}$)')
-                    elif type=='entropy' or type=='ent':
+                    elif type in ['entropy','ent','S']:
                         cbar_ax.xaxis.set_label_text(r'$S$ (kJ$\,$K$^{-1}\,$kg$^{-1}$)')
+                    elif type=='phase':
+                        cbar.ax.set_xticklabels(['','s','s+l','l','l+v','v','scf'])  #  colorbar ['s','s+l','l','l+v']
+                        cbar_ax.xaxis.set_label_text(r'Phase')
                     cbar_ax.xaxis.set_label_position('top')
         plt.subplots_adjust(wspace=0, hspace=0)
         #plt.tight_layout()
