@@ -1,16 +1,10 @@
 from ..main import *
 from .eos_table import *
+from .aquatable import EOStable
 import numpy as npy
 
 
-class EOStable(extEOStable):
-    def __init__(self):
-        extEOStable.__init__(self)
-        self.TYPE = ''
-        #self.name = ''
-
-
-def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS' debug = False):
+def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False):
     """
     READ IN NEW ANEOS MODEL and fill the extEOStable class object
     
@@ -94,7 +88,6 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS' debug = False):
     # READ SESAME HEADER
     sesfile = open(eosdir+'NEW-SESAME-STD.TXT',"r")  
     sesdata=sesfile.readlines(5000)
-    print(sesdata)
     sesfile.close()
     for i in range(len(sesdata)):
         if sesdata[i].find(' INDEX') == 0:

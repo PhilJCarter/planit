@@ -5,6 +5,7 @@ import numpy as npy
 import numba
 from .eos_table import *
 from .aneostable import *
+from .aquatable import *
 from . import tabinterp
 
 
@@ -13,6 +14,8 @@ def loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS'):
         return loadANEOSEOS(eos=eos, eostype='ANEOS')
     elif eostype == 'SESAME':
         return loadANEOSEOS(eos=eos, eostype='SESAME')
+    elif eostype == 'AQUA':
+        return loadAQUAEOS(eos=eos, eostype='AQUA')
     else:
         print('error: unsupported EOS type:', eostype)
 
@@ -22,11 +25,12 @@ ANEOSIron       = loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS')
 ANEOSFeSiAlloy  = loadEOS(eos='Fe85Si15-ANEOS-SLVTv0.2G1', eostype='ANEOS')
 ANEOSForsterite = loadEOS(eos='Forsterite-ANEOS-SLVTv1.0G1', eostype='ANEOS')
 
+AQUAWater = loadEOS(eos='Water-AQUA-v1.0', eostype='AQUA')
 
 ironnames  = ['iron','ANEOSIron','Fe','Iron',401]
 alloynames = ['alloy','ANEOSFeSiAlloy','FeSi','Alloy','IronAlloy','ironalloy',402]
 forsteritenames = ['forsterite','ANEOSForsterite','Forsterite','Fo',400]
-
+aquawaternames = ['AQUA','AQUAWater','aqua',304]
 
 def select(name):
     if name in ironnames:
@@ -35,6 +39,8 @@ def select(name):
         return ANEOSFeSiAlloy
     elif name in forsteritenames:
         return ANEOSForsterite
+    elif name in aquawaternames:
+        return AQUAWater
     else:
         print('Unknown EOS')
         return None
