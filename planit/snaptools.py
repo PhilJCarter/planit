@@ -665,6 +665,8 @@ class Snapshot:
         print("Wrote", self.N, "particles.\n")
         f.close()
 
+################# edit
+
     def write_hdf5(self,outname,units='SI',mats=[401,400]):
     
         self.ensure_matIDs(mats)
@@ -731,7 +733,7 @@ class Snapshot:
 
             f['Header'].attrs.modify('Time',self.header.time)
 
-
+################ edit end
 
     def G2_to_swift(self, mats=[401,400], box=5000.*6.371e8, fname=None):
         self.ensure_matIDs(mats)

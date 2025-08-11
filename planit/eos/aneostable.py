@@ -3,7 +3,14 @@ from .eos_table import *
 import numpy as npy
 
 
-def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', debug = False):
+class EOStable(extEOStable):
+    def __init__(self):
+        extEOStable.__init__(self)
+        self.TYPE = ''
+        #self.name = ''
+
+
+def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS' debug = False):
     """
     READ IN NEW ANEOS MODEL and fill the extEOStable class object
     
@@ -59,7 +66,8 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', debug = False):
 #        P0REF   = 1.E6     # dynes/cm2 -- this defines the principal Hugoniot calculated below
     
     
-    NewEOS  = extEOStable() # FIRST make new empty EOS object
+    NewEOS  = EOStable() # FIRST make new empty EOS object
+    NewEOS.TYPE = eostype
     
     # READ EOS HEADER INFORMATION 
     # READ IN ANEOS INPUT FILE

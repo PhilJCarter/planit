@@ -16,8 +16,6 @@ Sarah T. Stewart (sts@sarahstewart.net)
 """
 
 import os
-#import inspect
-#import h5py
 import woma
 
 eospath = os.path.dirname(__file__) + '/eos/data/'
