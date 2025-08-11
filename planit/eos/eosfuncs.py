@@ -3,24 +3,24 @@ from ..main import *
 
 import numpy as npy
 import numba
-import woma
 from .eos_table import *
 from .aneostable import *
 from . import tabinterp
 
-#eospath = os.path.expanduser('~') + '/Work/'
-
 
 def loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS'):
     if eostype == 'ANEOS':
-        return loadANEOSEOS(eos=eos)
+        return loadANEOSEOS(eos=eos, eostype='ANEOS')
+    elif eostype == 'SESAME':
+        return loadANEOSEOS(eos=eos, eostype='SESAME')
     else:
         print('error: unsupported EOS type:', eostype)
 
+
 # Load EOS tables
-ANEOSIron       = loadEOS(eos='Iron-ANEOS-SLVTv0.2G1')
-ANEOSFeSiAlloy  = loadEOS(eos='Fe85Si15-ANEOS-SLVTv0.2G1')
-ANEOSForsterite = loadEOS(eos='Forsterite-ANEOS-SLVTv1.0G1')
+ANEOSIron       = loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS')
+ANEOSFeSiAlloy  = loadEOS(eos='Fe85Si15-ANEOS-SLVTv0.2G1', eostype='ANEOS')
+ANEOSForsterite = loadEOS(eos='Forsterite-ANEOS-SLVTv1.0G1', eostype='ANEOS')
 
 
 ironnames  = ['iron','ANEOSIron','Fe','Iron',401]
@@ -905,7 +905,6 @@ class isentrope_class:
 
 
 
-
 uconversion_m_cgs2SI = 1e-3
 uconversion_l_cgs2SI = 1e-2
 uconversion_v_cgs2SI = uconversion_m_cgs2SI
@@ -932,8 +931,6 @@ uconversion_P = uconversion_P_cgs2SI
 uconversion_U = uconversion_U_cgs2SI
 
 
-#################### edit
-
 @numba.njit(parallel=True)
 def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
 
@@ -954,31 +951,27 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
         uconversion_Q = 1.
     elif Qlab == 'U':
         uconversion_Q = uconversion_U_inv
-        Qlab = 'u'  # convert to woma style
     elif Qlab == 'S':
         uconversion_Q = uconversion_S_inv
-        Qlab = 's'  # convert to woma style
     else:
         print('error')
         return None
 
     if Ylab == 'S':
         Y = Y*uconversion_S
-        Ylab = 's'  # convert to woma style
     elif Ylab == 'rho':
         Y = Y*uconversion_rho
     elif Ylab == 'P':
         Y = Y*uconversion_P
     elif Ylab == 'u':
         Y = Y*uconversion_U
-        Ylab = 'u'  # convert to woma style
 
     for i in numba.prange(len(X)):
         x = X[i]
         EOS = select(mats[i])
 
         uconversion_X = uconversion_rho
-        if mats[i]>300:
+        if EOS.TYPE in ['ANEOS','SESAME']:
             if Ylab == 'S':
                 Q[i] = tabinterp.from_rhoS(Qlab,x*uconversion_X, Y[i], EOS)
             elif Ylab == 'U':
@@ -989,5 +982,4 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
             raise NotImplementedError('Non-ANEOS EOS not currently supported')            
     return Q*uconversion_Q
 
-################# edit end
 
