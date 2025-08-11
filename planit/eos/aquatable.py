@@ -8,6 +8,7 @@ class EOStable(extEOStable):
         extEOStable.__init__(self)
         self.TYPE = ''
         #self.name = ''
+        
     def loadaquatable(self,fname):
         with open(fname,'r') as tablefile:
             ND = None
@@ -18,7 +19,6 @@ class EOStable(extEOStable):
                     ND = int(tmp.split('(')[1].split()[0])
                 if tmp.count('temp ')>0:
                     NT = int(tmp.split('(')[1].split()[0])
-            print(ND,NT)
         self.ND = ND
         self.NT = NT
         rho, T, P, S, U, cs, phase = npy.loadtxt(fname,skiprows=21,usecols=(0,1,2,4,5,6,10),unpack=True)
@@ -48,17 +48,6 @@ def loadAQUAEOS(eos='Water-AQUA-v1.0', eostype='AQUA', debug = False):
         
     if eos == 'Water-AQUA-v1.0':
         eosdir = eospath + 'aqua-water/'
-#
-#        MODELNAME = 'Iron-ANEOS-SLVTv0.2G1'
-#        MATID = 1.0        # MATID number
-#        DATE = 191105.     # Date as a single 6-digit number YYMMDD
-#        VERSION = 0.2      # ANEOS Parameters Version number
-#        FMN = 26.          # Formula weight in atomic numbers for Fe
-#        FMW = 55.847       # Formula molecular weight (g/cm3) for Fe
-#        R0REF   = 8.06     # g/cm3 *** R0REF is inserted into the density array; using gamma-iron for rho0
-#        K0REF   = 1.51E12  # dynes/cm2; using gamma-iron for rho0
-#        T0REF   = 298.     # K -- *** T0REF is inserted into the temperature array
-#        P0REF   = 1.E6     # dynes/cm2 -- this defines the principal Hugoniot calculated below
 
     
     NewEOS  = EOStable() # FIRST make new empty EOS object

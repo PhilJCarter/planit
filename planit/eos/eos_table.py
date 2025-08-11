@@ -963,7 +963,7 @@ class extEOStable:
                     nelem=int(tmp[10:20])
                     #print('nelem=',nelem)
                     rho0=float(tmp[30:40])
-                    print('rho0=',rho0)
+                    #print('rho0=',rho0)
                     gamma0=float(tmp[70:80])
                     #print('gamma0=',gamma0)
                     theta0=float(tmp[80:90])

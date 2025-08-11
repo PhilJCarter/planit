@@ -8,8 +8,14 @@ def from_rhoT(Qlab,rho,T,EOS,dolog=True):
     if rho > 2.0:
         dolog = False
 
-    ir0 = npy.where(EOS.rho<rho)[0][-1]
-    iT0 = npy.where(EOS.T<T)[0][-1]
+    if rho <= EOS.rho[0]:
+        ir0 = 0
+    else:
+        ir0 = npy.where(EOS.rho<rho)[0][-1]
+    if T <= EOS.T[0]:
+        iT0 = 0
+    else:
+        iT0 = npy.where(EOS.T<T)[0][-1]
     
     r0 = EOS.rho[ir0]
     r1 = EOS.rho[ir0+1]
@@ -36,7 +42,7 @@ def from_rhoT(Qlab,rho,T,EOS,dolog=True):
     Q10 = Qarr[iT0+1,ir0]
     Q11 = Qarr[iT0+1,ir0+1]
 
-    if dolog:
+    if dolog and min(Q00,Q01,Q10,Q11,rho,T)>0:
         Q00 = npy.log10(Q00)
         Q01 = npy.log10(Q01)
         Q10 = npy.log10(Q10)
@@ -48,6 +54,8 @@ def from_rhoT(Qlab,rho,T,EOS,dolog=True):
         r1 = npy.log10(r1)
         T0 = npy.log10(T0)
         T1 = npy.log10(T1)
+    else:
+        dolog = False
         
     dr = rho - r0
     dT = T - T0
@@ -68,7 +76,10 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
     if rho > 2.0:
         dolog = False
 
-    ir0 = npy.where(EOS.rho<rho)[0][-1]
+    if rho <= EOS.rho[0]:
+        ir0 = 0
+    else:
+        ir0 = npy.where(EOS.rho<rho)[0][-1]
     if U <= EOS.U[0,ir0]:
         iU0r0 = 0
     else:
@@ -84,6 +95,9 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
     U1r0 = EOS.U[iU0r0+1,ir0]
     U0r1 = EOS.U[iU0r1,ir0+1]
     U1r1 = EOS.U[iU0r1+1,ir0+1]
+    
+    if U < min(U0r0,U0r1):
+        U = min(U0r0,U0r1)
 
     if Qlab == 'S':
         Qarr = EOS.S
@@ -111,7 +125,7 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
         Q10 = Qarr[iU0r0+1,ir0]
         Q11 = Qarr[iU0r1+1,ir0+1]
 
-    if dolog:
+    if dolog and min(Q00,Q01,Q10,Q11,rho,U)>0:
         Q00 = npy.log10(Q00)
         Q01 = npy.log10(Q01)
         Q10 = npy.log10(Q10)
@@ -125,12 +139,22 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
         U1r0 = npy.log10(U1r0)
         U0r1 = npy.log10(U0r1)
         U1r1 = npy.log10(U1r1)
+    else:
+        dolog = False
         
     dr = rho - r0
     
-    Qa  = (U1r0-U)*Q00/(U1r0-U0r0) + (U-U0r0)*Q10/(U1r0-U0r0)
-    Qb  = (U1r1-U)*Q01/(U1r1-U0r1) + (U-U0r1)*Q11/(U1r1-U0r1)
+    if U1r0==U0r0:
+        Qa = Q00
+    else:
+        Qa  = (U1r0-U)*Q00/(U1r0-U0r0) + (U-U0r0)*Q10/(U1r0-U0r0)
+    if U1r1==U0r1:
+        Qb = Q01
+    else:
+        Qb  = (U1r1-U)*Q01/(U1r1-U0r1) + (U-U0r1)*Q11/(U1r1-U0r1)
     Q  = Qa + dr*(Qb-Qa)/(r1-r0)
+    
+
     
     if dolog:
         Q = 10**Q

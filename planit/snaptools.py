@@ -1,7 +1,6 @@
 from .main import *
 from .utils import *
 from . import eos
-#from .eos import eosfuncs
 
 import numpy as npy
 import scipy
@@ -921,70 +920,6 @@ class Snapshot:
 
     def calc_vap_frac(self,plot=False):
         self.calc_phase(plot=False)
-
-#         if __name__ == "__main__":
-#             dir = os.path.dirname(inspect.getfile(inspect.currentframe()))
-#         else:
-#             dir = os.path.dirname(inspect.getfile(Snapshot))
-#         phaseboundary = dir + '/forsterite_bell.txt'
-#         phaseboundaryFe = dir + '/iron_bell.txt'
-#         sd, td = npy.loadtxt(phaseboundary, usecols=(0,1), unpack=True,
-#                                                                 comments='#')
-#         sdFe, tdFe = npy.loadtxt(phaseboundaryFe, usecols=(0,1), unpack=True,
-#                                                                 comments='#')
-#         tc = td.max()
-#         tcFe = tdFe.max()
-# 
-#         liqL = npy.zeros(len(self.T)).astype(int)
-#         liqH = npy.zeros(len(self.T)).astype(int)
-#         vapL = npy.zeros(len(self.T)).astype(int)
-#         vapH = npy.zeros(len(self.T)).astype(int)
-#         LiqS = npy.zeros(len(self.T)).astype(int)
-#         VapS = npy.zeros(len(self.T)).astype(int)
-#         
-#         for j in range(len(self.T)):
-#             if self.id[j] <= IDOFF:
-#                 tdome = tdFe
-#                 sdome = sdFe
-#             else:
-#                 tdome = td
-#                 sdome = sd
-#             for i in range(1,len(tdome)):
-#                 if tdome[i] > self.T[j] or i == (len(tdome)-1):
-#                     liqH[j] = i
-#                     liqL[j] = i-1
-#                     break
-#             for i in range(liqH[j], len(tdome)):
-#                 if tdome[i] < self.T[j] or i == (len(tdome)-1):
-#                     vapH[j] = i-1
-#                     vapL[j] = i
-#                     break
-# 
-#             LiqS[j] = sdome[liqL[j]] + ( (sdome[liqH[j]]-sdome[liqL[j]])
-#                                           / (tdome[liqH[j]]-tdome[liqL[j]])
-#                                         * (self.T[j]-tdome[liqL[j]]) )
-#             VapS[j] = sdome[vapL[j]] + ( (sdome[vapH[j]]-sdome[vapL[j]])
-#                                           / (tdome[vapH[j]]-tdome[vapL[j]])
-#                                         * (self.T[j]-tdome[vapL[j]]) )
-# 
-#         self.vapfrac = (self.S - LiqS) / (VapS - LiqS)
-#         self.vapfrac=npy.where(self.S < LiqS, 0., self.vapfrac)
-#         self.vapfrac=npy.where(self.S > VapS, 1., self.vapfrac)
-# 
-#         self.vapfrac = npy.where(npy.logical_and(self.id <= IDOFF,
-#                                             self.T > tcFe), -1, self.vapfrac)
-#         self.vapfrac = npy.where(npy.logical_and(self.id > IDOFF,
-#                                             self.T > tc), -1, self.vapfrac)
-# 
-# 
-#         if plot:
-#             plt.scatter(self.S, self.T,color='g')
-#             plt.plot(sd,td,c='b')
-#             plt.plot(sdFe,tdFe,c='orange')
-#             for j in range(len(self.T)):
-#                 if self.vapfrac[j] > 0.:
-#                     plt.scatter(self.S[j],self.T[j],c='r',zorder=2)
-#             plt.show()
 
 
 
