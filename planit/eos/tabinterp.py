@@ -69,8 +69,19 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
         dolog = False
 
     ir0 = npy.where(EOS.rho<rho)[0][-1]
-    iU0r0 = npy.where(EOS.U[:,ir0]<U)[0][-1]
-    iU0r1 = npy.where(EOS.U[:,ir0+1]<U)[0][-1]
+    if U <= EOS.U[0,ir0]:
+        iU0r0 = 0
+    else:
+        iU0r0 = npy.where(EOS.U[:,ir0]<U)[0][-1]
+    if U <= EOS.U[0,ir0+1]:
+        iU0r1 = 0
+    else:
+        iU0r1 = npy.where(EOS.U[:,ir0+1]<U)[0][-1]
+    
+    if iU0r0 == len(EOS.U[:,ir0])-1:
+        iU0r0 -=1
+    if iU0r1 == len(EOS.U[:,ir0+1])-1:
+        iU0r1 -=1
     
     r0 = EOS.rho[ir0]
     r1 = EOS.rho[ir0+1]

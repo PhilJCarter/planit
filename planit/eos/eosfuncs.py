@@ -27,7 +27,6 @@ ironnames  = ['iron','ANEOSIron','Fe','Iron',401]
 alloynames = ['alloy','ANEOSFeSiAlloy','FeSi','Alloy','IronAlloy','ironalloy',402]
 forsteritenames = ['forsterite','ANEOSForsterite','Forsterite','Fo',400]
 
-
 def select(name):
     if name in ironnames:
         return ANEOSIron
@@ -922,16 +921,16 @@ uconversion_P_SI2cgs = 1./uconversion_P_cgs2SI
 uconversion_U_SI2cgs = 1./uconversion_U_cgs2SI
 
 
-uconversion_P_inv = uconversion_P_SI2cgs
-uconversion_U_inv = uconversion_U_SI2cgs
-uconversion_S_inv = uconversion_S_SI2cgs
-uconversion_rho = uconversion_rho_cgs2SI
-uconversion_S = uconversion_S_cgs2SI
-uconversion_P = uconversion_P_cgs2SI
-uconversion_U = uconversion_U_cgs2SI
+uconversion_S = uconversion_S_cgs2SI/1e6
+uconversion_P = uconversion_P_cgs2SI/1e9
+uconversion_U = uconversion_U_cgs2SI/1e6
+
+uconversion_P_inv = 1./uconversion_P
+uconversion_U_inv = 1./uconversion_U
+uconversion_S_inv = 1./uconversion_S
 
 
-@numba.njit(parallel=True)
+#@numba.jit(parallel=True,forceobj=True)
 def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
 
     Q = npy.zeros(len(X))
@@ -959,25 +958,23 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
 
     if Ylab == 'S':
         Y = Y*uconversion_S
-    elif Ylab == 'rho':
-        Y = Y*uconversion_rho
+    #elif Ylab == 'rho':
+    #    Y = Y
     elif Ylab == 'P':
         Y = Y*uconversion_P
-    elif Ylab == 'u':
+    elif Ylab == 'U':
         Y = Y*uconversion_U
 
     for i in numba.prange(len(X)):
-        x = X[i]
         EOS = select(mats[i])
 
-        uconversion_X = uconversion_rho
         if EOS.TYPE in ['ANEOS','SESAME']:
             if Ylab == 'S':
-                Q[i] = tabinterp.from_rhoS(Qlab,x*uconversion_X, Y[i], EOS)
+                Q[i] = tabinterp.from_rhoS(Qlab, X[i], Y[i], EOS)
             elif Ylab == 'U':
-                Q[i] = tabinterp.from_rhoU(Qlab,x*uconversion_X, Y[i], EOS)
+                Q[i] = tabinterp.from_rhoU(Qlab, X[i], Y[i], EOS)
             elif Ylab == 'T':
-                Q[i] = tabinterp.from_rhoT(Qlab,x*uconversion_X, Y[i], EOS)
+                Q[i] = tabinterp.from_rhoT(Qlab, X[i], Y[i], EOS)
         else:
             raise NotImplementedError('Non-ANEOS EOS not currently supported')            
     return Q*uconversion_Q

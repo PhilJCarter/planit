@@ -191,7 +191,6 @@ class Snapshot:
             f.close()
             return
 
-
         count = str(self.N)     # number of particle values to read
         count3 = str(3*self.N)  # number of values to read for 3-vectors
 
@@ -242,9 +241,6 @@ class Snapshot:
                 struct.unpack('i', f.read(4))  #SKIP
             else:
                 self.ensure_matIDs(mats)
-                #self.T = npy.zeros(self.N)
-                #for i in range(len(self.id)):
-                #    self.T[i] = woma.eos.sesame.T_rho_s(self.rho[i]*woma.misc.utils.cgs_to_SI.rho, self.S[i]*woma.misc.utils.cgs_to_SI.s, self.materialIDs[i])
                 self.T = eos.calcprop('T', 'rho', 'S', self.rho, self.S, self.materialIDs)
             
             #struct.unpack('i', f.read(4))  #SKIP
@@ -253,7 +249,6 @@ class Snapshot:
                 struct.unpack('i', f.read(4))  #SKIP
             else:
                 self.ensure_matIDs(mats)
-                #self.P = npy.zeros(self.N)
                 self.U = eos.calcprop('U', 'rho', 'S', self.rho, self.S, self.materialIDs)
             
             #struct.unpack('i', f.read(4))  #SKIP
@@ -313,7 +308,6 @@ class Snapshot:
                 self.rem = rems
             else:
                 print('array mismatch')
-
             
     def load_hdf5(self, fname, headonly=False, thermo=False, compress=False, debug=False):
         """
@@ -322,7 +316,6 @@ class Snapshot:
         with h5py.File(fname,'r') as f:
             header= f.get('Header')
             part = f['PartType0']
-  #          #pars = f.get('RuntimePars')
             #tid = npy.where(f['PartType0/ParticleIDs'][:] < PROJ_ID_OFFSET)[0]
             #pid = npy.where(f['PartType0/ParticleIDs'][:] >= PROJ_ID_OFFSET)[0]
 
@@ -369,10 +362,12 @@ class Snapshot:
             self.vel = part['Velocities'][:].reshape((self.header.npart[0], 3)) * Lfactor/Tfactor
             if 'MaterialIDs' in part.keys():
                 self.materialIDs = part['MaterialIDs'][:]
+     #### edit
             # move to conversion routines
-            if part['ParticleIDs'][:].max() < GADGET_EOS_OFFSET and len(self.materialIDs)>1:
+            if part['ParticleIDs'][:].max() < GADGET_EOS_OFFSET and len(npy.unique(self.materialIDs))>1:
                 self.id = npy.where(self.materialIDs>400,part['ParticleIDs'][:],part['ParticleIDs'][:]+GADGET_EOS_OFFSET)
                 self.id = npy.where(self.materialIDs<400,self.id+GADGET_EOS_OFFSET,self.id)
+     #### edit end
             else:
                 self.id = part['ParticleIDs'][:]
             self.m = part['Masses'][:] * Mfactor
@@ -382,22 +377,14 @@ class Snapshot:
             if 'Entropies' in part.keys() and part['Entropies'][:].max()>0:
                 self.S = part['Entropies'][:] * Lfactor**2/(Tfactor**2)
             else:
-               ##print('interpolating entropy')
-                #self.S = npy.zeros(self.N)
-                #for i in range(len(self.id)):
-                #    if self.materialIDs[i]>=300:
-                #        self.S[i] = woma.eos.sesame.s_u_rho(self.U[i]*woma.misc.utils.cgs_to_SI.u, self.rho[i]*woma.misc.utils.cgs_to_SI.rho, self.materialIDs[i])*woma.misc.utils.cgs_to_SI.inv().s
                 self.S = eos.calcprop('S', 'U', 'rho', self.U, self.rho, self.materialIDs)
-                ###if i%100000 == 1:
-                ### print(self.S[i])
-            self.P = part['Pressures'][:] * Mfactor / (Lfactor * Tfactor**2)
+            if 'Pressures' in part.keys():
+                self.P = part['Pressures'][:] * Mfactor / (Lfactor * Tfactor**2)
+            else:
+                self.P = eos.calcprop('P', 'U', 'rho', self.U, self.rho, self.materialIDs)
             if 'Temperatures' in part.keys():
                 self.T = part['Temperatures'][:]
             else:
-                #self.T = npy.zeros(self.N)
-                #for i in range(len(self.id)):
-                #    if self.materialIDs[i]>=300:
-                #        self.T[i] = woma.eos.sesame.T_u_rho(self.U[i]*woma.misc.utils.cgs_to_SI.u, self.rho[i]*woma.misc.utils.cgs_to_SI.rho, self.materialIDs[i])#*woma.misc.utils.cgs_to_SI.inv().T
                 self.T = eos.calcprop('T', 'U', 'rho', self.U, self.rho, self.materialIDs)
             if 'Potentials' in part.keys():
                 self.pot = part['Potentials'][:] * Lfactor**2/(Tfactor**2)
@@ -665,89 +652,85 @@ class Snapshot:
         print("Wrote", self.N, "particles.\n")
         f.close()
 
-################# edit
 
-    def write_hdf5(self,outname,units='SI',mats=[401,400]):
+    def write_hdf5(self, outname, units='cgs', mats=[401,400]):
     
         self.ensure_matIDs(mats)
                 
         if npy.ndim(self.header.flag_entr_ics) < 1:
-            #print(self.header.flag_entr_ics)
             if self.header.flag_entr_ics==1:
                 print('Entropy in U block')
-                intE = self.S
-                if units=='SI':
-                    intE *= woma.misc.utils.cgs_to_SI.s
+                intEblock = self.S
             else:   ## normal for converting gadget2-planetary to swift
-                #print('Energy in U block')
-                intE = self.U
-                if units=='SI':
-                    intE *= woma.misc.utils.cgs_to_SI.u
+                intEblock = self.U
         else:
-            if self.header.flag_entr_ics.sum()>0:
+            if self.header.flag_entr_ics[0]==1:
                 print('Entropy in U block. Warning! not expected for Swift!')
-                intE = self.S
-                if units=='SI':
-                    intE *= woma.misc.utils.cgs_to_SI.s
+                intEblock = self.S
             else:   ## normal for converting gadget2-planetary to swift
-                #print('Energy in U block')
-                intE = self.U
-                if units=='SI':
-                    intE *= woma.misc.utils.cgs_to_SI.u
-        
+                intEblock = self.U
+        if units == 'SI':
+                Lfactor = planit.eos.uconversion_l_cgs2SI
+                Mfactor = planit.eos.uconversion_m_cgs2SI
+                Tfactor = 1.
+        else:
+                Lfactor = Mfactor = Tfactor = 1.
+            
+    
         with h5py.File(outname, 'w') as f:
-            if units=='SI':
-                #replace with generic writing routine
-                woma.misc.io.save_particle_data(
-                    f,
-                    self.pos*woma.misc.utils.cgs_to_SI.l,
-                    self.vel*woma.misc.utils.cgs_to_SI.v,
-                    self.m*woma.misc.utils.cgs_to_SI.m,
-                    self.hsml*woma.misc.utils.cgs_to_SI.l,
-                    self.rho*woma.misc.utils.cgs_to_SI.rho,
-                    self.P*woma.misc.utils.cgs_to_SI.P,
-                    intE,
-                    A1_mat_id = self.materialIDs,
-                    A1_id=self.id,
-                    A1_s=self.S*woma.misc.utils.cgs_to_SI.s,
-                    boxsize=self.header.BoxSize*woma.misc.utils.cgs_to_SI.l,
-                    #file_to_SI = woma.Conversions(M_earth, R_earth, 1), # mass, length, time
-                )
-            else:
-                #replace with generic writing routine
-                woma.misc.io.save_particle_data(
-                    f,
-                    self.pos,
-                    self.vel,
-                    self.m,
-                    self.hsml,
-                    self.rho,
-                    self.P,
-                    intE,
-                    A1_mat_id = self.materialIDs,
-                    A1_id=self.id,
-                    A1_s=self.S,
-                    boxsize=self.header.BoxSize,
-                    #file_to_SI = woma.Conversions(M_earth, R_earth, 1), # mass, length, time
-                )
+            # SnapHeader
+            header = f.create_group("/Header")
+            header.attrs['NumPart_ThisFile'] = self.header.npart
+            header.attrs['MassTable'] = self.header.mass * Mfactor
+            header.attrs['Time'] = self.header.time * Tfactor
+            header.attrs['Redshift'] = 0.0
+            header.attrs['Flag_Sfr'] = 0
+            header.attrs['Flag_Feedback'] = 0
+            header.attrs['NumPart_Total'] = self.header.npart
+            header.attrs['Flag_Cooling'] = 0
+            header.attrs['NumFilesPerSnapshot'] = self.header.num_files
+            header.attrs['BoxSize'] = [self.header.BoxSize * Lfactor, self.header.BoxSize * Lfactor, self.header.BoxSize * Lfactor]
+            header.attrs['Omega0'] = 0.0
+            header.attrs['OmegaLambda'] = 0.0
+            header.attrs['HubbleParam'] = 1.0
+            header.attrs['Flag_StellarAge'] = 0
+            header.attrs['Flag_Metals'] = 0
+            header.attrs['NumPart_Total_HW'] = npy.zeros(6).astype(int)
+            header.attrs['Flag_Entropy_ICs'] = self.header.flag_entr_ics
+            
+            # Units
+            units = f.create_group('Units')
+            units.attrs["Unit length in cgs (U_L)"] = Lfactor
+            units.attrs["Unit mass in cgs (U_M)"] = Mfactor
+            units.attrs["Unit time in cgs (U_t)"] = Tfactor
+            units.attrs["Unit current in cgs (U_I)"] = 1.0
+            units.attrs["Unit temperature in cgs (U_T)"] = 1.0
+            
+            part = f.create_group('/PartType0/')
+            part.create_dataset('Coordinates', data=(self.pos.ravel()+self.header.BoxSize/2.) * Lfactor, compression='gzip')
+            part.create_dataset('Velocities', data=self.vel.ravel() * Lfactor/Tfactor, compression='gzip')
+            part.create_dataset('MaterialIDs', data=self.materialIDs, compression='gzip')
+            part.create_dataset('ParticleIDs', data=self.id, compression='gzip')
+            part.create_dataset('Masses', data=self.m * Mfactor, compression='gzip')
+            f['/PartType0/Internal Energy'] = part.create_dataset('InternalEnergies', data=intEblock * Lfactor**2/(Tfactor**2), compression='gzip')
+            f['/PartType0/Density'] = part.create_dataset('Densities', data=self.rho * Mfactor/Lfactor**3, compression='gzip')
+            f['/PartType0/SmoothingLength'] = part.create_dataset('SmoothingLengths', data=self.hsml * Lfactor, compression='gzip')
+            f['/PartType0/Potential'] = part.create_dataset('Potentials', data=self.pot * Lfactor**2/(Tfactor**2), compression='gzip')
+            part.create_dataset('Entropies', data=self.S  * Lfactor**2/(Tfactor**2), compression='gzip')
+            if self.inclthermo:
+                part.create_dataset('Pressures', data=self.P * Mfactor / (Lfactor * Tfactor**2), compression='gzip')
+                part.create_dataset('Temperatures', data=self.T, compression='gzip')
+            if self.rem:
+                part.create_dataset('RemnantIDs', data=self.rem, compression='gzip')
 
-            f['Header'].attrs.modify('Time',self.header.time)
-
-################ edit end
 
     def G2_to_swift(self, mats=[401,400], box=5000.*6.371e8, fname=None):
         self.ensure_matIDs(mats)
         #define U
         if len(self.U) == 0:
-        #    self.U = npy.zeros(len(self.id))
-        #    for i in range(len(self.id)):
-        #        self.U[i] = woma.eos.sesame.Z_rho_Y(self.rho[i]*woma.misc.utils.cgs_to_SI.rho, self.S[i]*woma.misc.utils.cgs_to_SI.s, self.materialIDs[i], 'u', 's')*woma.misc.utils.cgs_to_SI.inv().u
             self.U = eos.calcprop('U','rho','S',self.rho,self.S,self.materialIDs)
         #define P
         if len(self.P) == 0:
-        #    self.P = npy.zeros(len(self.id))
-        #    for i in range(len(self.id)):
-        #        self.P[i] = woma.eos.sesame.Z_rho_Y(self.rho[i]*woma.misc.utils.cgs_to_SI.rho, self.S[i]*woma.misc.utils.cgs_to_SI.s, self.materialIDs[i], 'P', 's')*woma.misc.utils.cgs_to_SI.inv().P
             self.P = eos.calcprop('P','rho','S',self.rho,self.S,self.materialIDs)
         #set BoxSize
         if npy.ndim(self.header.BoxSize) == 0:
@@ -783,7 +766,6 @@ class Snapshot:
            
 
     def bound_mass(self, nrem = 1, minbnd = 200, maxiter = 2000, tol = 0.01, reorder=True, discardsmall=False, calc_pot_all=True, save=True):
-        #G=6.67e-8
         self.rem = npy.zeros(len(self.id)).astype(int)
     
         for r in range(1,nrem+1):
@@ -853,8 +835,7 @@ class Snapshot:
                 npy.savetxt(self.file+'_rem.txt', npy.transpose([self.id,self.rem]), header='Id  Remnant', fmt='%d')
         
         self.bnd = self.rem
-                
-                
+                                
                 
     def calc_phase(self,release=False,plot=False):
         if npy.unique(self.materialIDs)[-1] == 402:

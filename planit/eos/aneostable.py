@@ -10,7 +10,7 @@ class EOStable(extEOStable):
         #self.name = ''
 
 
-def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS' debug = False):
+def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False):
     """
     READ IN NEW ANEOS MODEL and fill the extEOStable class object
     
