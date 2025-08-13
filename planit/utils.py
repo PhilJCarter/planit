@@ -55,7 +55,6 @@ class Node:
 
 
 def Walk_Pot(node,leaf,theta2):
-    #G = 6.67e-8
     dr = node.com - leaf.com
     r2 = (dr**2).sum()
     if (len(node.children)==0) or (node.size**2/r2 < theta2):
@@ -69,7 +68,6 @@ def Walk_Pot(node,leaf,theta2):
 
 @numba.njit(parallel=True)
 def _calc_potential_direct(m,x,y,z):
-    #G = 6.67e-8
     pot = npy.zeros(len(m))
     for j in numba.prange(len(m)):
         pdist = npy.sqrt( (x-x[j])**2 + (y-y[j])**2 + (z-z[j])**2 )

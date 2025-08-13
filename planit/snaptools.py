@@ -1,7 +1,6 @@
 from .main import *
 from .utils import *
 from . import eos
-#from .eos import eosfuncs
 
 import numpy as npy
 import scipy
@@ -152,6 +151,7 @@ class Snapshot:
             self.load_G2_1(fname, headonly=headonly, thermo=thermo, compress=compress, mats=mats)
         else:
             self.load_hdf5(fname, headonly=headonly, thermo=thermo, compress=compress)
+
     
     def load_G2_1(self, fname, headonly=False, thermo=False, compress=False, mats=[402,400]):
         """
@@ -233,7 +233,6 @@ class Snapshot:
                 struct.unpack('i', f.read(4))  #SKIP
             else:
                 self.ensure_matIDs(mats)
-                #self.P = npy.zeros(self.N)
                 self.P = eos.calcprop('P', 'rho', 'S', self.rho, self.S, self.materialIDs)
             
             if len(f.read(4)) == 4:
@@ -669,9 +668,10 @@ class Snapshot:
                 intEblock = self.S
             else:   ## normal for converting gadget2-planetary to swift
                 intEblock = self.U
+                
         if units == 'SI':
-                Lfactor = planit.eos.uconversion_l_cgs2SI
-                Mfactor = planit.eos.uconversion_m_cgs2SI
+                Lfactor = eos.uconversion_l_cgs2SI
+                Mfactor = eos.uconversion_m_cgs2SI
                 Tfactor = 1.
         else:
                 Lfactor = Mfactor = Tfactor = 1.
@@ -700,12 +700,13 @@ class Snapshot:
             
             # Units
             units = f.create_group('Units')
-            units.attrs["Unit length in cgs (U_L)"] = Lfactor
-            units.attrs["Unit mass in cgs (U_M)"] = Mfactor
-            units.attrs["Unit time in cgs (U_t)"] = Tfactor
+            units.attrs["Unit length in cgs (U_L)"] = 1./Lfactor
+            units.attrs["Unit mass in cgs (U_M)"] = 1./Mfactor
+            units.attrs["Unit time in cgs (U_t)"] = 1./Tfactor
             units.attrs["Unit current in cgs (U_I)"] = 1.0
             units.attrs["Unit temperature in cgs (U_T)"] = 1.0
             
+            # Particles
             part = f.create_group('/PartType0/')
             part.create_dataset('Coordinates', data=(self.pos.ravel()+self.header.BoxSize/2.) * Lfactor, compression='gzip')
             part.create_dataset('Velocities', data=self.vel.ravel() * Lfactor/Tfactor, compression='gzip')
@@ -739,7 +740,7 @@ class Snapshot:
         if not fname:
             fname = self.file+'.hdf5'
         self.header.flag_entr_ics = 0
-        self.write_hdf5(fname,units='SI',mats=mats)
+        self.write_hdf5(fname,units='cgs',mats=mats)
 
 
     def identify(self, crust=False):
@@ -870,7 +871,7 @@ class Snapshot:
         FoSvap=scipy.interpolate.interp1d(ForsteriteEOS.vc.Pv*1e10,ForsteriteEOS.vc.Sv*1e3*1e7,bounds_error=False)
         CSliq=scipy.interpolate.interp1d(CoreEOS.vc.Pl*1e10,CoreEOS.vc.Sl*1e3*1e7,bounds_error=False)
         CSvap=scipy.interpolate.interp1d(CoreEOS.vc.Pv*1e10,CoreEOS.vc.Sv*1e3*1e7,bounds_error=False)
-        #Sliq(self.P)
+
 
         if release:
             self.vapfrac[self.materialIDs>=300] = (self.S[self.materialIDs>=300] - FoSliq(release)) / (FoSvap(release) - FoSliq(release))
@@ -902,70 +903,5 @@ class Snapshot:
 
     def calc_vap_frac(self,plot=False):
         self.calc_phase(plot=False)
-
-#         if __name__ == "__main__":
-#             dir = os.path.dirname(inspect.getfile(inspect.currentframe()))
-#         else:
-#             dir = os.path.dirname(inspect.getfile(Snapshot))
-#         phaseboundary = dir + '/forsterite_bell.txt'
-#         phaseboundaryFe = dir + '/iron_bell.txt'
-#         sd, td = npy.loadtxt(phaseboundary, usecols=(0,1), unpack=True,
-#                                                                 comments='#')
-#         sdFe, tdFe = npy.loadtxt(phaseboundaryFe, usecols=(0,1), unpack=True,
-#                                                                 comments='#')
-#         tc = td.max()
-#         tcFe = tdFe.max()
-# 
-#         liqL = npy.zeros(len(self.T)).astype(int)
-#         liqH = npy.zeros(len(self.T)).astype(int)
-#         vapL = npy.zeros(len(self.T)).astype(int)
-#         vapH = npy.zeros(len(self.T)).astype(int)
-#         LiqS = npy.zeros(len(self.T)).astype(int)
-#         VapS = npy.zeros(len(self.T)).astype(int)
-#         
-#         for j in range(len(self.T)):
-#             if self.id[j] <= IDOFF:
-#                 tdome = tdFe
-#                 sdome = sdFe
-#             else:
-#                 tdome = td
-#                 sdome = sd
-#             for i in range(1,len(tdome)):
-#                 if tdome[i] > self.T[j] or i == (len(tdome)-1):
-#                     liqH[j] = i
-#                     liqL[j] = i-1
-#                     break
-#             for i in range(liqH[j], len(tdome)):
-#                 if tdome[i] < self.T[j] or i == (len(tdome)-1):
-#                     vapH[j] = i-1
-#                     vapL[j] = i
-#                     break
-# 
-#             LiqS[j] = sdome[liqL[j]] + ( (sdome[liqH[j]]-sdome[liqL[j]])
-#                                           / (tdome[liqH[j]]-tdome[liqL[j]])
-#                                         * (self.T[j]-tdome[liqL[j]]) )
-#             VapS[j] = sdome[vapL[j]] + ( (sdome[vapH[j]]-sdome[vapL[j]])
-#                                           / (tdome[vapH[j]]-tdome[vapL[j]])
-#                                         * (self.T[j]-tdome[vapL[j]]) )
-# 
-#         self.vapfrac = (self.S - LiqS) / (VapS - LiqS)
-#         self.vapfrac=npy.where(self.S < LiqS, 0., self.vapfrac)
-#         self.vapfrac=npy.where(self.S > VapS, 1., self.vapfrac)
-# 
-#         self.vapfrac = npy.where(npy.logical_and(self.id <= IDOFF,
-#                                             self.T > tcFe), -1, self.vapfrac)
-#         self.vapfrac = npy.where(npy.logical_and(self.id > IDOFF,
-#                                             self.T > tc), -1, self.vapfrac)
-# 
-# 
-#         if plot:
-#             plt.scatter(self.S, self.T,color='g')
-#             plt.plot(sd,td,c='b')
-#             plt.plot(sdFe,tdFe,c='orange')
-#             for j in range(len(self.T)):
-#                 if self.vapfrac[j] > 0.:
-#                     plt.scatter(self.S[j],self.T[j],c='r',zorder=2)
-#             plt.show()
-
 
 

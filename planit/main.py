@@ -17,14 +17,14 @@ v0.7
 """
 
 import os
-import woma
 
 eospath = os.path.dirname(__file__) + '/eos/data/'
 datadir = os.path.dirname(__file__) + '/data/'
 
 from . import eos
 
-G = 6.67E-8 # Gravitational constant  cm3/g/s2
+
+G = 6.67E-8 # Gravitational constant cgs cm3/g/s2
 
 GADGET_EOS_OFFSET = IDOFF   = 200000000    # material id offset
 PROJ_ID_OFFSET    = BODYOFF = 100000000    # body id offset

@@ -1,0 +1,13 @@
+[project]
+name = "planit"
+version = "0.7.0"
+authors = [
+    {name = "Philip Carter", email = "p.carter@bristol.ac.uk"},
+]
+description = "Coming soon"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICEN[CS]E*"]
+dependencies = ["numpy","scipy","matplotlib","os","numba","h5py","struct","glob","seagen"]
+[project.urls]
+Homepage = "https://github.com/PhilJCarter/planit"

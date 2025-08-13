@@ -7,6 +7,7 @@ class EOStable(extEOStable):
     def __init__(self):
         extEOStable.__init__(self)
         self.TYPE = ''
+        self.womaID = None
         #self.name = ''
 
 
@@ -19,6 +20,7 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False):
         
     if eos == 'Iron-ANEOS-SLVTv0.2G1':
         eosdir = eospath + 'aneos-iron-2020-master/'
+        womaID = 401
 #
 #        MODELNAME = 'Iron-ANEOS-SLVTv0.2G1'
 #        # Header information must all be compatible with float format
@@ -35,6 +37,7 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False):
 
     elif eos == 'Fe85Si15-ANEOS-SLVTv0.2G1':
         eosdir = eospath + 'aneos-Fe85Si15-2020-master/'
+        womaID = 402
 #        # ====>>>>>> YOU NEED TO MAKE SURE THESE VALUES MATCH ANEOS.INPUT  <<<<=====
 #        MODELNAME = 'Fe85Si15-ANEOS-SLVTv0.2G1'
 #        # Header information must all be compatible with float format
@@ -52,6 +55,7 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False):
 
     elif eos == 'Forsterite-ANEOS-SLVTv1.0G1':
         eosdir = eospath + 'aneos-forsterite-2019-master/'
+        womaID = 400
 #        MODELNAME = 'Forsterite-ANEOS-SLVTv1.0G1'
 #        # Header information must all be compatible with float format
 #        MATID = 1.0        # MATID number
@@ -68,6 +72,7 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False):
     
     NewEOS  = EOStable() # FIRST make new empty EOS object
     NewEOS.TYPE = eostype
+    NewEOS.womaID = womaID
     
     # READ EOS HEADER INFORMATION 
     # READ IN ANEOS INPUT FILE
@@ -94,7 +99,6 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False):
     # READ SESAME HEADER
     sesfile = open(eosdir+'NEW-SESAME-STD.TXT',"r")  
     sesdata=sesfile.readlines(5000)
-    print(sesdata)
     sesfile.close()
     for i in range(len(sesdata)):
         if sesdata[i].find(' INDEX') == 0:

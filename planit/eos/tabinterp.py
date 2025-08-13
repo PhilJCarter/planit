@@ -8,7 +8,10 @@ def from_rhoT(Qlab,rho,T,EOS,dolog=True):
     if rho > 2.0:
         dolog = False
 
-    ir0 = npy.where(EOS.rho<rho)[0][-1]
+    if rho <= EOS.rho[0]:
+        ir0 = 0
+    else:
+        ir0 = npy.where(EOS.rho<rho)[0][-1]
     iT0 = npy.where(EOS.T<T)[0][-1]
     
     r0 = EOS.rho[ir0]
@@ -68,7 +71,12 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
     if rho > 2.0:
         dolog = False
 
-    ir0 = npy.where(EOS.rho<rho)[0][-1]
+    if rho <= EOS.rho[0]:
+        ir0 = 0
+    else:
+        ir0 = npy.where(EOS.rho<rho)[0][-1]
+#    if ir0 == len(EOS.rho)-1:
+#        ir0 -=1
     if U <= EOS.U[0,ir0]:
         iU0r0 = 0
     else:
@@ -133,15 +141,20 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
         
     dr = rho - r0
     
-    Qa  = (U1r0-U)*Q00/(U1r0-U0r0) + (U-U0r0)*Q10/(U1r0-U0r0)
-    Qb  = (U1r1-U)*Q01/(U1r1-U0r1) + (U-U0r1)*Q11/(U1r1-U0r1)
+    if U1r0==U0r0:
+        Qa = Q00
+    else:
+        Qa  = (U1r0-U)*Q00/(U1r0-U0r0) + (U-U0r0)*Q10/(U1r0-U0r0)
+    if U1r1==U0r1:
+        Qb = Q01
+    else:
+        Qb  = (U1r1-U)*Q01/(U1r1-U0r1) + (U-U0r1)*Q11/(U1r1-U0r1)
     Q  = Qa + dr*(Qb-Qa)/(r1-r0)
     
     if dolog:
         Q = 10**Q
 
     return Q
-
 
 
 def from_rhoS(Qlab,rho,S,EOS,dolog=True):

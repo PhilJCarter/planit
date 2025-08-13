@@ -1,7 +1,6 @@
 from .main import *
 from .snaptools import Snapshot
 from . import eos
-#from .eos import *
 
 import numpy as npy
 from scipy import interpolate
@@ -12,11 +11,9 @@ import seagen
 
 G_mks = 6.67E-11 # Gravitational constant  m3/kg/s2
 
-#G = 6.67E-8 # Gravitational constant  cm3/g/s2
 Mearth = 5.972E27 # Earth's mass g
 Rearth = 6371.E5  # Earth's radius cm
 Rcmb = 348000000. # CMB radius in cm (from PREM)
-
 
 
 class planet_profile:
@@ -90,6 +87,7 @@ def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3
     else:
         print('error: not implemented yet')
 
+
 def make_1D_2L_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3.02,
         mtolerance=1e-3,layer1='iron',layer2='forsterite',mantlepotT=False,plot=False,
         fixcoreT=False,verbose=False, rhocent=None):
@@ -102,19 +100,11 @@ def make_1D_2L_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantl
     Pcenter = 0
     
     ly1EOS = eos.select(layer1)
-#    if layer1 in eos.ironnames:
-#        ly1EOS = eos.ANEOSIron
-#    elif layer1 in eos.alloynames:
-#        ly1EOS = eos.ANEOSFeSiAlloy
-#    elif layer1 in eos.forsteritenames:
-#        ly1EOS = eos.ANEOSForsterite
     if ly1EOS is None:
         print('Unknown core EOS')
         return
     
     ly2EOS = eos.selct(layer2)
-#    if layer2 in eos.forsteritenames:
-#        ly2EOS = ForsteriteEOS
     if ly2EOS is None:
         print('Unknown mantle EOS')
         return
@@ -134,23 +124,6 @@ def make_1D_2L_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantl
     
     # first extract the isentropes for the planet from the EOS tables
     mantle = eos.isentrope_class(Smantle,layer2)
-
-#    # loop across all densities and extract the values for the requested isentrope
-#    for i in range(0,ly2EOS.ND):
-#        ind = npy.where((ly2EOS.S[:,i] > 0))[0]
-#        interpfunction = interpolate.interp1d(ly2EOS.S[ind,i],ly2EOS.P[ind,i]) # MJ/K/kg, GPa
-#        mantle.pressure = npy.append(mantle.pressure,interpfunction(Smantle/1.E3)) # GPa
-#        interpfunction = interpolate.interp1d(ly2EOS.S[ind,i],ly2EOS.T[ind]) # MJ/K/kg, GPa
-#        mantle.temperature = npy.append(mantle.temperature,interpfunction(Smantle/1.E3)) # GPa
-#    mantle.density = ly2EOS.rho # g/cm3
-
-##    # arrays for selecting/interpolating starting conditions and iteration multipliers - hacky
-##    masses = npy.array([1e-5,2e-5,0.0002,0.002,0.01,0.02,0.5,1.0,2.0,5.])
-##    factors = npy.array([0.0008,0.0014,0.002,0.05,0.08,0.16,0.3,0.5,0.8,0.8])
-##    if layer1 in eos.ironnames+eos.alloynames:
-##        densities  = npy.array([7.1,7.15,7.2,7.25,7.5,8.5,11.,13.,16.,20.])
-##    elif layer1 in eos.forsteritenames:
-##        densities  = npy.array([3.,3.,3.,3.,3.9,3.9,4.,13.,16.,20.])
     
     Tcmb_accept = False
     
@@ -158,14 +131,6 @@ def make_1D_2L_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantl
     while not Tcmb_accept:
         
         core = eos.isentrope_class(Score,layer1)
-
-#        for i in range(0,ly1EOS.ND):
-#            ind = npy.where((ly1EOS.S[:,i] > 0))[0]
-#            interpfunction = interpolate.interp1d(ly1EOS.S[ind,i],ly1EOS.P[ind,i]) # MJ/K/kg, GPa
-#            core.pressure = npy.append(core.pressure,interpfunction(Score/1.E3)) # GPa
-#            interpfunction = interpolate.interp1d(ly1EOS.S[ind,i],ly1EOS.T[ind]) # MJ/K/kg, K
-#            core.temperature = npy.append(core.temperature,interpfunction(Score/1.E3)) # K
-#        core.density = ly1EOS.rho # g/cm3
 
         if plot:
             fig = plt.figure(figsize=(7,5))
@@ -183,9 +148,6 @@ def make_1D_2L_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantl
             plt.legend()
             plt.show()
 
-
-        #changefac = npy.interp(mtotal/Mearth,masses,factors)
-        #rhocenter = npy.interp(mtotal/Mearth,masses,densities)
         if rhocent:
             rhocenter = rhocent
         else:
@@ -228,7 +190,6 @@ def make_1D_2L_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantl
 
         # outer loop to find the correct total mass
         while npy.abs(mtotal-menclosed)/mtotal > mtolerance and itercount < maxiter:
-            # USE MKS FOR THIS INTEGRAL
             if (itercount%100 == 0 and verbose) or (itercount%10000 == 0 and itercount!=0):
                 print(parr[0],darr[0],menclosed/mtotal)
             rarr = npy.zeros(1)
@@ -353,7 +314,6 @@ def make_1D_2L_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantl
 
 
 
-
 def make_SPH_planet(mass=Mearth,corefraction=0.3,Pmin=1.e6,Score=1.81,Smantle=3.03,
         mtolerance=1e-3,layer1='alloy',layer2='forsterite',layers=[],S=[],mantlepotT=False,plot=False,
         resolution=5e5,fixcoreT=False,rhocent=None,verbose=False,profile=None):
@@ -402,7 +362,6 @@ def make_SPH_planet(mass=Mearth,corefraction=0.3,Pmin=1.e6,Score=1.81,Smantle=3.
         print(partmass,Np)
         print(planet.rarr)
     
-    #planet.rarr[0]=1e-10
     # use seagen to generate spherical planet particles
     particleplanet = seagen.GenSphere(Np,planet.rarr[1:],planet.density[1:],A1_T_prof=planet.temperature[1:],A1_P_prof=planet.pressure[1:],A1_mat_prof=planet.mat[1:],verbosity=0, A1_m_rel_prof=1.0*npy.ones(len(planet.mat[1:])))#, A1_force_more_shells=[False,True])
     if len(layers)==2 or len(layers)==0:
@@ -533,10 +492,6 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
         showPREM = False
 
     cEOS = eos.select(coreEOS)
-#    if coreEOS in eos.ironnames:
-#        cEOS = IronEOS
-#    elif coreEOS == eos.alloynames:
-#        cEOS = AlloyEOS
     if cEOS is None:
         print('Unknown core EOS')
         return
