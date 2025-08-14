@@ -155,7 +155,6 @@ class Snapshot:
             self.load_G2_1(fname, headonly=headonly, thermo=thermo, compress=compress, mats=mats)
         else:
             self.load_hdf5(fname, headonly=headonly, thermo=thermo, compress=compress)
-
     
     def load_G2_1(self, fname, headonly=False, thermo=False, compress=False, mats=[402,400]):
         """
@@ -366,7 +365,7 @@ class Snapshot:
             if 'MaterialIDs' in part.keys():
                 self.materialIDs = part['MaterialIDs'][:]
      #### edit
-            # move to conversion routines
+            # move to conversion routines?
             if part['ParticleIDs'][:].max() < GADGET_EOS_OFFSET and len(npy.unique(self.materialIDs))>1:
                 self.id = npy.where(self.materialIDs>400,part['ParticleIDs'][:],part['ParticleIDs'][:]+GADGET_EOS_OFFSET)
                 self.id = npy.where(self.materialIDs<400,self.id+GADGET_EOS_OFFSET,self.id)
@@ -876,7 +875,6 @@ class Snapshot:
         CSliq=scipy.interpolate.interp1d(CoreEOS.vc.Pl*1e10,CoreEOS.vc.Sl*1e3*1e7,bounds_error=False)
         CSvap=scipy.interpolate.interp1d(CoreEOS.vc.Pv*1e10,CoreEOS.vc.Sv*1e3*1e7,bounds_error=False)
 
-
         if release:
             self.vapfrac[self.materialIDs>=300] = (self.S[self.materialIDs>=300] - FoSliq(release)) / (FoSvap(release) - FoSliq(release))
             self.vapfrac[self.id<GADGET_EOS_OFFSET] = (self.S[self.id<GADGET_EOS_OFFSET] - CSliq(release)) / (CSvap(release) - CSliq(release))
@@ -907,5 +905,4 @@ class Snapshot:
 
     def calc_vap_frac(self,plot=False):
         self.calc_phase(plot=False)
-
 

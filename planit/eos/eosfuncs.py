@@ -8,7 +8,10 @@ import numpy as npy
 import numba
 from .eos_table import *
 from .eos_table import isentrope_class as eos_isentrope_class
+from .eostab_extension import *
 from .aneostable import *
+from .aquatable import *
+from .rhoUtable import *
 from . import tabinterp
 
 
@@ -17,6 +20,10 @@ def loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS'):
         return loadANEOSEOS(eos=eos, eostype='ANEOS')
     elif eostype == 'SESAME':
         return loadANEOSEOS(eos=eos, eostype='SESAME')
+    elif eostype == 'AQUA':
+        return loadAQUAEOS(eos=eos, eostype='AQUA')
+    elif eostype == 'HM80':
+        return loadrhoUEOS(eos=eos, eostype='HM80')
     else:
         raise ValueError('Error: unsupported EOS type:', eostype)
 
@@ -26,13 +33,30 @@ ANEOSIron       = None
 ANEOSFeSiAlloy  = None
 ANEOSForsterite = None
 
-# EOS table common names
+FivePhaseWater = None
+AQUAWater = None
+HM80HHe = None
+
+UserEOS0 = None
+UserEOS1 = None
+UserEOS2 = None
+UserEOS3 = None
+UserEOS4 = None
+
 ironnames  = ['iron','ANEOSIron','Fe','Iron',401]
 alloynames = ['alloy','ANEOSFeSiAlloy','FeSi','Alloy','IronAlloy','ironalloy',402]
 forsteritenames = ['forsterite','ANEOSForsterite','Forsterite','Fo',400]
+aquawaternames = ['AQUA','AQUAWater','aqua',304]
+fivephasewaternames = ['5PhaseWater','5phasewater','SS08','SenftStewartWater','SenftStewart08',303]
+hm80HHenames = ['HM80_HHe','HM80HHe',200]
 
+user0names = ['User0',900]
+user1names = ['User1',901]
+user2names = ['User2',902]
+user3names = ['User3',903]
+user4names = ['User4',904]
 
-def select(name):
+def select(name, eosname=None, eosdir=None):
     """
        Return EoS table object specified by name, 
        loading it first if not already loaded
@@ -52,8 +76,48 @@ def select(name):
         if not ANEOSForsterite:
             ANEOSForsterite = loadEOS(eos='Forsterite-ANEOS-SLVTv1.0G1', eostype='ANEOS')
         return ANEOSForsterite
+    elif name in aquawaternames:
+        global AQUAWater
+        if not AQUAWater:
+            AQUAWater = loadEOS(eos='Water-AQUA-v1.0', eostype='AQUA')
+        return AQUAWater
+    elif name in fivephasewaternames:
+        global FivePhaseWater
+        if not FivePhaseWater:
+            FivePhaseWater = loadEOS(eos='5PhaseEOSv8.3', eostype='SESAME')
+        return FivePhaseWater
+    elif name in hm80HHenames:
+        global HM80HHe
+        if not HM80HHe:
+            HM80HHe = loadEOS(eos='HM80-HHe-v2.0', eostype='HM80')
+        return HM80HHe
+    elif name in user0names:
+        global UserEOS0
+        if (not UserEOS0) or (eosdir and eosname):
+            UserEOS0 = loadANEOSEOS(eos=eosname, eostype='SESAME', eosdir=eosdir, user=True)
+        return UserEOS0
+    elif name in user1names:
+        global UserEOS1
+        if (not UserEOS1) or (eosdir and eosname):
+            UserEOS1 = loadANEOSEOS(eos=eosname, eostype='SESAME', eosdir=eosdir, user=True)
+        return UserEOS1
+    elif name in user2names:
+        global UserEOS2
+        if (not UserEOS2) or (eosdir and eosname):
+            UserEOS2 = loadANEOSEOS(eos=eosname, eostype='SESAME', eosdir=eosdir, user=True)
+        return UserEOS2
+    elif name in user3names:
+        global UserEOS3
+        if (not UserEOS3) or (eosdir and eosname):
+            UserEOS3 = loadANEOSEOS(eos=eosname, eostype='SESAME', eosdir=eosdir, user=True)
+        return UserEOS3
+    elif name in user4names:
+        global UserEOS4
+        if (not UserEOS4) or (eosdir and eosname):
+            UserEOS4 = loadANEOSEOS(eos=eosname, eostype='SESAME', eosdir=eosdir, user=True)
+        return UserEOS4
     else:
-        raise ValueError('Unknown EOS.')
+        print('Unknown EOS')
         return None
         
         
@@ -126,7 +190,6 @@ uconversion_U_inv = 1./uconversion_U
 uconversion_S_inv = 1./uconversion_S
 
 
-
 #@numba.jit(parallel=True,forceobj=True)
 def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
     """Calculate thermodynamic property
@@ -185,13 +248,17 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
     for i in numba.prange(len(X)):
         EOS = select(mats[i])
 
-        if EOS.TYPE in ['ANEOS','SESAME']:
+        if EOS.TYPE in ['ANEOS','SESAME','AQUA']:
             if Ylab == 'S':
                 Q[i] = tabinterp.from_rhoS(Qlab, X[i], Y[i], EOS)
             elif Ylab == 'U':
                 Q[i] = tabinterp.from_rhoU(Qlab, X[i], Y[i], EOS)
             elif Ylab == 'T':
                 Q[i] = tabinterp.from_rhoT(Qlab, X[i], Y[i], EOS)
+        elif EOS.TYPE == 'HM80':
+            if (Ylab is not 'U') or (Qlab not in ['P','T']):
+                raise NotImplementedError('Calculation of', Qlab, 'from', Xlab, 'and', Ylab, 'is not available' )
+            Q[i] = tabinterp.from_rhoU1D(Qlab, X[i], Y[i], EOS)
         else:
             raise NotImplementedError('Non-ANEOS EOS not currently supported.')            
     return Q*uconversion_Q

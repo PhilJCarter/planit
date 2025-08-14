@@ -12,7 +12,7 @@ Philip J. Carter (p.carter@bristol.ac.uk)
 
 Sarah T. Stewart (sts@sarahstewart.net)
 
-v0.7
+v0.8
 
 """
 
