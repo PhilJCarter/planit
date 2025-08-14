@@ -12,6 +12,8 @@ def from_rhoT(Qlab,rho,T,EOS,dolog=True):
         ir0 = 0
     else:
         ir0 = npy.where(EOS.rho<rho)[0][-1]
+    if ir0 == len(EOS.rho)-1:
+        ir0 -=1
     if T <= EOS.T[0]:
         iT0 = 0
     else:
@@ -80,6 +82,8 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
         ir0 = 0
     else:
         ir0 = npy.where(EOS.rho<rho)[0][-1]
+    if ir0 == len(EOS.rho)-1:
+        ir0 -=1
     if U <= EOS.U[0,ir0]:
         iU0r0 = 0
     else:
@@ -88,6 +92,11 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
         iU0r1 = 0
     else:
         iU0r1 = npy.where(EOS.U[:,ir0+1]<U)[0][-1]
+
+    if iU0r0 == len(EOS.U[:,ir0])-1:
+        iU0r0 -=1
+    if iU0r1 == len(EOS.U[:,ir0+1])-1:
+        iU0r1 -=1
     
     r0 = EOS.rho[ir0]
     r1 = EOS.rho[ir0+1]
@@ -230,3 +239,68 @@ def from_rhoS(Qlab,rho,S,EOS,dolog=True):
         Q = 10**Q
 
     return Q
+
+
+
+def from_rhoU1D(Qlab,rho,U,EOS,dolog=True):
+
+    #if rho > 2.0:
+    #    dolog = False
+
+    if rho <= EOS.rho[0]:
+        ir0 = 0
+    else:
+        ir0 = npy.where(EOS.rho<rho)[0][-1]
+    if ir0 == len(EOS.rho)-1:
+        ir0 -=1
+    if U <= EOS.U_1D[0]:
+        iU0 = 0
+    else:
+        iU0 = npy.where(EOS.U_1D<U)[0][-1]
+    
+    r0 = EOS.rho[ir0]
+    r1 = EOS.rho[ir0+1]
+    U0 = EOS.U_1D[iU0]
+    U1 = EOS.U_1D[iU0+1]
+
+    if Qlab == 'P':
+        Qarr = EOS.P
+    elif Qlab == 'T':
+        Qarr = EOS.T
+    else:
+        raise ValueError('Unknown thermodynamic property:',Qlab)
+    
+    Q00 = Qarr[iU0,ir0]
+    Q01 = Qarr[iU0,ir0+1]
+    Q10 = Qarr[iU0+1,ir0]
+    Q11 = Qarr[iU0+1,ir0+1]
+
+    if dolog and min(Q00,Q01,Q10,Q11,rho,U)>0:
+        Q00 = npy.log10(Q00)
+        Q01 = npy.log10(Q01)
+        Q10 = npy.log10(Q10)
+        Q11 = npy.log10(Q11)
+
+        rho = npy.log10(rho)
+        U = npy.log10(U)
+        r0 = npy.log10(r0)
+        r1 = npy.log10(r1)
+        U0 = npy.log10(U0)
+        U1 = npy.log10(U1)
+    else:
+        dolog = False
+        
+    dr = rho - r0
+    dU = U - U0
+
+    Qa  = Q00 + dr*(Q01-Q00)/(r1-r0)
+    Qb  = Q10 + dr*(Q11-Q10)/(r1-r0)
+    Q  = Qa + dU*(Qb-Qa)/(U1-U0)
+
+    if dolog:
+        Q = 10**Q
+
+    return Q
+
+
+

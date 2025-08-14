@@ -1,10 +1,10 @@
 from ..main import *
 from .eos_table import *
-from .aquatable import EOStable
+from .eostab_extension import *
 import numpy as npy
 
 
-def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False):
+def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False, eosdir=None, user=False):
     """
     READ IN NEW ANEOS MODEL and fill the extEOStable class object
     
@@ -61,13 +61,16 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False):
 
     elif eos == '5PhaseEOSv8.3':
         eosdir = eospath + '5-phase-water/'
-        MODELNAME='5PhaseEOSv8.3'
+        #MODELNAME='5PhaseEOSv8.3'
         # The following define the default initial state for material in the 201 table
-        R0REF   = 1.0      # g/cm3 *** R0REF is inserted into the density array
-        K0REF   = 2E10     # dynes/cm2
-        T0REF   = 298.     # K -- *** T0REF is inserted into the temperature array
-        P0REF   = 1.E6
-    
+        NewEOS.R0REF   = 1.0      # g/cm3 *** R0REF is inserted into the density array
+        NewEOS.K0REF   = 2E10     # dynes/cm2
+        NewEOS.T0REF   = 298.     # K -- *** T0REF is inserted into the temperature array
+        NewEOS.P0REF   = 1.E6
+
+    elif not user:
+        raise ValueError('EOS:',eos,'unknown.')
+            
     NewEOS  = EOStable() # FIRST make new empty EOS object
     NewEOS.TYPE = eostype
     
@@ -94,6 +97,11 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False):
                     P0REF = float(tmp[50:60])
                     K0REF = float(tmp[60:70])
                     break
+        NewEOS.R0REF   = R0REF
+        NewEOS.K0REF   = K0REF
+        NewEOS.T0REF   = T0REF
+        NewEOS.P0REF   = P0REF
+
 
     # READ SESAME HEADER
     sesfile = open(eosdir+'NEW-SESAME-STD.TXT',"r")  
@@ -122,10 +130,6 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False):
     NewEOS.VERSION = VERSION
     NewEOS.FMN     = FMN
     NewEOS.FMW     = FMW
-    NewEOS.R0REF   = R0REF
-    NewEOS.K0REF   = K0REF
-    NewEOS.T0REF   = T0REF
-    NewEOS.P0REF   = P0REF
 
     # Load the information from ANEOS.INPUT and ANEOS.OUTPUT
     if eostype == 'ANEOS':

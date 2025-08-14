@@ -4,25 +4,24 @@ from .eostab_extension import *
 import numpy as npy
 
 
-def loadAQUAEOS(eos='Water-AQUA-v1.0', eostype='AQUA', debug = False):
+def loadrhoUEOS(eos='HM80-HHe-v2.0', eostype='HM80', debug = False):
     """
-    READ IN AQUA EOS and fill the extEOStable class object
+    READ IN rhoU tabulated EOS and fill the extEOStable class object
     
     Returns: EOStable
     """
+    
+    NewEOS  = EOStable() # make new empty EOS object
         
-    if eos == 'Water-AQUA-v1.0':
-        eosdir = eospath + 'aqua-water/'
-
+    if eos == 'HM80-HHe-v2.0':
+        eosdir = eospath + 'HM80_HHe/'
+        NewEOS.VERSION = 2.0
+        NewEOS.loadrhoUtable(eosdir+'HM80_HHe_extended.txt')
     
-    NewEOS  = EOStable() # FIRST make new empty EOS object
     NewEOS.TYPE = eostype
-    NewEOS.VERSION = 1.0
-    
-    NewEOS.loadaquatable(eosdir+'aqua_eos_rhot_v1_0.dat')
     
     NewEOS.MODELNAME = eos # string set above in user input
-    NewEOS.MDQ = npy.zeros((NewEOS.NT,NewEOS.ND)) # makes the empty MDQ array
+    NewEOS.MDQ = npy.zeros((NewEOS.NU,NewEOS.ND)) # makes the empty MDQ array
 
     
 #    NewEOS.calchugoniot(r0=NewEOS.R0REF,t0=NewEOS.T0REF)
