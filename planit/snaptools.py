@@ -844,10 +844,10 @@ class Snapshot:
                 
     def calc_phase(self,release=False,plot=False):
         if npy.unique(self.materialIDs)[-1] == 402:
-            CoreEOS = AlloyEOS
+            CoreEOS = eos.select('alloy')
         else:
-            CoreEOS = IronEOS
-        MantleEOS = eos.ANEOSForsterite
+            CoreEOS = eos.select('iron')
+        MantleEOS = eos.select('forsterite')
     
         if release:
             release*=10
@@ -856,8 +856,8 @@ class Snapshot:
         self.meltfrac = npy.zeros(len(self.materialIDs))
         self.phase = npy.zeros(len(self.materialIDs))
     
-        FoSsol=scipy.interpolate.interp1d(ForsteriteEOS.mc.Ps*1e10,ForsteriteEOS.mc.Ss*1e3*1e7,bounds_error=False)
-        FoSmelt=scipy.interpolate.interp1d(ForsteriteEOS.mc.Pl*1e10,ForsteriteEOS.mc.Sl*1e3*1e7,bounds_error=False)
+        FoSsol=scipy.interpolate.interp1d(MantleEOS.mc.Ps*1e10,MantleEOS.mc.Ss*1e3*1e7,bounds_error=False)
+        FoSmelt=scipy.interpolate.interp1d(MantleEOS.mc.Pl*1e10,MantleEOS.mc.Sl*1e3*1e7,bounds_error=False)
         CSsol=scipy.interpolate.interp1d(CoreEOS.mc.Ps*1e10,CoreEOS.mc.Ss*1e3*1e7,bounds_error=False)
         CSmelt=scipy.interpolate.interp1d(CoreEOS.mc.Pl*1e10,CoreEOS.mc.Sl*1e3*1e7,bounds_error=False)
 
@@ -871,8 +871,8 @@ class Snapshot:
         self.meltfrac = npy.where(self.meltfrac > 1, 1., self.meltfrac)
         self.meltfrac = npy.where(npy.isnan(self.meltfrac),0.,self.meltfrac)
     
-        FoSliq=scipy.interpolate.interp1d(ForsteriteEOS.vc.Pl*1e10,ForsteriteEOS.vc.Sl*1e3*1e7,bounds_error=False)
-        FoSvap=scipy.interpolate.interp1d(ForsteriteEOS.vc.Pv*1e10,ForsteriteEOS.vc.Sv*1e3*1e7,bounds_error=False)
+        FoSliq=scipy.interpolate.interp1d(MantleEOS.vc.Pl*1e10,MantleEOS.vc.Sl*1e3*1e7,bounds_error=False)
+        FoSvap=scipy.interpolate.interp1d(MantleEOS.vc.Pv*1e10,MantleEOS.vc.Sv*1e3*1e7,bounds_error=False)
         CSliq=scipy.interpolate.interp1d(CoreEOS.vc.Pl*1e10,CoreEOS.vc.Sl*1e3*1e7,bounds_error=False)
         CSvap=scipy.interpolate.interp1d(CoreEOS.vc.Pv*1e10,CoreEOS.vc.Sv*1e3*1e7,bounds_error=False)
 
@@ -895,7 +895,7 @@ class Snapshot:
         self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where(self.S>FoSliq(self.P),2,self.phase)[self.id>=GADGET_EOS_OFFSET]
         self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where(self.S>FoSvap(self.P),7,self.phase)[self.id>=GADGET_EOS_OFFSET]
         #should be P,T!
-        self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where((self.P>ForsteriteEOS.cp.P*1e10)*(self.S>ForsteriteEOS.cp.S*1e3*1e7),8,self.phase)[self.id>=GADGET_EOS_OFFSET]
+        self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where((self.P>MantleEOS.cp.P*1e10)*(self.S>MantleEOS.cp.S*1e3*1e7),8,self.phase)[self.id>=GADGET_EOS_OFFSET]
 
         self.phase[self.id<GADGET_EOS_OFFSET] = npy.where(self.S<CSsol(self.P),4,5)[self.id<GADGET_EOS_OFFSET]
         self.phase[self.id<GADGET_EOS_OFFSET] = npy.where(self.S>CSmelt(self.P),6,self.phase)[self.id<GADGET_EOS_OFFSET]

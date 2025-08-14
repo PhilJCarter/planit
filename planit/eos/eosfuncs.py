@@ -140,7 +140,14 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
        
        returns array of interpolated property at X, Y points
     """
-
+    if npy.ndim(X) == 0:
+        X = npy.array([X,])
+        Y = npy.array([Y,])
+        Z = npy.array([mats,])
+    
+    if not len(X)==len(Y)==len(mats):
+        raise ValueError('X, Y, and mats arrays must be the same size/shape')
+        
     Q = npy.zeros(len(X))
     if Ylab == 'rho' and Xlab in ['T','U','S']:
         tmp = Y

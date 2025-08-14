@@ -8,6 +8,6 @@ description = "Coming soon"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 license-files = ["LICEN[CS]E*"]
-dependencies = ["numpy","scipy","matplotlib","os","numba","h5py","struct","glob","seagen"]
+dependencies = ["numpy","scipy","matplotlib","numba","h5py","seagen"]
 [project.urls]
 Homepage = "https://github.com/PhilJCarter/planit"

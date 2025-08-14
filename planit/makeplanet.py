@@ -483,7 +483,7 @@ class PREM:
 
 
 
-def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='iron'):
+def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='iron',mantleEOS='Forsterite'):
     if particleplanet:
         inclpart = True
         if not hasattr(particleplanet, 'r'):
@@ -499,6 +499,7 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
     if cEOS is None:
         print('Unknown core EOS')
         return
+    mEOS = eos.select(mantleEOS)
         
     fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(8,12))
     plt.subplots_adjust(wspace=0.25)
@@ -545,7 +546,7 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
 
     axes[ai,aj].set_xlabel('Pressure (GPa)')
     axes[ai,aj].set_ylabel('Temperature (K)')
-    axes[ai,aj].plot(ForsteriteEOS.mc.Pl,ForsteriteEOS.mc.T,'-',color='black',label='Forsterite melt curve',markersize=10)
+    axes[ai,aj].plot(mEOS.mc.Pl,mEOS.mc.T,'-',color='black',label='Forsterite melt curve',markersize=10)
     axes[ai,aj].plot(cEOS.mc.Pl,cEOS.mc.T,'--',color='black',label=coreEOS+' melt curve')
 
     if inclpart:
@@ -565,14 +566,14 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
     axes[ai,aj].set_ylabel('Pressure (GPa)')
     axes[ai,aj].set_xlabel('Entropy (kJ K$^{-1}$ kg$^{-1}$)')
 
-    axes[ai,aj].plot(ForsteriteEOS.mc.Sl*1e3,ForsteriteEOS.mc.Pl,'-',color='black',label='forsterite PB')
+    axes[ai,aj].plot(mEOS.mc.Sl*1e3,mEOS.mc.Pl,'-',color='black',label='forsterite PB')
     axes[ai,aj].plot(cEOS.mc.Sl*1e3,cEOS.mc.Pl,'--',color='black',label=coreEOS+' PB')
-    axes[ai,aj].plot(ForsteriteEOS.mc.Ss*1e3,ForsteriteEOS.mc.Ps,'-',color='black',markersize=10)
+    axes[ai,aj].plot(mEOS.mc.Ss*1e3,mEOS.mc.Ps,'-',color='black',markersize=10)
     axes[ai,aj].plot(cEOS.mc.Ss*1e3,cEOS.mc.Ps,'--',color='black')
 
-    axes[ai,aj].plot(ForsteriteEOS.vc.Sl*1e3,ForsteriteEOS.vc.Pl,'-',color='black',markersize=10)
+    axes[ai,aj].plot(mEOS.vc.Sl*1e3,mEOS.vc.Pl,'-',color='black',markersize=10)
     axes[ai,aj].plot(cEOS.vc.Sl*1e3,cEOS.vc.Pl,'--',color='black',markersize=10)
-    axes[ai,aj].plot(ForsteriteEOS.vc.Sv*1e3,ForsteriteEOS.vc.Pv,'-',color='black',markersize=10) #label='forsterite VD'
+    axes[ai,aj].plot(mEOS.vc.Sv*1e3,mEOS.vc.Pv,'-',color='black',markersize=10) #label='forsterite VD'
     axes[ai,aj].plot(cEOS.vc.Sv*1e3,cEOS.vc.Pv,'--',color='black',markersize=10) #label='iron VD'
 
     if inclpart:
@@ -589,14 +590,14 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
     axes[ai,aj].set_ylabel('Pressure (GPa)')
     axes[ai,aj].set_xlabel('Entropy (kJ K$^{-1}$ kg$^{-1}$)')
 
-    axes[ai,aj].plot(ForsteriteEOS.mc.Sl*1e3,ForsteriteEOS.mc.Pl,'-',color='black',label='forsterite PB')
-    axes[ai,aj].plot(ForsteriteEOS.mc.Ss*1e3,ForsteriteEOS.mc.Ps,'-',color='black',markersize=10)
+    axes[ai,aj].plot(mEOS.mc.Sl*1e3,mEOS.mc.Pl,'-',color='black',label='forsterite PB')
+    axes[ai,aj].plot(mEOS.mc.Ss*1e3,mEOS.mc.Ps,'-',color='black',markersize=10)
     axes[ai,aj].plot(cEOS.mc.Sl*1e3,cEOS.mc.Pl,'--',color='black',label=coreEOS+' PB')
     axes[ai,aj].plot(cEOS.mc.Ss*1e3,cEOS.mc.Ps,'--',color='black')
 
-    axes[ai,aj].plot(ForsteriteEOS.vc.Sl*1e3,ForsteriteEOS.vc.Pl,'-',color='black',markersize=10)
+    axes[ai,aj].plot(mEOS.vc.Sl*1e3,mEOS.vc.Pl,'-',color='black',markersize=10)
     axes[ai,aj].plot(cEOS.vc.Sl*1e3,cEOS.vc.Pl,'--',color='black',markersize=10)
-    axes[ai,aj].plot(ForsteriteEOS.vc.Sv*1e3,ForsteriteEOS.vc.Pv,'-',color='black',markersize=10) #label='forsterite VD'
+    axes[ai,aj].plot(mEOS.vc.Sv*1e3,mEOS.vc.Pv,'-',color='black',markersize=10) #label='forsterite VD'
     axes[ai,aj].plot(cEOS.vc.Sv*1e3,cEOS.vc.Pv,'--',color='black',markersize=10) #label='iron VD'
 
     if inclpart:
