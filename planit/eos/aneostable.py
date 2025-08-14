@@ -1,9 +1,16 @@
+"""
+   planit ANEOS/SESAME table wrapper functions
+"""
+
 from ..main import *
 from .eos_table import *
 import numpy as npy
 
 
 class EOStable(extEOStable):
+    """
+       Adds TYPE and woma numerical ID fields to eos_table.extEOStable class
+    """
     def __init__(self):
         extEOStable.__init__(self)
         self.TYPE = ''
@@ -21,56 +28,29 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False):
     if eos == 'Iron-ANEOS-SLVTv0.2G1':
         eosdir = eospath + 'aneos-iron-2020-master/'
         womaID = 401
-#
 #        MODELNAME = 'Iron-ANEOS-SLVTv0.2G1'
-#        # Header information must all be compatible with float format
 #        MATID = 1.0        # MATID number
 #        DATE = 191105.     # Date as a single 6-digit number YYMMDD
 #        VERSION = 0.2      # ANEOS Parameters Version number
-#        FMN = 26.          # Formula weight in atomic numbers for Fe
-#        FMW = 55.847       # Formula molecular weight (g/cm3) for Fe
-#        # The following define the default initial state for material in the 201 table
-#        R0REF   = 8.06     # g/cm3 *** R0REF is inserted into the density array; using gamma-iron for rho0
-#        K0REF   = 1.51E12  # dynes/cm2; using gamma-iron for rho0
-#        T0REF   = 298.     # K -- *** T0REF is inserted into the temperature array
-#        P0REF   = 1.E6     # dynes/cm2 -- this defines the principal Hugoniot calculated below
 
     elif eos == 'Fe85Si15-ANEOS-SLVTv0.2G1':
         eosdir = eospath + 'aneos-Fe85Si15-2020-master/'
         womaID = 402
-#        # ====>>>>>> YOU NEED TO MAKE SURE THESE VALUES MATCH ANEOS.INPUT  <<<<=====
 #        MODELNAME = 'Fe85Si15-ANEOS-SLVTv0.2G1'
-#        # Header information must all be compatible with float format
 #        MATID = 1.0        # MATID number
 #        DATE = 191105.     # Date as a single 6-digit number YYMMDD
 #        VERSION = 0.2      # ANEOS Parameters Version number
-#        FMN = 24.20        # Formula weight in atomic numbers for Fe85Si15
-#        FMW = 51.68        # Formula molecular weight (g/cm3) for Fe85Si15
-#        # The following define the default initial state for material in the 201 table
-#        R0REF   = 7.51     # g/cm3 *** R0REF is inserted into the density array; using gamma-iron for rho0
-#        K0REF   = 1.51E12  # dynes/cm2; using gamma-iron for rho0
-#        T0REF   = 298.     # K -- *** T0REF is inserted into the temperature array
-#        P0REF   = 1.E6     # dynes/cm2 -- this defines the principal Hugoniot calculated below
-# #       #-------------------------------------------------------------
 
     elif eos == 'Forsterite-ANEOS-SLVTv1.0G1':
         eosdir = eospath + 'aneos-forsterite-2019-master/'
         womaID = 400
 #        MODELNAME = 'Forsterite-ANEOS-SLVTv1.0G1'
-#        # Header information must all be compatible with float format
 #        MATID = 1.0        # MATID number
 #        DATE = 190802.     # Date as a single 6-digit number YYMMDD
 #        VERSION = 0.1      # ANEOS Parameters Version number
-#        FMN = 70.          # Formula weight in atomic numbers for Mg2SiO4
-#        FMW = 140.691      # Formula molecular weight (g/cm3) for Mg2SiO4
-#        # The following define the default initial state for material in the 201 table
-#        R0REF   = 3.22     # g/cm3 *** R0REF is inserted into the density array
-#        K0REF   = 1.1E12   # dynes/cm2
-#        T0REF   = 298.     # K -- *** T0REF is inserted into the temperature array
-#        P0REF   = 1.E6     # dynes/cm2 -- this defines the principal Hugoniot calculated below
     
     
-    NewEOS  = EOStable() # FIRST make new empty EOS object
+    NewEOS  = EOStable() # make new empty EOS object
     NewEOS.TYPE = eostype
     NewEOS.womaID = womaID
     
@@ -138,7 +118,7 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False):
     NewEOS.onebar.S = npy.zeros(NewEOS.NT)
     NewEOS.onebar.rho = npy.zeros(NewEOS.NT)
     it0 = npy.where(NewEOS.T >= NewEOS.T0REF)[0]
-    id0 = npy.arange(NewEOS.ND)#npy.where(NewEOS.rho >= 0.8*NewEOS.R0REF)[0]
+    id0 = npy.arange(NewEOS.ND)
     for iit in range(0,NewEOS.NT):
         NewEOS.onebar.T[iit] = NewEOS.T[iit]
         NewEOS.onebar.S[iit] = npy.interp(1.E-4,NewEOS.P[iit,id0],NewEOS.S[iit,id0])

@@ -1,3 +1,7 @@
+"""
+   planit impact class and analysis tools
+"""
+
 from .snaptools import Snapshot
 
 import numpy as npy

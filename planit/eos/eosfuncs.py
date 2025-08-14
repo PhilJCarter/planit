@@ -1,8 +1,13 @@
+"""
+   planit equation of state functions
+"""
+
 from ..main import *
 
 import numpy as npy
 import numba
 from .eos_table import *
+from .eos_table import isentrope_class as eos_isentrope_class
 from .aneostable import *
 from . import tabinterp
 
@@ -16,10 +21,10 @@ def loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS'):
         raise ValueError('Error: unsupported EOS type:', eostype)
 
 
-# Load default EOS tables
-ANEOSIron       = loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS')
-ANEOSFeSiAlloy  = loadEOS(eos='Fe85Si15-ANEOS-SLVTv0.2G1', eostype='ANEOS')
-ANEOSForsterite = loadEOS(eos='Forsterite-ANEOS-SLVTv1.0G1', eostype='ANEOS')
+# Variables to hold EOS tables
+ANEOSIron       = None
+ANEOSFeSiAlloy  = None
+ANEOSForsterite = None
 
 # EOS table common names
 ironnames  = ['iron','ANEOSIron','Fe','Iron',401]
@@ -28,19 +33,31 @@ forsteritenames = ['forsterite','ANEOSForsterite','Forsterite','Fo',400]
 
 
 def select(name):
-    """Return EoS table object specified by name"""
+    """
+       Return EoS table object specified by name, 
+       loading it first if not already loaded
+    """
     if name in ironnames:
+        global ANEOSIron
+        if not ANEOSIron:
+            ANEOSIron = loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS')
         return ANEOSIron
     elif name in alloynames:
+        global ANEOSFeSiAlloy
+        if not ANEOSFeSiAlloy:
+            ANEOSFeSiAlloy  = loadEOS(eos='Fe85Si15-ANEOS-SLVTv0.2G1', eostype='ANEOS')
         return ANEOSFeSiAlloy
     elif name in forsteritenames:
+        global ANEOSForsterite
+        if not ANEOSForsterite:
+            ANEOSForsterite = loadEOS(eos='Forsterite-ANEOS-SLVTv1.0G1', eostype='ANEOS')
         return ANEOSForsterite
     else:
         raise ValueError('Unknown EOS.')
         return None
         
         
-class isentrope_class:
+class isentrope_class(eos_isentrope_class):
     """Class to hold isentrope data extracted from EOS table.
     
        extract(material,entropy) - extract isentrope from EOS
@@ -48,15 +65,10 @@ class isentrope_class:
     """ 
     def __init__(self, entropy=None, material=None): 
         """A function to initialize the class object.""" 
+        eos_isentrope_class.__init__(self)
         self.entropy = entropy
         self.material = material
-        self.ND = 0 # number of density points
-        self.density     = []   
-        self.pressure    = []
-        self.temperature = []
-        self.soundspeed  = []
-        self.intenergy   = []
-        self.units = ''
+        self.intenergy = []
         if self.material and self.entropy:
             self.extract()
     

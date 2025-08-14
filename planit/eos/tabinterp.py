@@ -1,3 +1,7 @@
+"""
+   planit EOS table interpolation functions
+"""
+
 from ..main import *
 from scipy import interpolate
 import numpy as npy

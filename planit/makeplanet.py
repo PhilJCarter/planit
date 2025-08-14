@@ -1,3 +1,7 @@
+"""
+   planit SPH planet generation functions
+"""
+
 from .main import *
 from .snaptools import Snapshot
 from . import eos

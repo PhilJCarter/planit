@@ -1,3 +1,7 @@
+"""
+   planit utilities
+"""
+
 from .main import *
 import numpy as npy
 import numba
