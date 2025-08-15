@@ -22,6 +22,8 @@ def from_rhoT(Qlab,rho,T,EOS,dolog=True):
         iT0 = 0
     else:
         iT0 = npy.where(EOS.T<T)[0][-1]
+    if iT0 == len(EOS.T)-1:
+        iT0 -=1
     
     r0 = EOS.rho[ir0]
     r1 = EOS.rho[ir0+1]

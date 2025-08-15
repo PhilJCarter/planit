@@ -197,10 +197,10 @@ class Impact:
                 im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],vmin=cmin,vmax=cmax,cmap=cmap)
             elif type=='phase':
                 self.data[j].calc_phase()
+                # reorder phases for plotting
                 phase = npy.where(self.data[j].phase<=6,self.data[j].phase-1,self.data[j].phase)
                 phase = npy.where(phase<2,6,phase)
-                im = plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=phase[modz<zcut],alpha=1.,cmap=cmapphase,norm=matplotlib.colors.Normalize(vmin=phmin,vmax=phmax,clip=False),rasterized=True)
-    #s=0.8
+                im = plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=phase[modz<zcut],alpha=1.,cmap=cmapphase,norm=matplotlib.colors.Normalize(vmin=phmin,vmax=phmax,clip=False),rasterized=True) #s=0.8
 
             if i>0:
                 plt.gca().set_yticklabels([])

@@ -56,6 +56,7 @@ user2names = ['User2',902]
 user3names = ['User3',903]
 user4names = ['User4',904]
 
+
 def select(name, eosname=None, eosdir=None):
     """
        Return EoS table object specified by name, 
@@ -117,8 +118,8 @@ def select(name, eosname=None, eosdir=None):
             UserEOS4 = loadANEOSEOS(eos=eosname, eostype='SESAME', eosdir=eosdir, user=True)
         return UserEOS4
     else:
-        print('Unknown EOS')
-        return None
+        raise ValueError('Unknown EOS:',name)
+        #return None
         
         
 class isentrope_class(eos_isentrope_class):
@@ -256,9 +257,12 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
             elif Ylab == 'T':
                 Q[i] = tabinterp.from_rhoT(Qlab, X[i], Y[i], EOS)
         elif EOS.TYPE == 'HM80':
-            if (Ylab is not 'U') or (Qlab not in ['P','T']):
-                raise NotImplementedError('Calculation of', Qlab, 'from', Xlab, 'and', Ylab, 'is not available' )
-            Q[i] = tabinterp.from_rhoU1D(Qlab, X[i], Y[i], EOS)
+            if (Ylab != 'U') or (Qlab not in ['P','T']):
+                #raise NotImplementedError('Calculation of', Qlab, 'from', Xlab, 'and', Ylab, 'is not available' )
+                #print('Calculation of', Qlab, 'from', Xlab, 'and', Ylab, 'is not available. Returning NaN.')
+                Q[i] = npy.nan
+            else:
+                Q[i] = tabinterp.from_rhoU1D(Qlab, X[i], Y[i], EOS)
         else:
             raise NotImplementedError('Non-ANEOS EOS not currently supported.')            
     return Q*uconversion_Q

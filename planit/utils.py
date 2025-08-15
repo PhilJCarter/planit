@@ -7,6 +7,18 @@ import numpy as npy
 import numba
 
 
+def calc_hmax(rho_lim,part_mass):
+    """
+       calculate maximum smoothing length corresponding to the 
+       density floor (rho_lim) for a given particle mass (part_mass)
+       
+       returns h_max in Earth radii (default format used for SWIFT param)
+    """
+    h = (part_mass/(4/3.*npy.pi*rho_lim) )**(1./3.)
+    return h/Rearth * 1.206
+
+
+
 class Node:
     def __init__(self,width,origin,pos,mass,ids,leaves=[]):
         self.size = width

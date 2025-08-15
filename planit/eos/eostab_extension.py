@@ -1,5 +1,10 @@
+"""
+   planit eos_table.extEOStable class extensions
+"""
+
 from .eos_table import extEOStable
 import numpy as npy
+
 
 class EOStable(extEOStable):
     def __init__(self):

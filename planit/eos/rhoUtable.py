@@ -1,3 +1,7 @@
+"""
+   planit rho-U / HM80 table wrapper functions
+"""
+
 from ..main import *
 from .eos_table import *
 from .eostab_extension import *

@@ -25,7 +25,9 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False, eo
     
     Returns: EOStable
     """
-        
+    
+    NewEOS  = EOStable() # make new empty EOS object
+    
     if eos == 'Iron-ANEOS-SLVTv0.2G1':
         eosdir = eospath + 'aneos-iron-2020-master/'
         womaID = 401
@@ -52,6 +54,7 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False, eo
 
     elif eos == '5PhaseEOSv8.3':
         eosdir = eospath + '5-phase-water/'
+        womaID = 303
         #MODELNAME='5PhaseEOSv8.3'
         # The following define the default initial state for material in the 201 table
         NewEOS.R0REF   = 1.0      # g/cm3 *** R0REF is inserted into the density array
@@ -62,7 +65,6 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug = False, eo
     elif not user:
         raise ValueError('EOS:',eos,'unknown.')          
     
-    NewEOS  = EOStable() # make new empty EOS object
     NewEOS.TYPE = eostype
     NewEOS.womaID = womaID
     

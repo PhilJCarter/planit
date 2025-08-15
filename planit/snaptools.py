@@ -110,7 +110,7 @@ class Snapshot:
 
     def __getattribute__(self, attr):
         """
-        Automatically attempts read from file if attribute is accessed but not loaded
+        Automatically attempts read from file if attribute is accessed but not already loaded
         """
         if attr in ['x','y','z','vx','vy','vz','pos','vel','id','m','S','rho','hsml','pot','P','T','U','cs'] and self.file:
             if len(super().__getattribute__(attr))==0:
@@ -141,6 +141,7 @@ class Snapshot:
         Clear all loaded data
         """
         self.initarrays()
+
 
     def ensure_matIDs(self,mats):
         if npy.ndim(self.materialIDs) < 1:
@@ -311,7 +312,7 @@ class Snapshot:
             else:
                 print('array mismatch')
             
-    def load_hdf5(self, fname, headonly=False, thermo=False, compress=False, debug=False):
+    def load_hdf5(self, fname, headonly=False, recenter=True, thermo=False, compress=False, debug=False):
         """
         Load an HDF5 snapshot
         """        
@@ -360,7 +361,9 @@ class Snapshot:
                 f.close()
                 return
         
-            self.pos = part['Coordinates'][:].reshape((self.header.npart[0], 3)) * Lfactor 
+            self.pos = part['Coordinates'][:].reshape((self.header.npart[0], 3)) * Lfactor
+            if recenter:
+                self.pos -= self.header.BoxSize/2.
             self.vel = part['Velocities'][:].reshape((self.header.npart[0], 3)) * Lfactor/Tfactor
             if 'MaterialIDs' in part.keys():
                 self.materialIDs = part['MaterialIDs'][:]
@@ -466,7 +469,9 @@ class Snapshot:
         self.vz = npy.zeros(self.N)
         self.vel = npy.zeros((self.N, 3))
 
+### edit
         self.id = npy.where(partplanet.mat==0, npy.arange(len(partplanet.mat)), npy.arange(len(partplanet.mat))-len(partplanet.mat[partplanet.mat==0])+IDOFF )
+### edit end
         self.m = partplanet.m
         self.S = partplanet.S
         self.rho = partplanet.rho
@@ -499,7 +504,7 @@ class Snapshot:
         self.header.flag_stellarage = self.header.flag_metals = 0
         self.header.nallhw = npy.array([0, 0, 0, 0, 0, 0])
         if body1.header.flag_entr_ics[0] != body2.header.flag_entr_ics[0]:
-            print("Entropy IC flags must match!")
+            raise ValueError("Entropy IC flags must match!", body1.header.flag_entr_ics[0], body2.header.flag_entr_ics[0])
             
         self.header.flag_entr_ics = body1.header.flag_entr_ics
 
@@ -527,11 +532,11 @@ class Snapshot:
         self.rho = npy.append(body1.rho,body2.rho)
         self.pot = npy.append(body1.pot,body2.pot)
         self.hsml = npy.append(body1.hsml,body2.hsml)
-        if npy.ndim(body1.materialIDs) > 0:
+        if npy.ndim(body1.materialIDs) > 0 and npy.ndim(body2.materialIDs) > 0:
             self.materialIDs = npy.append(body1.materialIDs,body2.materialIDs)
-        if len(body1.U)>0:
+        if len(body1.U)>0 and len(body2.U)>0:
             self.U = npy.append(body1.U,body2.U)
-        if len(body1.P)>0:
+        if len(body1.P)>0 and len(body2.P)>0:
             self.P = npy.append(body1.P,body2.P)
         
 
@@ -556,7 +561,7 @@ class Snapshot:
         self.hsml = npy.delete(self.hsml, npy.where(self.id == pid))
         self.pot = npy.delete(self.pot, npy.where(self.id == pid))
         #if type(self.P) != int:
-        if len(self.P) > 0:
+        if self.inclthermo:
             self.P = npy.delete(self.P, npy.where(self.id == pid))
             self.T = npy.delete(self.T, npy.where(self.id == pid))
             self.U = npy.delete(self.U, npy.where(self.id == pid))
@@ -655,7 +660,7 @@ class Snapshot:
         f.close()
 
 
-    def write_hdf5(self, outname, units='cgs', mats=[401,400]):
+    def write_hdf5(self, outname, units='cgs', mats=[401,400], shift2center = True):
     
         self.ensure_matIDs(mats)
                 
@@ -711,7 +716,10 @@ class Snapshot:
             
             # Particles
             part = f.create_group('/PartType0/')
-            part.create_dataset('Coordinates', data=(self.pos.ravel()+self.header.BoxSize/2.) * Lfactor, compression='gzip')
+            if shift2center:
+                part.create_dataset('Coordinates', data=(self.pos.ravel() +self.header.BoxSize/2.) * Lfactor, compression='gzip')
+            else:
+                part.create_dataset('Coordinates', data=(self.pos.ravel()) * Lfactor, compression='gzip')
             part.create_dataset('Velocities', data=self.vel.ravel() * Lfactor/Tfactor, compression='gzip')
             part.create_dataset('MaterialIDs', data=self.materialIDs, compression='gzip')
             part.create_dataset('ParticleIDs', data=self.id, compression='gzip')
@@ -720,7 +728,7 @@ class Snapshot:
             f['/PartType0/Density'] = part.create_dataset('Densities', data=self.rho * Mfactor/Lfactor**3, compression='gzip')
             f['/PartType0/SmoothingLength'] = part.create_dataset('SmoothingLengths', data=self.hsml * Lfactor, compression='gzip')
             f['/PartType0/Potential'] = part.create_dataset('Potentials', data=self.pot * Lfactor**2/(Tfactor**2), compression='gzip')
-            part.create_dataset('Entropies', data=self.S  * Lfactor**2/(Tfactor**2), compression='gzip')
+            part.create_dataset('Entropies', data=npy.where(npy.isnan(self.S), 0.0, self.S  * Lfactor**2/(Tfactor**2)), compression='gzip')
             if self.inclthermo:
                 part.create_dataset('Pressures', data=self.P * Mfactor / (Lfactor * Tfactor**2), compression='gzip')
                 part.create_dataset('Temperatures', data=self.T, compression='gzip')
@@ -745,11 +753,11 @@ class Snapshot:
         self.header.flag_entr_ics = 0
         self.write_hdf5(fname,units='cgs',mats=mats)
 
-
+### edit
     def identify(self, crust=False):
         self.core = self.iron = npy.where(self.id <= IDOFF, 1, 0)
         self.mant = self.fors = npy.where(self.id > IDOFF, 1, 0)
-
+### edit end
         
     def summary(self):
         print('N SPH:', self.N)
@@ -759,11 +767,11 @@ class Snapshot:
             print('File:', self.file)
 
 
-    def eq_test(self,threshold=0.01):
+    def eq_test(self, threshold = 0.01):
         r = npy.sqrt( (self.x-npy.average(self.x,weights=self.m))**2 + (self.y-npy.average(self.y,weights=self.m))**2 + (self.z-npy.average(self.z,weights=self.m))**2 )
-        vesc = npy.sqrt( 2*6.67e-8*self.m.sum()/r.max() )        
+        vesc = npy.sqrt( 2*G*self.m.sum()/r.max() )        
         vrms = ( npy.sqrt( ( (self.vx-npy.average(self.vx,weights=self.m))**2 + (self.vy-npy.average(self.vy,weights=self.m))**2 + (self.vz-npy.average(self.vz,weights=self.m))**2 ).mean() ) )
-        if vrms<=threshold*vesc:
+        if vrms <= threshold*vesc:
             return True
         else:
             return False
@@ -840,7 +848,7 @@ class Snapshot:
         
         self.bnd = self.rem
                                 
-                
+### edit                
     def calc_phase(self,release=False,plot=False):
         if npy.unique(self.materialIDs)[-1] == 402:
             CoreEOS = eos.select('alloy')
@@ -901,7 +909,7 @@ class Snapshot:
         self.phase[self.id<GADGET_EOS_OFFSET] = npy.where(self.S>CSvap(self.P),7,self.phase)[self.id<GADGET_EOS_OFFSET]
         #should be P,T!
         self.phase[self.id<GADGET_EOS_OFFSET] = npy.where((self.P>CoreEOS.cp.P*1e10)*(self.S>CoreEOS.cp.S*1e3*1e7),8,self.phase)[self.id<GADGET_EOS_OFFSET]
-
+### edit end
 
     def calc_vap_frac(self,plot=False):
         self.calc_phase(plot=False)
