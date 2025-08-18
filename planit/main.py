@@ -10,7 +10,7 @@ Supported planetary impact codes: gadget-2-planetary, swift
 
 Philip J. Carter (p.carter@bristol.ac.uk)
 
-Sarah T. Stewart (sts@sarahstewart.net)
+Sarah T. Stewart (sstewa56@asu.edu)
 
 v0.8
 
@@ -24,8 +24,8 @@ datadir = os.path.dirname(__file__) + '/data/'
 from . import eos
 
 
-G = 6.6743E-8      # Gravitational constant cgs cm3/g/s2
-Rearth = 6.371e8 # Earth's radius in cm
+G = 6.6743E-8     # Gravitational constant cgs cm3/g/s2
+Rearth = 6.371e8  # Earth's radius in cm
 
 GADGET_EOS_OFFSET = IDOFF   = 200000000    # material id offset
 PROJ_ID_OFFSET    = BODYOFF = 100000000    # body id offset
