@@ -32,6 +32,7 @@ def loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS'):
 ANEOSIron       = None
 ANEOSFeSiAlloy  = None
 ANEOSForsterite = None
+ANEOSPyrolite = None
 
 FivePhaseWater = None
 AQUAWater = None
@@ -46,6 +47,7 @@ UserEOS4 = None
 ironnames  = ['iron','ANEOSIron','Fe','Iron',401]
 alloynames = ['alloy','ANEOSFeSiAlloy','FeSi','Alloy','IronAlloy','ironalloy',402]
 forsteritenames = ['forsterite','ANEOSForsterite','Forsterite','Fo',400]
+pyrolitenames = ['pyrolite','Pyrolite','ANEOSPyrolite',403]
 aquawaternames = ['AQUA','AQUAWater','aqua',304]
 fivephasewaternames = ['5PhaseWater','5phasewater','SS08','SenftStewartWater','SenftStewart08',303]
 hm80HHenames = ['HM80_HHe','HM80HHe',200]
@@ -77,6 +79,11 @@ def select(name, eosname=None, eosdir=None):
         if not ANEOSForsterite:
             ANEOSForsterite = loadEOS(eos='Forsterite-ANEOS-SLVTv1.0G1', eostype='ANEOS')
         return ANEOSForsterite
+    elif name in pyrolitenames:
+        global ANEOSPyrolite
+        if not ANEOSPyrolite:
+            ANEOSPyrolite = loadEOS(eos='Pyrolite_ANEOS_SLVTv0.2', eostype='ANEOS')
+        return ANEOSPyrolite
     elif name in aquawaternames:
         global AQUAWater
         if not AQUAWater:

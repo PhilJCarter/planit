@@ -3,15 +3,9 @@ import random
 import numpy as npy
 from planit import eos
 
-
-def test_iron_eos_loading():
-    assert eos.select('iron') is not None
-
-def test_ironalloy_eos_loading():
-    assert eos.select('FeSi') is not None
-
-def test_forsterite_eos_loading():
-    assert eos.select('ANEOSForsterite') is not None
+@pytest.mark.parametrize('EOS', ['iron','Fe','FeSi','Fo','ANEOSPyrolite','5PhaseWater'])
+def test_eos_loading(EOS):
+    assert eos.select(EOS) is not None
 
 def test_unknown_eos_loading():
     with pytest.raises(ValueError):
@@ -28,7 +22,7 @@ def test_calcprop_unknown():
 
 @pytest.mark.parametrize('execcount', range(500))
 def test_interp_ANEOS_U(execcount):
-    aneoslist = ['ANEOSIron','ANEOSForsterite','ANEOSFeSiAlloy','5PhaseWater']
+    aneoslist = ['ANEOSIron','ANEOSForsterite','ANEOSFeSiAlloy','ANEOSPyrolite','5PhaseWater']
     EOS = eos.select(random.choice(aneoslist))
     j = npy.random.randint(0,high=len(EOS.rho))
     i = npy.random.randint(0,high=len(EOS.T))

@@ -415,7 +415,7 @@ def make_SPH_planet(mass=Mearth,corefraction=0.3,Pmin=1.e6,Score=1.81,Smantle=3.
 # The 1D model has been updated by Panning and Romanowicz (2006). Download the Modified PREM model from the <a href="http://ds.iris.edu/spud/earthmodel/9785674">IRIS web site</a>.
 #Durek, J. J., and G. Ekstrom (1996) Modified PREM (Preliminary Reference Earth Model), doi:10.17611/DP/9785674, http://ds.iris.edu/spud/earthmodel/9785674.
 
-class PREM:
+class PREMclass:
     """Class to hold PREM data and other 1-D Earth variables."""  # this is a documentation string for this class
     def __init__(self): # self is the default name of the object for internal referencing of the variables in the class
         """A function to initialize the class object.""" # this is a documentation string for this function
@@ -482,7 +482,6 @@ class PREM:
 #PREM = PREMclass()
 
 
-
 def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='iron',mantleEOS='Forsterite'):
     if particleplanet:
         inclpart = True
@@ -491,7 +490,7 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
         
     if planet.M >= 0.1*Mearth:
         showPREM = True
-        PREM=PREM()
+        PREM = PREMclass()
     else:
         showPREM = False
 

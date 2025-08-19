@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/PhilJCarter/planit/actions/workflows/python-test.yml/badge.svg)](https://github.com/PhilJCarter/planit/actions/workflows/python-test.yml)
 
-**Plan**etary **I**mpact **T**oolkit provides tools for accessing, manipulating, and 
+The **Plan**etary **I**mpact **T**oolkit provides tools for accessing, manipulating, and 
 analysing smoothed particle hydrodynamcis (SPH) impact simulation data, and creating 
 planets for SPH impact simulations.
 
@@ -31,12 +31,19 @@ an impact simulation.\
 - ANEOS Forsterite ([Stewart et al., 2019](https://github.com/ststewart/aneos-forsterite-2019)): `ANEOSForsterite`
 - ANEOS Iron ([Stewart, 2020](https://github.com/ststewart/aneos-iron-2020)): `ANEOSIron`
 - ANEOS Fe85Si15 ([Stewart, 2020](https://github.com/ststewart/aneos-Fe85Si15-2020/)): `ANEOSFeSiAlloy`
+- ANEOS Pyrolite ([Stewart et al., 2022](https://github.com/ststewart/aneos-pyrolite-2022/)): `ANEOSPyrolite`
 - 5-phase Water ([Senft & Stewart, 2008](https://ui.adsabs.harvard.edu/link_gateway/2008M&PS...43.1993S/doi:10.1111/j.1945-5100.2008.tb00657.x)): `5PhaseWater`
 - HM80 Hydrogen-Helium ([Hubbard & MacFarlane, 1980](https://ui.adsabs.harvard.edu/link_gateway/1980JGR....85..225H/doi:10.1029/JB085iB01p00225); [Lock & Stewart, 2024](https://ui.adsabs.harvard.edu/link_gateway/2024PSJ.....5...28L/doi:10.3847/PSJ/ad0b16)): `HM80HHe`
 
 They can be accessed using the names given above (as well as some variations) or using the 
 corresponding SWIFT/WoMa ID number.\
 User supplied tables in standard SESAME format can also be used.
+
+> [!NOTE]
+> `ANEOSPyrolite` has been assigned the SWIFT/WoMa ID 403 in planit but does not have an 
+assigned ID in SWIFT. Using a modified version of SWIFT or using the user supplied EoS functionality 
+will be required.
+
 
 ## Planet generation
 

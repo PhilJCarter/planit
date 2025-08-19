@@ -3,6 +3,7 @@
 """
 
 from .snaptools import Snapshot
+from .utils import *
 
 import numpy as npy
 import scipy
@@ -304,6 +305,9 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
     
     m = 1
     k = 0
+    leftcol = None
+    toprow = None
+    
     fig = plt.figure()#figsize=(10,4))
     fig.set_figwidth(8.)
     fig.set_figheight(8./max(n)*(len(imps)*len(types)) + 10.)#-0.1

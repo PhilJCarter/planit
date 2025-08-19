@@ -2,7 +2,7 @@
    planit snapshot and header classes
 """
 
-from .main import *
+#from .main import *
 from .utils import *
 from . import eos
 
