@@ -40,7 +40,7 @@ corresponding SWIFT/WoMa ID number.\
 User supplied tables in standard SESAME format can also be used.
 
 > [!NOTE]
-> `ANEOSPyrolite` has been assigned the SWIFT/WoMa ID 403 in planit but does not have an 
+> `ANEOSPyrolite` has been assigned the SWIFT/WoMa ID 403 in planit but does not currently have an 
 assigned ID in SWIFT. Using a modified version of SWIFT or using the user supplied EoS functionality 
 will be required.
 

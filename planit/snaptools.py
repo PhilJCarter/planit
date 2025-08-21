@@ -381,15 +381,15 @@ class Snapshot:
             self.U = part['InternalEnergies'][:] * Lfactor**2/(Tfactor**2)
             if 'Entropies' in part.keys() and part['Entropies'][:].max()>0:
                 self.S = part['Entropies'][:] * Lfactor**2/(Tfactor**2)
-            else:
+            elif thermo:
                 self.S = eos.calcprop('S', 'U', 'rho', self.U, self.rho, self.materialIDs)
             if 'Pressures' in part.keys():
                 self.P = part['Pressures'][:] * Mfactor / (Lfactor * Tfactor**2)
-            else:
+            elif thermo:
                 self.P = eos.calcprop('P', 'U', 'rho', self.U, self.rho, self.materialIDs)
             if 'Temperatures' in part.keys():
                 self.T = part['Temperatures'][:]
-            else:
+            elif thermo:
                 self.T = eos.calcprop('T', 'U', 'rho', self.U, self.rho, self.materialIDs)
             if 'Potentials' in part.keys():
                 self.pot = part['Potentials'][:] * Lfactor**2/(Tfactor**2)
@@ -404,19 +404,20 @@ class Snapshot:
             self.m = self.m.astype('float32',copy=False)
             self.pos = npy.array(self.pos).astype('float32',copy=False)
             self.vel = npy.array(self.vel).astype('float32',copy=False)
-            self.S = self.S.astype('float32',copy=False)
+            if len(self.S)>0:
+                self.S = self.S.astype('float32',copy=False)
             self.rho = self.rho.astype('float32',copy=False)
             self.hsml = self.hsml.astype('float32',copy=False)
             self.pot = self.pot.astype('float32',copy=False)
             if len(self.U)>0:
-                    self.U = self.U.astype('float32',copy=False)
-            if len(self.P)>0:
-                    self.P = self.P.astype('float32',copy=False)
+                self.U = self.U.astype('float32',copy=False)
             if thermo:
+                if len(self.P)>0:
+                    self.P = self.P.astype('float32',copy=False)
                 if len(self.T)>0:
                     self.T = self.T.astype('float32',copy=False)
-                if len(self.cs)>0:
-                    self.cs = self.cs.astype('float32',copy=False)
+        #        if len(self.cs)>0:
+        #            self.cs = self.cs.astype('float32',copy=False)
 
         #REARRANGE
         self.pos = npy.array(self.pos).reshape((self.N, 3))

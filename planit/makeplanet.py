@@ -5,6 +5,7 @@
 from .main import *
 from .snaptools import Snapshot
 from . import eos
+from .utils import *
 
 import numpy as npy
 from scipy import interpolate
@@ -16,7 +17,6 @@ import seagen
 G_mks = 6.67E-11 # Gravitational constant  m3/kg/s2
 
 Mearth = 5.972E27 # Earth's mass g
-Rearth = 6371.E5  # Earth's radius cm
 Rcmb = 348000000. # CMB radius in cm (from PREM)
 
 
@@ -53,9 +53,9 @@ def planet_density(m):
     return d
 
 
-def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3.02,
-        mtolerance=1e-3,layer1='iron',layer2='forsterite',layers=[],S=[],mantlepotT=False,
-        plot=False,fixcoreT=False, rhocent=None, verbose=False):
+def make_1D_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Smantle=3.02,
+        mtolerance=1e-3, layer1='iron', layer2='forsterite', layers=[], S=[], mantlepotT=False,
+        plot=False, fixcoreT=False, rhocent=None, verbose=False):
     """
     Create a 1D planet profile
     
@@ -76,8 +76,8 @@ def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3
     verbose - print extra information
     
     """
-    if len(layers) != len(S):
-        print('error: number of layers must match:', len(layers), len(S))
+    if len(layers) != len(S) != len(mass):
+        raise ValueError('number of layers must match. layers, S, mass:', len(layers), len(S), len(mass))
     if not layers or len(layers)==2:
         if layers:
             layer1 = layers[0]
@@ -92,9 +92,9 @@ def make_1D_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3
         print('error: not implemented yet')
 
 
-def make_1D_2L_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantle=3.02,
-        mtolerance=1e-3,layer1='iron',layer2='forsterite',mantlepotT=False,plot=False,
-        fixcoreT=False,verbose=False, rhocent=None):
+def make_1D_2L_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Smantle=3.02,
+        mtolerance=1e-3, layer1='iron', layer2='forsterite', mantlepotT=False, plot=False,
+        fixcoreT=False, verbose=False, rhocent=None):
     
     mcore = corefraction * mass
     mmantle = (1-corefraction) * mass
@@ -173,8 +173,8 @@ def make_1D_2L_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantl
         rhoi = rhocenter
 
         #    Pi = Pcenter
-        darr = npy.full(1,rhoi)
-        parr = npy.full(1,Pi)
+        #darr = npy.full(1,rhoi)
+        #parr = npy.full(1,Pi)
 
         itercount = 0
         maxiter = 50000
@@ -213,7 +213,6 @@ def make_1D_2L_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantl
 
             ri = rarr[0]
             ii=1
-
             coreiter=0
             
             # inner loop 1 to make core of required mass
@@ -318,9 +317,9 @@ def make_1D_2L_planet(mass=Mearth,corefraction=0.325,Pmin=1.e6,Score=1.81,Smantl
 
 
 
-def make_SPH_planet(mass=Mearth,corefraction=0.3,Pmin=1.e6,Score=1.81,Smantle=3.03,
-        mtolerance=1e-3,layer1='alloy',layer2='forsterite',layers=[],S=[],mantlepotT=False,plot=False,
-        resolution=5e5,fixcoreT=False,rhocent=None,verbose=False,profile=None):
+def make_SPH_planet(mass=Mearth, corefraction=0.3, Pmin=1.e6, Score=1.81, Smantle=3.03, 
+        mtolerance=1e-3, layer1='alloy', layer2='forsterite', layers=[], S=[], mantlepotT=False, 
+        plot=False, resolution=5e5, fixcoreT=False, rhocent=None, verbose=False, profile=None):
     """
     mass - list of layer masses (inside to out) or total mass of 2 layer planet
     corefraction - core mass fraction for 2 layer planet
@@ -345,9 +344,8 @@ def make_SPH_planet(mass=Mearth,corefraction=0.3,Pmin=1.e6,Score=1.81,Smantle=3.
         planet = profile
     else:
         if len(layers) != len(S):
-            print('error: number of layers must match:', len(layers), len(S))
-            return
-        if len(layers)==2:
+            raise ValueError('Number of layers must match number of entropies:', len(layers), len(S))
+        if len(layers) == 2:
             layer1 = layers[0]
             layer2 = layers[1]
             Score = S[0]
@@ -355,11 +353,10 @@ def make_SPH_planet(mass=Mearth,corefraction=0.3,Pmin=1.e6,Score=1.81,Smantle=3.
             totmass = sum(mass)
             corefraction = mass[0]/totmass
             mass = totmass
-        planet,core,mantle = make_1D_planet(plot=plot,mantlepotT=mantlepotT,layer1=layer1,layer2=layer2,mass=mass,corefraction=corefraction,Pmin=Pmin,Score=Score,Smantle=Smantle,mtolerance=mtolerance,fixcoreT=fixcoreT,verbose=verbose,layers=layers,S=S,rhocent=rhocent)
+        planet,core,mantle = make_1D_planet(plot=plot, mantlepotT=mantlepotT, layer1=layer1, layer2=layer2, mass=mass, corefraction=corefraction, Pmin=Pmin, Score=Score, Smantle=Smantle, mtolerance=mtolerance, fixcoreT=fixcoreT, verbose=verbose, layers=layers, S=S, rhocent=rhocent)
             
     
     partmass = Mearth / resolution   # mass per particle
-
     Np = int(planet.M / partmass)    # desired total number of particles
     
     if verbose:
@@ -368,41 +365,42 @@ def make_SPH_planet(mass=Mearth,corefraction=0.3,Pmin=1.e6,Score=1.81,Smantle=3.
     
     # use seagen to generate spherical planet particles
     particleplanet = seagen.GenSphere(Np,planet.rarr[1:],planet.density[1:],A1_T_prof=planet.temperature[1:],A1_P_prof=planet.pressure[1:],A1_mat_prof=planet.mat[1:],verbosity=0, A1_m_rel_prof=1.0*npy.ones(len(planet.mat[1:])))#, A1_force_more_shells=[False,True])
-    if len(layers)==2 or len(layers)==0:
-        setattr(particleplanet,"S",npy.where(particleplanet.mat==0,core.entropy*1e7,mantle.entropy*1e7))
+    if len(layers) == 2 or len(layers) == 0:
+        setattr(particleplanet, "S", npy.where(particleplanet.mat==0, core.entropy*1e7, mantle.entropy*1e7))
     else:
         print('error: multi-layers not implemented yet')
+        return
 
     if verbose:
         print(npy.unique(particleplanet.A1_m))
         print( (particleplanet.A1_m.max()-npy.mean(particleplanet.A1_m))/npy.mean(particleplanet.A1_m), (particleplanet.A1_m.min()-npy.mean(particleplanet.A1_m))/npy.mean(particleplanet.A1_m) )
 
     if plot:
-        zcut=50e5
+        zcut = 50e5
         plt.scatter(particleplanet.A1_x[npy.abs(particleplanet.z)<zcut]/1e5,particleplanet.A1_y[npy.abs(particleplanet.z)<zcut]/1e5,c=particleplanet.rho[npy.abs(particleplanet.z)<zcut])
         plt.axis('equal')
         plt.colorbar()
         plt.show()
 
-    print('N:',particleplanet.N_picle)
+    print('N:', particleplanet.N_picle)
     massresid = partmass-npy.unique(particleplanet.A1_m)
     if verbose:
-        print('pm:',massresid.min()/partmass,massresid.max()/partmass)
+        print('pm:', massresid.min()/partmass, massresid.max()/partmass)
 
     # load particle planet into planit snapshot
     sn = Snapshot()
     sn.ic_from_seagen(particleplanet)
     
     if verbose:
-        print(sn.m.sum()/Mearth,sn.m.std()/Mearth)
+        print(sn.m.sum()/Mearth, sn.m.std()/Mearth)
 
     sn.m = npy.ones(len(sn.m))*partmass   # set all particle masses to calculated value
 
     if verbose:
-        print(sn.m.sum()/Mearth,sn.m.std()/Mearth)
+        print(sn.m.sum()/Mearth, sn.m.std()/Mearth)
     
     if not profile:
-        return planet,core,mantle,sn,particleplanet
+        return planet, core, mantle, sn, particleplanet
     else:
         return sn, particleplanet
 
@@ -478,9 +476,6 @@ class PREMclass:
         PREM.temperature = interp_func(PREM.pressure)
 
 
-# initialize an empty PREM object
-#PREM = PREMclass()
-
 
 def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='iron',mantleEOS='Forsterite'):
     if particleplanet:
@@ -499,6 +494,9 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
         print('Unknown core EOS')
         return
     mEOS = eos.select(mantleEOS)
+    if mEOS is None:
+        print('Unknown core EOS')
+        return
         
     fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(8,12))
     plt.subplots_adjust(wspace=0.25)
@@ -545,8 +543,10 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
 
     axes[ai,aj].set_xlabel('Pressure (GPa)')
     axes[ai,aj].set_ylabel('Temperature (K)')
-    axes[ai,aj].plot(mEOS.mc.Pl,mEOS.mc.T,'-',color='black',label='Forsterite melt curve',markersize=10)
-    axes[ai,aj].plot(cEOS.mc.Pl,cEOS.mc.T,'--',color='black',label=coreEOS+' melt curve')
+    if mEOS.mc.NT > 0:
+        axes[ai,aj].plot(mEOS.mc.Pl,mEOS.mc.T,'-',color='black',label='Forsterite melt curve',markersize=10)
+    if cEOS.mc.NT > 0:
+        axes[ai,aj].plot(cEOS.mc.Pl,cEOS.mc.T,'--',color='black',label=coreEOS+' melt curve')
 
     if inclpart:
         axes[ai,aj].scatter(particleplanet.P/1e10,particleplanet.T,s=6,c=particleplanet.S/1e7,vmax=4.)
@@ -565,10 +565,12 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
     axes[ai,aj].set_ylabel('Pressure (GPa)')
     axes[ai,aj].set_xlabel('Entropy (kJ K$^{-1}$ kg$^{-1}$)')
 
-    axes[ai,aj].plot(mEOS.mc.Sl*1e3,mEOS.mc.Pl,'-',color='black',label='forsterite PB')
-    axes[ai,aj].plot(cEOS.mc.Sl*1e3,cEOS.mc.Pl,'--',color='black',label=coreEOS+' PB')
-    axes[ai,aj].plot(mEOS.mc.Ss*1e3,mEOS.mc.Ps,'-',color='black',markersize=10)
-    axes[ai,aj].plot(cEOS.mc.Ss*1e3,cEOS.mc.Ps,'--',color='black')
+    if mEOS.mc.NT > 0:
+        axes[ai,aj].plot(mEOS.mc.Sl*1e3,mEOS.mc.Pl,'-',color='black',label=mantleEOS+' PB')
+        axes[ai,aj].plot(mEOS.mc.Ss*1e3,mEOS.mc.Ps,'-',color='black',markersize=10)
+    if cEOS.mc.NT > 0:
+        axes[ai,aj].plot(cEOS.mc.Sl*1e3,cEOS.mc.Pl,'--',color='black',label=coreEOS+' PB')
+        axes[ai,aj].plot(cEOS.mc.Ss*1e3,cEOS.mc.Ps,'--',color='black')
 
     axes[ai,aj].plot(mEOS.vc.Sl*1e3,mEOS.vc.Pl,'-',color='black',markersize=10)
     axes[ai,aj].plot(cEOS.vc.Sl*1e3,cEOS.vc.Pl,'--',color='black',markersize=10)
@@ -589,15 +591,17 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
     axes[ai,aj].set_ylabel('Pressure (GPa)')
     axes[ai,aj].set_xlabel('Entropy (kJ K$^{-1}$ kg$^{-1}$)')
 
-    axes[ai,aj].plot(mEOS.mc.Sl*1e3,mEOS.mc.Pl,'-',color='black',label='forsterite PB')
-    axes[ai,aj].plot(mEOS.mc.Ss*1e3,mEOS.mc.Ps,'-',color='black',markersize=10)
-    axes[ai,aj].plot(cEOS.mc.Sl*1e3,cEOS.mc.Pl,'--',color='black',label=coreEOS+' PB')
-    axes[ai,aj].plot(cEOS.mc.Ss*1e3,cEOS.mc.Ps,'--',color='black')
+    if mEOS.mc.NT > 0:
+        axes[ai,aj].plot(mEOS.mc.Sl*1e3,mEOS.mc.Pl,'-',color='black',label=mantleEOS + ' PB')
+        axes[ai,aj].plot(mEOS.mc.Ss*1e3,mEOS.mc.Ps,'-',color='black',markersize=10)
+        axes[ai,aj].plot(mEOS.vc.Sl*1e3,mEOS.vc.Pl,'-',color='black',markersize=10)
+        axes[ai,aj].plot(mEOS.vc.Sv*1e3,mEOS.vc.Pv,'-',color='black',markersize=10) #label='forsterite VD'
+    if cEOS.mc.NT > 0:
+        axes[ai,aj].plot(cEOS.mc.Sl*1e3,cEOS.mc.Pl,'--',color='black',label=coreEOS+' PB')
+        axes[ai,aj].plot(cEOS.mc.Ss*1e3,cEOS.mc.Ps,'--',color='black')
 
-    axes[ai,aj].plot(mEOS.vc.Sl*1e3,mEOS.vc.Pl,'-',color='black',markersize=10)
-    axes[ai,aj].plot(cEOS.vc.Sl*1e3,cEOS.vc.Pl,'--',color='black',markersize=10)
-    axes[ai,aj].plot(mEOS.vc.Sv*1e3,mEOS.vc.Pv,'-',color='black',markersize=10) #label='forsterite VD'
-    axes[ai,aj].plot(cEOS.vc.Sv*1e3,cEOS.vc.Pv,'--',color='black',markersize=10) #label='iron VD'
+        axes[ai,aj].plot(cEOS.vc.Sl*1e3,cEOS.vc.Pl,'--',color='black',markersize=10)
+        axes[ai,aj].plot(cEOS.vc.Sv*1e3,cEOS.vc.Pv,'--',color='black',markersize=10) #label='iron VD'
 
     if inclpart:
         axes[ai,aj].scatter(particleplanet.S/1e7,particleplanet.P/1e10,s=6,c=particleplanet.S/1e7,vmax=4.)
