@@ -16,6 +16,9 @@ from . import tabinterp
 
 
 def loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS'):
+    """
+       Wrapper function for loading EoS
+    """
     if eostype == 'ANEOS':
         return loadANEOSEOS(eos=eos, eostype='ANEOS')
     elif eostype == 'SESAME':
@@ -44,6 +47,7 @@ UserEOS2 = None
 UserEOS3 = None
 UserEOS4 = None
 
+# Name lists for EoS
 ironnames  = ['iron','ANEOSIron','Fe','Iron',401]
 alloynames = ['alloy','ANEOSFeSiAlloy','FeSi','Alloy','IronAlloy','ironalloy',402]
 forsteritenames = ['forsterite','ANEOSForsterite','Forsterite','Fo',400]
@@ -198,7 +202,6 @@ uconversion_U_inv = 1./uconversion_U
 uconversion_S_inv = 1./uconversion_S
 
 
-#@numba.jit(parallel=True,forceobj=True)
 def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
     """Calculate thermodynamic property
        
@@ -219,7 +222,6 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
     if not len(X)==len(Y)==len(mats):
         raise ValueError('X, Y, and mats arrays must be the same size/shape')
         
-    Q = npy.zeros(len(X))
     if Ylab == 'rho' and Xlab in ['T','U','S']:
         tmp = Y
         tmplab = Ylab
@@ -253,25 +255,35 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
     elif Ylab == 'U':
         Y = Y*uconversion_U
 
-    for i in numba.prange(len(X)):
-        EOS = select(mats[i])
+    EOSlist = npy.empty(len(X),dtype=object)
+    for mat in npy.unique(mats):
+        EOS = select(mat)
+        passer = EOS.make_passer_class()
+        EOSlist = npy.where(mats==mat,passer,EOSlist)
+    
+    Q = _calc_prop(Qlab,Xlab,Ylab,X,Y,EOSlist.tolist())
+    return Q*uconversion_Q
 
-        if EOS.TYPE in ['ANEOS','SESAME','AQUA']:
+@numba.njit(parallel=True)
+def _calc_prop(Qlab,Xlab,Ylab,X,Y,EOSlist):
+    print(Qlab,Xlab,Ylab)
+    Q = npy.zeros(len(X))
+    for i in numba.prange(len(X)):
+
+        if EOSlist[i].TYPE in ['ANEOS','SESAME','AQUA']:
             if Ylab == 'S':
-                Q[i] = tabinterp.from_rhoS(Qlab, X[i], Y[i], EOS)
+                Q[i] = tabinterp.from_rhoS(Qlab, X[i], Y[i], EOSlist[i])
             elif Ylab == 'U':
-                Q[i] = tabinterp.from_rhoU(Qlab, X[i], Y[i], EOS)
+                Q[i] = tabinterp.from_rhoU(Qlab, X[i], Y[i], EOSlist[i])
             elif Ylab == 'T':
-                Q[i] = tabinterp.from_rhoT(Qlab, X[i], Y[i], EOS)
-        elif EOS.TYPE == 'HM80':
+                Q[i] = tabinterp.from_rhoT(Qlab, X[i], Y[i], EOSlist[i])
+        elif EOSlist[i].TYPE == 'HM80':
             if (Ylab != 'U') or (Qlab not in ['P','T']):
                 #raise NotImplementedError('Calculation of', Qlab, 'from', Xlab, 'and', Ylab, 'is not available' )
                 #print('Calculation of', Qlab, 'from', Xlab, 'and', Ylab, 'is not available. Returning NaN.')
                 Q[i] = npy.nan
             else:
-                Q[i] = tabinterp.from_rhoU1D(Qlab, X[i], Y[i], EOS)
+                Q[i] = tabinterp.from_rhoU1D(Qlab, X[i], Y[i], EOSlist[i])
         else:
             raise NotImplementedError('Non-ANEOS EOS not currently supported.')            
-    return Q*uconversion_Q
-
-
+    return Q

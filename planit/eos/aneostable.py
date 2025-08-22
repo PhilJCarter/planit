@@ -8,17 +8,6 @@ from .eostab_extension import *
 import numpy as npy
 
 
-class EOStable(extEOStable):
-    """
-       Adds TYPE and woma numerical ID fields to eos_table.extEOStable class
-    """
-    def __init__(self):
-        extEOStable.__init__(self)
-        self.TYPE = ''
-        self.womaID = None
-        #self.name = ''
-
-
 def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False, eosdir=None, user=False):
     """
     READ IN NEW ANEOS MODEL and fill the extEOStable class object
@@ -54,7 +43,7 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False, eosd
 
     elif eos == 'Pyrolite_ANEOS_SLVTv0.2':
         eosdir = eospath + 'aneos-pyrolite-2022/'
-        womaID = None
+        womaID = 403
         #MODELNAME = 'Pyrolite_ANEOS_SLVTv0.2'
         #MATID   = 1.0      # MATID number
         #DATE    = 210627.  # Date as a single 6-digit number YYMMDD
@@ -103,7 +92,6 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False, eosd
         NewEOS.K0REF = K0REF
         NewEOS.T0REF = T0REF
         NewEOS.P0REF = P0REF
-
 
     # READ SESAME HEADER
     sesfile = open(eosdir+'NEW-SESAME-STD.TXT', "r")  

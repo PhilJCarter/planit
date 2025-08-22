@@ -18,19 +18,17 @@ def loadAQUAEOS(eos='Water-AQUA-v1.0', eostype='AQUA', debug = False):
     if eos == 'Water-AQUA-v1.0':
         eosdir = eospath + 'aqua-water/'
 
-    
     NewEOS  = EOStable() # FIRST make new empty EOS object
     NewEOS.TYPE = eostype
     NewEOS.VERSION = 1.0
     
     NewEOS.loadaquatable(eosdir+'aqua_eos_rhot_v1_0.dat')
     
-    NewEOS.MODELNAME = eos # string set above in user input
-    NewEOS.MDQ = npy.zeros((NewEOS.NT,NewEOS.ND)) # makes the empty MDQ array
+    NewEOS.MODELNAME = eos
+#    NewEOS.MDQ = npy.zeros((NewEOS.NT,NewEOS.ND)) # makes the empty MDQ array
 
     
 #    NewEOS.calchugoniot(r0=NewEOS.R0REF,t0=NewEOS.T0REF)
-    #
     # calculate the 1-bar profile; loop over temp
 #    NewEOS.onebar.T = npy.zeros(NewEOS.NT)
 #    NewEOS.onebar.S = npy.zeros(NewEOS.NT)

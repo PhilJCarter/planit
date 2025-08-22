@@ -5,8 +5,9 @@
 from ..main import *
 from scipy import interpolate
 import numpy as npy
+import numba
 
-
+@numba.njit
 def from_rhoT(Qlab,rho,T,EOS,dolog=True):
 
     if rho > 2.0:
@@ -79,6 +80,7 @@ def from_rhoT(Qlab,rho,T,EOS,dolog=True):
 
 
 
+@numba.njit
 def from_rhoU(Qlab,rho,U,EOS,dolog=True):
 
     if rho > 2.0:
@@ -119,7 +121,7 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
     elif Qlab == 'P':
         Qarr = EOS.P
     elif Qlab == 'T':
-        Qarr = EOS.T
+        Tarr = EOS.T
     elif Qlab == 'A':
         Qarr = EOS.A
     elif Qlab == 'cs':
@@ -130,10 +132,10 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
         raise ValueError('Unknown thermodynamic property:',Qlab)
 
     if Qlab == 'T':
-        Q00 = Qarr[iU0r0]
-        Q01 = Qarr[iU0r1]
-        Q10 = Qarr[iU0r0+1]
-        Q11 = Qarr[iU0r1+1]
+        Q00 = Tarr[iU0r0]
+        Q01 = Tarr[iU0r1]
+        Q10 = Tarr[iU0r0+1]
+        Q11 = Tarr[iU0r1+1]
     else:
         Q00 = Qarr[iU0r0,ir0]
         Q01 = Qarr[iU0r1,ir0+1]
@@ -175,6 +177,7 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
     return Q
 
 
+@numba.njit
 def from_rhoS(Qlab,rho,S,EOS,dolog=True):
 
     if rho > 2.0:
@@ -196,7 +199,7 @@ def from_rhoS(Qlab,rho,S,EOS,dolog=True):
     elif Qlab == 'P':
         Qarr = EOS.P
     elif Qlab == 'T':
-        Qarr = EOS.T
+        Tarr = EOS.T
     elif Qlab == 'A':
         Qarr = EOS.A
     elif Qlab == 'cs':
@@ -207,10 +210,10 @@ def from_rhoS(Qlab,rho,S,EOS,dolog=True):
         raise ValueError('Unknown thermodynamic property:',Qlab)
 
     if Qlab == 'T':
-        Q00 = Qarr[iS0r0]
-        Q01 = Qarr[iS0r1]
-        Q10 = Qarr[iS0r0+1]
-        Q11 = Qarr[iS0r1+1]
+        Q00 = Tarr[iS0r0]
+        Q01 = Tarr[iS0r1]
+        Q10 = Tarr[iS0r0+1]
+        Q11 = Tarr[iS0r1+1]
     else:
         Q00 = Qarr[iS0r0,ir0]
         Q01 = Qarr[iS0r1,ir0+1]
@@ -245,6 +248,7 @@ def from_rhoS(Qlab,rho,S,EOS,dolog=True):
 
 
 
+@numba.njit
 def from_rhoU1D(Qlab,rho,U,EOS,dolog=True):
 
     #if rho > 2.0:
@@ -269,7 +273,7 @@ def from_rhoU1D(Qlab,rho,U,EOS,dolog=True):
     if Qlab == 'P':
         Qarr = EOS.P
     elif Qlab == 'T':
-        Qarr = EOS.T
+        Qarr = EOS.T_2D
     else:
         raise ValueError('Unknown thermodynamic property:',Qlab)
     
