@@ -333,7 +333,7 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
             n = len(seq)
             #if type in ['density','rho','pressure','P',]:
             if l==0:
-                cmap = plt.get_cmap('cmr.bubblegum') #'plasma'
+                cmap = plt.get_cmap('plasma') #'plasma'
                 cmapphase = plt.get_cmap('plasma', 6)
                 #cmapphase = matplotlib.colors.ListedColormap(plt.get_cmap('magma', 7).colors[1:])#.copy()
             elif l==1 and len(types)>2:

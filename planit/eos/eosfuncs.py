@@ -3,9 +3,6 @@
 """
 
 from ..main import *
-
-import numpy as npy
-import numba
 from .eos_table import *
 from .eos_table import isentrope_class as eos_isentrope_class
 from .eostab_extension import *
@@ -14,6 +11,9 @@ from .aquatable import *
 from .rhoUtable import *
 from . import tabinterp
 
+import numpy as npy
+import numba
+from scipy import interpolate
 
 def loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS'):
     """
@@ -48,13 +48,13 @@ UserEOS3 = None
 UserEOS4 = None
 
 # Name lists for EoS
-ironnames  = ['iron','ANEOSIron','Fe','Iron',401]
-alloynames = ['alloy','ANEOSFeSiAlloy','FeSi','Alloy','IronAlloy','ironalloy',402]
-forsteritenames = ['forsterite','ANEOSForsterite','Forsterite','Fo',400]
-pyrolitenames = ['pyrolite','Pyrolite','ANEOSPyrolite',403]
-aquawaternames = ['AQUA','AQUAWater','aqua',304]
-fivephasewaternames = ['5PhaseWater','5phasewater','SS08','SenftStewartWater','SenftStewart08',303]
-hm80HHenames = ['HM80_HHe','HM80HHe',200]
+ironnames  = ['Iron-ANEOS-SLVTv0.2G1','iron','ANEOSIron','Fe','Iron',401]
+alloynames = ['Fe85Si15-ANEOS-SLVTv0.2G1','alloy','ANEOSFeSiAlloy','FeSi','Alloy','IronAlloy','ironalloy',402]
+forsteritenames = ['Forsterite-ANEOS-SLVTv1.0G1','forsterite','ANEOSForsterite','Forsterite','Fo',400]
+pyrolitenames = ['Pyrolite_ANEOS_SLVTv0.2','pyrolite','Pyrolite','ANEOSPyrolite',403]
+aquawaternames = ['Water-AQUA-v1.0','AQUA','AQUAWater','aqua',304]
+fivephasewaternames = ['5PhaseEOSv8.3','5PhaseWater','5phasewater','SS08','SenftStewartWater','SenftStewart08',303]
+hm80HHenames = ['HM80-HHe-v2.0','HM80_HHe','HM80HHe',200]
 
 user0names = ['User0',900]
 user1names = ['User1',901]
@@ -162,7 +162,7 @@ class isentrope_class(eos_isentrope_class):
             else:
                 print('error: entropy not specified')
                 return
-        EOS = eos.select(self.material)
+        EOS = select(self.material)
         self.density = EOS.rho
         self.ND = EOS.ND
         
@@ -266,7 +266,7 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
 
 @numba.njit(parallel=True)
 def _calc_prop(Qlab,Xlab,Ylab,X,Y,EOSlist):
-    print(Qlab,Xlab,Ylab)
+    #print(Qlab,Xlab,Ylab)
     Q = npy.zeros(len(X))
     for i in numba.prange(len(X)):
 
@@ -284,6 +284,6 @@ def _calc_prop(Qlab,Xlab,Ylab,X,Y,EOSlist):
                 Q[i] = npy.nan
             else:
                 Q[i] = tabinterp.from_rhoU1D(Qlab, X[i], Y[i], EOSlist[i])
-        else:
-            raise NotImplementedError('Non-ANEOS EOS not currently supported.')            
+        #else:
+        #    raise NotImplementedError('Non-ANEOS EOS not currently supported.')            
     return Q

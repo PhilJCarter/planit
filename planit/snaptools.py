@@ -6,12 +6,13 @@
 from .utils import *
 from . import eos
 
+import os
 import numpy as npy
 import scipy
 import h5py
 import struct
-import matplotlib
-import matplotlib.pyplot as plt
+#import matplotlib
+#import matplotlib.pyplot as plt
 
 
 class SnapHeader:
@@ -113,10 +114,10 @@ class Snapshot:
         Automatically attempts read from file if attribute is accessed but not already loaded
         """
         if attr in ['x','y','z','vx','vy','vz','pos','vel','id','m','S','rho','hsml','pot','P','T','U','cs'] and self.file:
-            if len(super().__getattribute__(attr))==0:
+            if len(super().__getattribute__(attr))==0 and self.file:
                 self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo)
         elif attr in ['rem', 'bnd']:
-            if super().__getattribute__(attr) is None:
+            if super().__getattribute__(attr) is None and self.file:
                 if h5py.is_hdf5(self.file):
                     with h5py.File(self.file,'r') as f:
                         if 'RemnantIDs' in f['PartType0'].keys():   
@@ -144,15 +145,16 @@ class Snapshot:
 
 
     def ensure_matIDs(self,mats):
+        eosIDs = [eos.select(mat).womaID for mat in mats]
         if npy.ndim(self.materialIDs) < 1:
-            self.materialIDs = npy.choose( (self.id/GADGET_EOS_OFFSET).astype(int), mats )
+            self.materialIDs = npy.choose( (self.id/GADGET_EOS_OFFSET).astype(int), eosIDs )
                 
         
     def load(self, fname, headonly = False, thermo=False, compress=False, mats=[402,400]):
         """
         Loads snapshot data from file
         """
-        if not h5py.is_hdf5(fname):
+        if not (h5py.is_hdf5(fname) or fname.count('.hdf5') > 0):
             self.load_G2_1(fname, headonly=headonly, thermo=thermo, compress=compress, mats=mats)
         else:
             self.load_hdf5(fname, headonly=headonly, thermo=thermo, compress=compress)
@@ -367,12 +369,12 @@ class Snapshot:
             self.vel = part['Velocities'][:].reshape((self.header.npart[0], 3)) * Lfactor/Tfactor
             if 'MaterialIDs' in part.keys():
                 self.materialIDs = part['MaterialIDs'][:]
-     #### edit
+    #### edit
             # move to conversion routines?
             if part['ParticleIDs'][:].max() < GADGET_EOS_OFFSET and len(npy.unique(self.materialIDs))>1:
                 self.id = npy.where(self.materialIDs>400,part['ParticleIDs'][:],part['ParticleIDs'][:]+GADGET_EOS_OFFSET)
                 self.id = npy.where(self.materialIDs<400,self.id+GADGET_EOS_OFFSET,self.id)
-     #### edit end
+    #### edit end
             else:
                 self.id = part['ParticleIDs'][:]
             self.m = part['Masses'][:] * Mfactor
@@ -470,9 +472,11 @@ class Snapshot:
         self.vz = npy.zeros(self.N)
         self.vel = npy.zeros((self.N, 3))
 
-### edit
-        self.id = npy.where(partplanet.mat==0, npy.arange(len(partplanet.mat)), npy.arange(len(partplanet.mat))-len(partplanet.mat[partplanet.mat==0])+IDOFF )
-### edit end
+        #self.id = npy.where(partplanet.mat==0, npy.arange(len(partplanet.mat)), npy.arange(len(partplanet.mat))-len(partplanet.mat[partplanet.mat==0])+IDOFF )
+        extraIDoff = [len(partplanet.mat[partplanet.mat<x]) for x in npy.unique(partplanet.mat)]
+        extraIDoff = npy.array(extraIDoff)
+        self.id = npy.arange(len(partplanet.mat)) + partplanet.mat * (GADGET_EOS_OFFSET) - extraIDoff[partplanet.mat]
+
         self.m = partplanet.m
         self.S = partplanet.S
         self.rho = partplanet.rho
@@ -587,7 +591,7 @@ class Snapshot:
         """
         Write snapshot to file
         """
-        if not h5py.is_hdf5(fname):
+        if not (h5py.is_hdf5(fname) or fname.count('.hdf5') > 0):
             self.write_G2_1(fname)
         else:
             self.write_hdf5(fname)
@@ -663,7 +667,8 @@ class Snapshot:
 
     def write_hdf5(self, outname, units='cgs', mats=[401,400], shift2center = True):
     
-        self.ensure_matIDs(mats)
+        self.G2_to_swift(mats=mats, fname=outname, write=False)
+#        self.ensure_matIDs(mats)
                 
         if npy.ndim(self.header.flag_entr_ics) < 1:
             if self.header.flag_entr_ics==1:
@@ -704,7 +709,7 @@ class Snapshot:
             header.attrs['HubbleParam'] = 1.0
             header.attrs['Flag_StellarAge'] = 0
             header.attrs['Flag_Metals'] = 0
-            header.attrs['NumPart_Total_HW'] = npy.zeros(6).astype(int)
+            header.attrs['NumPart_Total_HighWord'] = npy.zeros(6).astype(int)
             header.attrs['Flag_Entropy_ICs'] = self.header.flag_entr_ics
             
             # Units
@@ -737,7 +742,7 @@ class Snapshot:
                 part.create_dataset('RemnantIDs', data=self.rem, compression='gzip')
 
 
-    def G2_to_swift(self, mats=[401,400], box=5000.*6.371e8, fname=None):
+    def G2_to_swift(self, mats=[401,400], box=5000.*6.371e8, fname=None, write=True):
         self.ensure_matIDs(mats)
         #define U
         if len(self.U) == 0:
@@ -752,7 +757,8 @@ class Snapshot:
         if not fname:
             fname = self.file+'.hdf5'
         self.header.flag_entr_ics = 0
-        self.write_hdf5(fname,units='cgs',mats=mats)
+        if write:
+            self.write_hdf5(fname,units='cgs',mats=mats)
 
 ### edit
     def identify(self, crust=False):
@@ -768,7 +774,7 @@ class Snapshot:
             print('File:', self.file)
 
 
-    def eq_test(self, threshold = 0.01):
+    def eq_test(self, threshold=0.01):
         r = npy.sqrt( (self.x-npy.average(self.x,weights=self.m))**2 + (self.y-npy.average(self.y,weights=self.m))**2 + (self.z-npy.average(self.z,weights=self.m))**2 )
         vesc = npy.sqrt( 2*G*self.m.sum()/r.max() )        
         vrms = ( npy.sqrt( ( (self.vx-npy.average(self.vx,weights=self.m))**2 + (self.vy-npy.average(self.vy,weights=self.m))**2 + (self.vz-npy.average(self.vz,weights=self.m))**2 ).mean() ) )
@@ -778,7 +784,7 @@ class Snapshot:
             return False
            
 
-    def bound_mass(self, nrem = 1, minbnd = 200, maxiter = 2000, tol = 0.01, reorder=True, discardsmall=False, calc_pot_all=True, save=True):
+    def bound_mass(self, nrem=1, minbnd=200, maxiter=2000, tol=0.01, reorder=True, discardsmall=False, calc_pot_all=True, save=True):
         self.rem = npy.zeros(len(self.id)).astype(int)
     
         for r in range(1,nrem+1):
@@ -894,24 +900,23 @@ class Snapshot:
         self.vapfrac = npy.where(self.vapfrac > 1, 1., self.vapfrac)
         self.vapfrac = npy.where(npy.isnan(self.vapfrac),0.,self.vapfrac)
 
-        #if release:
-        #    self.phase = npy.where(self.S<FoSsol(release),4,5)
-        #else:
+        # if release:
+        #     self.phase = npy.where(self.S<FoSsol(release),4,5)
+        # else:
         self.phase[self.materialIDs>=300] = npy.where(self.S[self.materialIDs>=300]<FoSsol(self.P[self.materialIDs>=300]),4,5)
         self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where(self.S>FoSmelt(self.P),6,self.phase)[self.id>=GADGET_EOS_OFFSET]
         self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where(self.S>FoSliq(self.P),2,self.phase)[self.id>=GADGET_EOS_OFFSET]
         self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where(self.S>FoSvap(self.P),7,self.phase)[self.id>=GADGET_EOS_OFFSET]
-        #should be P,T!
+        # should be P,T!
         self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where((self.P>MantleEOS.cp.P*1e10)*(self.S>MantleEOS.cp.S*1e3*1e7),8,self.phase)[self.id>=GADGET_EOS_OFFSET]
 
-        self.phase[self.id<GADGET_EOS_OFFSET] = npy.where(self.S<CSsol(self.P),4,5)[self.id<GADGET_EOS_OFFSET]
-        self.phase[self.id<GADGET_EOS_OFFSET] = npy.where(self.S>CSmelt(self.P),6,self.phase)[self.id<GADGET_EOS_OFFSET]
-        self.phase[self.id<GADGET_EOS_OFFSET] = npy.where(self.S>CSliq(self.P),2,self.phase)[self.id<GADGET_EOS_OFFSET]
-        self.phase[self.id<GADGET_EOS_OFFSET] = npy.where(self.S>CSvap(self.P),7,self.phase)[self.id<GADGET_EOS_OFFSET]
-        #should be P,T!
-        self.phase[self.id<GADGET_EOS_OFFSET] = npy.where((self.P>CoreEOS.cp.P*1e10)*(self.S>CoreEOS.cp.S*1e3*1e7),8,self.phase)[self.id<GADGET_EOS_OFFSET]
+        self.phase[self.id < GADGET_EOS_OFFSET] = npy.where(self.S < CSsol(self.P), 4, 5)[self.id < GADGET_EOS_OFFSET]
+        self.phase[self.id < GADGET_EOS_OFFSET] = npy.where(self.S > CSmelt(self.P), 6, self.phase)[self.id < GADGET_EOS_OFFSET]
+        self.phase[self.id < GADGET_EOS_OFFSET] = npy.where(self.S > CSliq(self.P), 2, self.phase)[self.id < GADGET_EOS_OFFSET]
+        self.phase[self.id < GADGET_EOS_OFFSET] = npy.where(self.S > CSvap(self.P), 7, self.phase)[self.id < GADGET_EOS_OFFSET]
+        # should be P,T!
+        self.phase[self.id<GADGET_EOS_OFFSET] = npy.where((self.P > CoreEOS.cp.P*1e10)*(self.S > CoreEOS.cp.S*1e3*1e7), 8, self.phase)[self.id < GADGET_EOS_OFFSET]
 ### edit end
 
-    def calc_vap_frac(self,plot=False):
+    def calc_vap_frac(self, plot=False):
         self.calc_phase(plot=False)
-

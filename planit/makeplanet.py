@@ -15,8 +15,6 @@ import seagen
 
 
 G_mks = 6.67E-11 # Gravitational constant  m3/kg/s2
-
-Mearth = 5.972E27 # Earth's mass g
 Rcmb = 348000000. # CMB radius in cm (from PREM)
 
 
@@ -38,6 +36,219 @@ class planet_profile:
     def load(self, file='profile.dat'):
         (self.rarr, self.mat, self.entropy, self.density, self.pressure, self.temperature) = npy.loadtxt(file,unpack=True)
 
+    def add_isentropic_layer(self,mass=0,Pmin=0,iendprevlayer=0,isentrope=None,dR=Rearth/3000.,maxiter=200, firstlayer=False, masstolerance=1e-3):
+        if isentrope is None:
+            raise ValueError('isentrope must be defined')
+        if len(self.rarr) != len(self.density) != len(self.temperature) != len(self.pressure):
+            raise ValueError('Arrays rarr, darr, parr, tarr must have same length')
+        if len(self.rarr)<1:
+            raise ValueError('Central values must be provided!')
+    
+        #if self.M == 0:
+        #    firstlayer = True
+        menclosed = self.M
+    
+        j = 0
+        ii = len(self.rarr)
+        ri = self.rarr[-1]
+        while (self.M-menclosed) < (mass)*(1.-masstolerance) and self.pressure[-1] > Pmin and j < maxiter:
+            ri +=dR # m
+            self.rarr = npy.append(self.rarr,ri)
+            mlayer = 4.*npy.pi*self.rarr[ii]*self.rarr[ii]*dR*self.density[ii-1] # g
+            if ii == iendprevlayer+1:
+                density0 = npy.interp(self.pressure[ii-1]/1.E10,isentrope.pressure,isentrope.density)
+                if self.M > 0:
+                    dp = G*self.M*density0*dR/self.rarr[ii]/self.rarr[ii]
+                else:
+                    dp = G*density0*dR/self.rarr[ii]/self.rarr[ii] # Pa
+            else:
+                dp = G*self.M*self.density[ii-1]*dR/self.rarr[ii]/self.rarr[ii] # Pa
+            self.pressure = npy.append(self.pressure, self.pressure[ii-1]-dp) # 
+            if firstlayer:
+                di = npy.interp(self.pressure[ii]/1.E10,isentrope.pressure,isentrope.density) # g/cm3
+            else:
+                di = npy.interp(self.pressure[ii-1]/1.E10,isentrope.pressure,isentrope.density) # g/cm3
+            self.density = npy.append(self.density,di) # g/cm3
+            if firstlayer:
+                ti = npy.interp(self.pressure[ii]/1.E10,isentrope.pressure,isentrope.temperature) # K
+            else:
+                ti = npy.interp(self.pressure[ii-1]/1.E10,isentrope.pressure,isentrope.temperature) # K
+            self.temperature = npy.append(self.temperature,ti) # K
+            self.M += mlayer
+            ii += 1
+            j += 1
+
+    def add_adiabatic_layer(self,mass=0,Pmin=0,iendprevlayer=0,EOS=None,dR=Rearth/3000.,maxiter=200, firstlayer=False, masstolerance=1e-3):
+        if EOS is None:
+            raise ValueError('EOS must be defined')
+        if len(self.rarr) != len(self.density) != len(self.temperature) != len(self.pressure):
+            raise ValueError('Arrays rarr, darr, parr, tarr must have same length')
+        if len(self.rarr)<1:
+            raise ValueError('Central values must be provided!')
+
+        if EOS.TYPE != 'HM80':
+            S = eos.tabinterp.from_rhoT('S',self.density[-1],self.temperature[-1],EOS.make_passer_class())
+            isentrope = eos.isentrope_class(S,EOS.MODELNAME)
+            self.add_isentropic_layer(mass=mass,Pmin=Pmin,iendprevlayer=iendprevlayer,isentrope=isentrope,dR=dR,maxiter=maxiter,masstolerance=masstolerance)
+        else:  # HM80 only
+            #if self.M == 0:
+            #    firstlayer = True
+            menclosed = self.M
+
+            j = 0
+            ii = len(self.rarr)
+            ri = self.rarr[-1]
+            while (self.M-menclosed) < (mass)*(1.-masstolerance) and self.pressure[-1] > Pmin and j < maxiter:
+                ri +=dR # m
+                self.rarr = npy.append(self.rarr,ri)
+                mlayer = 4.*npy.pi*self.rarr[ii]*self.rarr[ii]*dR*self.density[ii-1] # g
+                if ii == iendprevlayer+1:
+                    density0 = HM80_rho_P_T(self.pressure[ii-1],self.temperature[ii-1],rho_est=0.9*self.density[ii-1])
+                    if self.M > 0:
+                        dp = G*self.M*density0*dR/self.rarr[ii]/self.rarr[ii]
+                    else:
+                        dp = G*density0*dR/self.rarr[ii]/self.rarr[ii] # Pa
+                else:
+                    dp = G*self.M*self.density[ii-1]*dR/self.rarr[ii]/self.rarr[ii] # Pa
+                self.pressure = npy.append(self.pressure, self.pressure[ii-1]-dp) # 
+                #U = HM80_U_rho_T(self.density[ii-1],self.temperature[ii-1])
+                #P = HM80_P_rho_T(rho,T) #tabinterp.from_rhoU1D('P',rho,U,EOS)
+                newrho = HM80_rho_P_T(self.pressure[ii],self.temperature[ii-1],rho_est=self.density[ii-1])
+                self.density = npy.append(self.density,newrho)
+                if ii == iendprevlayer+1:
+                    newT = HM80_adiabat_T(density0,self.density[ii],self.temperature[ii-1])
+                else:
+                    newT = HM80_adiabat_T(self.density[ii-1],self.density[ii],self.temperature[ii-1])
+                self.temperature = npy.append(self.temperature,newT)
+                self.M += mlayer
+                ii+=1
+                j+=1
+                if j%200 == 0:
+                    print(newrho,newT,self.pressure[-1])
+
+
+def HM80_U_rho_T(rho,T):
+    return HM80_Cv_rho_T(rho,T)*T
+
+def HM80_Cv_rho_T(rho,T):
+    c1 = 2.3638
+    c2 = -4.9842e-5
+    c3 = 1.1788e-8
+    c4 = -3.8101e-4
+    c5 = 2.6182
+    c6 = 0.45053
+    
+    FMW = 2.2857143
+    
+    return 8.31446e7/FMW * ( c1 + c2*T + c3*T**2 + c4*rho*T + c5*rho + c6*rho**2 )
+
+def HM80_P_rho_T(rho,T):
+    u1 = -16.05895
+    u2 = 1.22808
+    u3 = -0.0217930
+    u4 = 0.141021
+    u5 = 0.147156
+    u6 = 0.277708
+    u7 = 0.0455347
+    u8 = -0.0558596
+    
+    rho0 = 0.005
+    
+    y = npy.log(T)
+    x = npy.log(rho/rho0)
+    
+    lnP = u1 + u2*y + u3*y**2 + u4*x*y +u5*x + u6*x**2 +u7*x**3 +u8*y*x**2 #Mbar
+
+    return npy.exp(lnP)*1e6*1e6
+
+def HM80_gamma_rho_T(rho,T):
+    rho0 = 0.005
+    y = npy.log(T)
+    x = npy.log(rho/rho0)
+    return HM80_gamma_lnrho_lnT(x,y)
+
+def HM80_gamma_lnrho_lnT(x,y):
+    b1 = 0.328471
+    b2 = 0.0286529
+    b3 = -0.00139609
+    b4 = -0.0232258
+    b5 = 0.0579055
+    b6 = 0.0454488
+    return b1 + b2*y + b3*y**2 + b4*x*y + b5*x + b6*x**2
+
+def HM80_adiabat_T(rho0,rho1,T0):
+    import scipy
+    rhoref = 0.005
+    sol = scipy.integrate.solve_ivp(HM80_gamma_lnrho_lnT,[npy.log(rho0/rhoref),npy.log(rho1/rhoref)],[npy.log(T0)])
+    return npy.exp(sol.y[0][-1])
+
+def HM80_rho_P_T(P, T, rho_est=None, tolerance=1e-3):
+
+    maxiter = 5000
+    
+    eos_rho_min = 0.005
+    eos_rho_max = 1000.
+
+    if rho_est:
+        rho_min = 0.5 * rho_est
+        rho_max = 2. * rho_est
+        rho = rho_est
+    else:
+        rho_min = 0.005
+        rho_max = 1000.
+        rho = 1.
+    #log_rho_mid = (npy.log10(rho_max)-npy.log10(rho_min))/2. + npy.log10(rho_min)
+
+    #rho_min = max(rho_min,eos_rho_min)
+    #rho_max = min(rho_max,eos_rho_max)
+
+    derivedP = HM80_P_rho_T(rho,T)
+    T_low = HM80_adiabat_T(rho_min,rho_min,T)
+    derivedP_low = HM80_P_rho_T(rho_min,T_low)
+    T_mid = HM80_adiabat_T(rho_min,rho,T)
+    derivedP_mid = HM80_P_rho_T(rho,T_mid)
+    T_high = HM80_adiabat_T(rho_min,rho_max,T)
+    derivedP_high = HM80_P_rho_T(rho_max,T_high)
+
+    if derivedP_low < derivedP_high < P:
+        return HM80_rho_P_T(P, T, rho_est=rho_max)
+    elif derivedP_high > derivedP_low > P:
+        return HM80_rho_P_T(P, T, rho_est=rho_min)
+    
+    j=0
+    
+    while npy.abs(P-derivedP)/P > tolerance and j < maxiter:
+        T_low = HM80_adiabat_T(rho_min,rho_min,T)
+        derivedP_low = HM80_P_rho_T(rho_min,T_low)
+        T_mid = HM80_adiabat_T(rho_min,rho,T)
+        derivedP_mid = HM80_P_rho_T(rho,T_mid)
+        T_high = HM80_adiabat_T(rho_min,rho_max,T)
+        derivedP_high = HM80_P_rho_T(rho_max,T_high)
+        
+        if derivedP_low > P:
+            print('WARNING: P:', P,'could not be matched, low:',derivedP_low,derivedP_mid)
+            #return rho_min
+        elif derivedP_high < P:
+            print('WARNING: P:', P,'could not be matched, high:',derivedP_high,derivedP_mid)
+            #return rho_max
+        if derivedP_mid > P:
+            rho_max = rho
+        else:
+            rho_min = rho
+            derivedP_low = derivedP_mid
+            T_low = T_mid
+        derivedP = derivedP_low
+        T = T_low
+        rho = npy.power(10,(npy.log10(rho_max)-npy.log10(rho_min))/2. + npy.log10(rho_min))
+        #rho = (rho_max-rho_min)/2.
+        #print(j,rho,T,derivedP)
+        j += 1
+    
+    #print(P,derivedP,rho,rho_min,rho_max,j,T,T_high)   
+
+    return rho
+    
+
 
 def planet_density(m):
     """
@@ -51,6 +262,7 @@ def planet_density(m):
     else:
         d = 4.39e-4 * m**1.26
     return d
+    
 
 
 def make_1D_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Smantle=3.02,
@@ -78,7 +290,7 @@ def make_1D_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Smant
     """
     if len(layers) != len(S) != len(mass):
         raise ValueError('number of layers must match. layers, S, mass:', len(layers), len(S), len(mass))
-    if not layers or len(layers)==2:
+    if not layers or len(layers) == 2:
         if layers:
             layer1 = layers[0]
             layer2 = layers[1]
@@ -89,7 +301,9 @@ def make_1D_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Smant
             mass = totmass
         return make_1D_2L_planet(mass=mass,corefraction=corefraction,Pmin=Pmin,Score=Score,Smantle=Smantle,mtolerance=mtolerance,layer1=layer1,layer2=layer2,mantlepotT=mantlepotT,plot=plot,fixcoreT=fixcoreT,verbose=verbose,rhocent=rhocent)
     else:
-        print('error: not implemented yet')
+        return make_1D_NL_planet(mass=mass, Pmin=Pmin, S=S, mtolerance=mtolerance, layers=layers, 
+            plot=plot, fixcoreT=fixcoreT, verbose=verbose, rhocent=rhocent, mantlepotT=mantlepotT)
+
 
 
 def make_1D_2L_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Smantle=3.02,
@@ -108,7 +322,7 @@ def make_1D_2L_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Sm
         print('Unknown core EOS')
         return
     
-    ly2EOS = eos.selct(layer2)
+    ly2EOS = eos.select(layer2)
     if ly2EOS is None:
         print('Unknown mantle EOS')
         return
@@ -137,6 +351,7 @@ def make_1D_2L_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Sm
         core = eos.isentrope_class(Score,layer1)
 
         if plot:
+            PREM = PREMclass()
             fig = plt.figure(figsize=(7,5))
             plt.plot(PREM.pressure,PREM.temperature,'-.',color='xkcd:deep blue',label='PREM profile')
             plt.plot(mantle.pressure,mantle.temperature,'-',color='xkcd:purple',label='mantle isentrope',markersize=10)
@@ -167,15 +382,18 @@ def make_1D_2L_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Sm
         if dR < 0.025e5:
             dR = 0.025e5
 
-        #dM = menclosed/msteps
-        menclosed = 0.
-        rhoi = Pi = 0.
+        Pi = 0.
         rhoi = rhocenter
 
-        #    Pi = Pcenter
-        #darr = npy.full(1,rhoi)
-        #parr = npy.full(1,Pi)
+        darr = npy.full(1,rhoi)
+        parr = npy.full(1,Pi)
+        rarr = npy.zeros(1)
 
+        planet = planet_profile()
+        planet.rarr = rarr
+        planet.density = darr
+        planet.pressure = parr
+        
         itercount = 0
         maxiter = 50000
         maxiterm = 5000
@@ -192,85 +410,45 @@ def make_1D_2L_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Sm
         if verbose:
             print('dR: ', dR/1e5, 'km')
 
-        # outer loop to find the correct total mass
-        while npy.abs(mtotal-menclosed)/mtotal > mtolerance and itercount < maxiter:
-            if (itercount%100 == 0 and verbose) or (itercount%10000 == 0 and itercount!=0):
-                print(parr[0],darr[0],menclosed/mtotal)
-            rarr = npy.zeros(1)
-            ii=1
-            ri = rarr[0]
 
+        # outer loop to find the correct total mass
+        while npy.abs(mtotal-planet.M)/mtotal > mtolerance and itercount < maxiter:
+            if (itercount%100 == 0 and verbose) or (itercount%10000 == 0 and itercount!=0):
+                print(planet.pressure[0],planet.density[0],planet.M/mtotal)
+
+            rarr = npy.zeros(1)
             darr = npy.full(1,rhoi) # Pa
             parr = npy.full(1,npy.interp(rhoi,core.density,core.pressure)*1.E10) # 
-            #if rhocenter:
-            #else:
-            #    parr = npy.full(1,Pi) # Pa
-            #    darr = npy.full(1,npy.interp(Pi/1.E10,core.pressure,core.density)*1.E3) # kg/m3
-
             tarr = npy.full(1,npy.interp(rhoi,core.density,core.temperature)) # K
-            #tarr = npy.full(1,npy.interp(parr[0]/1.E10,core.pressure,core.temperature)) # K
-            menclosed = 0.
 
-            ri = rarr[0]
-            ii=1
-            coreiter=0
+            #ri = rarr[0]
+            #ii=1
+            #coreiter=0
+            
+            planet.M = 0.
+            planet.rarr = rarr
+            planet.density = darr
+            planet.pressure = parr
+            planet.temperature = tarr
             
             # inner loop 1 to make core of required mass
-            while menclosed < mcore and parr[ii-1] > Pmin and coreiter < maxiterm:
-                ri +=dR # m
-                rarr = npy.append(rarr,ri)
-                mlayer = 4.*npy.pi*rarr[ii]*rarr[ii]*dR*darr[ii-1] # g
-                if ii == 1:
-                    dp = G*darr[ii-1]*dR/rarr[ii]/rarr[ii] # Pa
-                else:
-                    dp = G*menclosed*darr[ii-1]*dR/rarr[ii]/rarr[ii] # Pa
-                parr = npy.append(parr, parr[ii-1]-dp) # 
-                di = npy.interp(parr[ii]/1.E10,core.pressure,core.density) # g/cm3
-                darr = npy.append(darr,di) # g/cm3
-                ti = npy.interp(parr[ii]/1.E10,core.pressure,core.temperature) # K
-                tarr = npy.append(tarr,ti) # K
-                menclosed = menclosed + mlayer # kg
-                #print(npy.mod(ii,10))
-                #print(ii,mlayer,menclosed/Mearth,di,ri,dp,parr[ii]/1.E10)
-                ii += 1
-                coreiter += 1
-            iendcore=ii-1
+            planet.add_isentropic_layer(mass=mcore,Pmin=Pmin,iendprevlayer=0,isentrope=core,dR=dR,maxiter=maxiterm,masstolerance=0)
 
-            dmantle = npy.interp(parr[ii-1]/1.E10,mantle.pressure,mantle.density) # g/m3
-
-            mantleiter = 0
-
+            iendcore = len(planet.rarr)-1
+            
             # inner loop 2 to add mantle up to surface pressure
-            while parr[ii-1] > Pmin and mantleiter< maxiterm:
-                ri += dR # m
-                rarr = npy.append(rarr,ri)
-                mlayer = 4.*npy.pi*rarr[ii]*rarr[ii]*dR*darr[ii-1] # kg
-                if ii == iendcore+1:
-                    if menclosed > 0:
-                        dp = G*menclosed*dmantle*dR/rarr[ii]/rarr[ii] # Pa
-                    else:
-                        dp = G*dmantle*dR/rarr[ii]/rarr[ii] # Pa
-                else:
-                    dp = G*menclosed*darr[ii-1]*dR/rarr[ii]/rarr[ii] # Pa
-                parr = npy.append(parr, parr[ii-1]-dp) # Pa
-                di = npy.interp(parr[ii-1]/1.E10,mantle.pressure,mantle.density) # g/cm3
-                darr = npy.append(darr,di) # g/cm3
-                ti = npy.interp(parr[ii-1]/1.E10,mantle.pressure,mantle.temperature) # K
-                tarr = npy.append(tarr,ti) # kg/m3
-                ii=ii+1
-                mantleiter += 1
-                menclosed = menclosed + mlayer # kg    
+            planet.add_isentropic_layer(mass=mtotal-mcore,Pmin=Pmin,iendprevlayer=iendcore,isentrope=mantle,dR=dR,maxiter=maxiterm,masstolerance=1e-1)   
 
             # adjust initial density if total mass wrong
-            if menclosed < mtotal:
+            if planet.M < mtotal:
                 #rhoi *= 1.0+2*mtolerance*changefac
                 #Pi *= 1.0+2*mtolerance*changefac
-                rhoi *= 1.0 + (0.04*(mtotal-menclosed)/mtotal + 1.8*mtolerance)*changefac
+                rhoi *= 1.0 + (0.04*(mtotal-planet.M)/mtotal + 1.8*mtolerance)*changefac
                 #Pi *= 1.0+2*mtolerance*changefac
-            elif menclosed > mtotal:
+            elif planet.M > mtotal:
                 #rhoi *= 1.0-1*mtolerance*changefac
                 #Pi *= 1.0-1*mtolerance*changefac
-                rhoi *= 1.0 - (0.02*(menclosed-mtotal)/mtotal + 0.5*mtolerance)*changefac
+                rhoi *= 1.0 - (0.02*(planet.M-mtotal)/mtotal + 0.5*mtolerance)*changefac
                 #Pi *= 1.0-1*mtolerance*changefac
 
             itercount += 1
@@ -278,8 +456,8 @@ def make_1D_2L_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Sm
         if not fixcoreT:
             Tcmb_accept = True
     
-        if tarr[iendcore] < npy.interp(parr[iendcore]/1.E10,mantle.pressure,mantle.temperature):
-            print('WARNING! Core colder than mantle!   {:10.3f}  {:10.3f}  | S: {:.3f}'.format(tarr[iendcore],npy.interp(parr[iendcore]/1.E10,mantle.pressure,mantle.temperature),Score))
+        if planet.temperature[iendcore] < npy.interp(planet.pressure[iendcore]/1.E10,mantle.pressure,mantle.temperature):
+            print('WARNING! Core colder than mantle!   {:10.3f}  {:10.3f}  | S: {:.3f}'.format(planet.temperature[iendcore],npy.interp(planet.pressure[iendcore]/1.E10,mantle.pressure,mantle.temperature),Score))
             if fixcoreT:
                 Score += 0.01
         else:
@@ -287,33 +465,198 @@ def make_1D_2L_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Sm
     
     print('Iterations:    ',itercount,'\n')        
 
-    planet = planet_profile()
-    planet.M = menclosed
-    planet.cf = mcore/menclosed
-    planet.rarr = rarr
-    planet.density = darr
-    planet.pressure = parr
-    planet.temperature = tarr
-    planet.mat = npy.where(npy.arange(len(rarr))<=iendcore,0,1)
-    planet.entropy = npy.where(npy.arange(len(rarr))<=iendcore,Score,Smantle)*1e7
+    #planet = planet_profile()
+    #planet.M = menclosed
+    planet.cf = mcore/planet.M
+    #planet.rarr = rarr
+    #planet.density = darr
+    #planet.pressure = parr
+    #planet.temperature = tarr
+    planet.mat = npy.where(npy.arange(len(planet.rarr))<=iendcore,0,1)
+    planet.entropy = npy.where(npy.arange(len(planet.rarr))<=iendcore,Score,Smantle)*1e7
     
     print('MODEL PLANET:')
     print('Score (kJ/K/kg)         = {:10.3f}'.format(Score))
     print('Smantle (kJ/K/kg)       = {:10.3f}'.format(Smantle))
-    print('Tcmb (K)                = {:10.3f}  [{:10.3f}]'.format(tarr[iendcore],npy.interp(parr[iendcore]/1.E10,mantle.pressure,mantle.temperature)))
-    print('Mantle Tp (K)           = {:10.3f}'.format(tarr[-1])) #min(tarr)
-    print('Pcenter (GPa)           = {:10.3f}'.format(parr[0]/1.E10))
-    print('Tcenter (K)             = {:10.3f}'.format(tarr[0]))
-    print('rho center (g/cm3)      = {:10.3f}'.format(darr[0]))
-    print('Core radius (km, Rcmb)  = {:10.3f}{:10.3f}'.format(rarr[iendcore]/1.e5,rarr[iendcore]/Rcmb))
-    print('CMB pressure (GPa)      = {:10.3f}'.format(parr[iendcore]/1.E10))
-    print('Radius (km, Rearth)     = {:10.3f}{:10.3f}'.format(rarr[-1]/1.e5,rarr[-1]/Rearth))
-    print('Surface pressure (GPa)  = {:10.3f}'.format(parr[-1]/1.E10))
-    print('Surface gravity (m/s2)  = {:10.3f}'.format(G*menclosed/rarr[-1]/rarr[-1]/100.))
-    print('Vesc (km/s)             = {:10.3f}'.format(npy.sqrt(2*G*menclosed/rarr[-1])/1.E5))
-    print('Mass/Mearth, Mcore/Mass = {:10.5f}{:10.4f}'.format(menclosed/Mearth, mcore/menclosed))
+    print('Tcmb (K)                = {:10.3f}  [{:10.3f}]'.format(planet.temperature[iendcore],npy.interp(planet.pressure[iendcore]/1.E10,mantle.pressure,mantle.temperature)))
+    print('Mantle Tp (K)           = {:10.3f}'.format(planet.temperature[-1])) #min(tarr)
+    print('Pcenter (GPa)           = {:10.3f}'.format(planet.pressure[0]/1.E10))
+    print('Tcenter (K)             = {:10.3f}'.format(planet.temperature[0]))
+    print('rho center (g/cm3)      = {:10.3f}'.format(planet.density[0]))
+    print('Core radius (km, Rcmb)  = {:10.3f}{:10.3f}'.format(planet.rarr[iendcore]/1.e5, planet.rarr[iendcore]/Rcmb))
+    print('CMB pressure (GPa)      = {:10.3f}'.format(planet.pressure[iendcore]/1.E10))
+    print('Radius (km, Rearth)     = {:10.3f}{:10.3f}'.format(planet.rarr[-1]/1.e5, planet.rarr[-1]/Rearth))
+    print('Surface pressure (GPa)  = {:10.3f}'.format(planet.pressure[-1]/1.E10))
+    print('Surface gravity (m/s2)  = {:10.3f}'.format(G*planet.M/planet.rarr[-1]/planet.rarr[-1]/100.))
+    print('Vesc (km/s)             = {:10.3f}'.format(npy.sqrt(2*G*planet.M/planet.rarr[-1])/1.E5))
+    print('Mass/Mearth, Mcore/Mass = {:10.5f}{:10.4f}'.format(planet.M/Mearth, mcore/planet.M))
     
     return planet,core,mantle
+
+
+def make_1D_NL_planet(mass=[0.3*Mearth,0.7*Mearth], Pmin=1.e6, S=[1.81,3.02],
+        mtolerance=1e-3, layers=['iron','forsterite'], mantlepotT=False, plot=False,
+        fixcoreT=False, verbose=False, rhocent=None):
+    
+    mtotal = sum(mass)
+
+    Pcenter = 0
+    
+    layerEOS = []
+    isentropes = []
+    for layer,layerS in zip(layers,S):
+        EOS = eos.select(layer)
+        if EOS is None:
+            raise ValueError('Unknown EOS:',layer)
+        layerEOS.append(EOS)
+        if EOS.TYPE == 'HM80' or layerS == 'adiabat':
+            isentropes.append('adiabat')
+        else:
+            isentropes.append(eos.isentrope_class(layerS,layer))    
+
+    Tcmb_accept = False
+    
+    # overall loop to allow core temperature adjustment (no max iterations!)
+    while not Tcmb_accept:
+        
+        isentropes[0] = eos.isentrope_class(S[0],layers[0])
+
+        if plot:
+            PREM = PREMclass()
+            fig = plt.figure(figsize=(7,5))
+            plt.plot(PREM.pressure,PREM.temperature,'-.',color='xkcd:deep blue',label='PREM profile')
+            for isentrope in isentropes:
+                plt.plot(isentrope.pressure,isentrope.temperature,label=str(isentrope.material)+' isentrope',markersize=10)
+            
+            for EOS in layerEOS:
+                if EOS.TYPE == 'ANEOS':
+                    plt.plot(EOS.mc.Pl,EOS.mc.T,'--',color='black',label=EOS.MODELNAME+' MC',markersize=10)
+
+            plt.ylim(0.,max(PREM.temperature))
+            plt.xlim(0,max(PREM.pressure))
+            plt.xlabel('Pressure (GPa)')
+            plt.ylabel('Temperature (K)')
+            plt.legend()
+            plt.show()
+
+        if rhocent:
+            rhocenter = rhocent
+        else:
+            rhocenter = 2*planet_density(mtotal/Mearth)
+        changefac = 0.00003*rhocenter**4.2
+
+        if verbose:
+            print('m:',mtotal/Mearth,'fac:',changefac,' rho:',rhocenter )
+
+        r_est = (mtotal/(4./3.*npy.pi*rhocenter/2.))**(1./3.)
+        dR = npy.floor(r_est/1e5)*1e5 / 3000
+        # ensure dR is not too small
+        if dR < 0.025e5:
+            dR = 0.025e5
+
+        Pi = 0.
+        rhoi = rhocenter
+
+        darr = npy.full(1,rhoi)
+        parr = npy.full(1,Pi)
+        rarr = npy.zeros(1)
+
+        planet = planet_profile()
+        planet.rarr = rarr
+        planet.density = darr
+        planet.pressure = parr
+        
+        itercount = 0
+        maxiter = 1000
+        maxiterm = 5000
+
+        if mtolerance < 5e-4:
+            changefac *= 0.2
+            maxiterm *= 3
+            dR *= 0.3
+        elif mtolerance < 1e-3:
+            changefac *= 0.4
+            maxiterm *= 1.2
+            dR *= 0.8
+
+        if verbose:
+            print('dR: ', dR/1e5, 'km')
+
+
+        # outer loop to find the correct total mass
+        while npy.abs(mtotal-planet.M)/mtotal > mtolerance and itercount < maxiter:
+            if (itercount%100 == 0 and verbose) or (itercount%10000 == 0 and itercount!=0):
+                print(planet.pressure[0],planet.density[0],planet.M/mtotal)
+
+            rarr = npy.zeros(1)
+            darr = npy.full(1,rhoi) # Pa
+            parr = npy.full(1,npy.interp(rhoi,isentropes[0].density,isentropes[0].pressure)*1.E10) # 
+            tarr = npy.full(1,npy.interp(rhoi,isentropes[0].density,isentropes[0].temperature)) # K
+
+            planet.M = 0.
+            planet.rarr = rarr
+            planet.density = darr
+            planet.pressure = parr
+            planet.temperature = tarr
+            
+            layerfinalindices = []
+            layermasses = []
+            # make layers of required masses
+            for layermass, layerisentrope, EOS in zip(mass, isentropes, layerEOS):
+                if layerisentrope == 'adiabat':
+                    planet.add_adiabatic_layer(mass=layermass,Pmin=Pmin,iendprevlayer=len(planet.rarr)-1,EOS=EOS,dR=dR,maxiter=maxiterm,masstolerance=mtolerance)
+                else:
+                    planet.add_isentropic_layer(mass=layermass,Pmin=Pmin,iendprevlayer=len(planet.rarr)-1,isentrope=layerisentrope,dR=dR,maxiter=maxiterm,masstolerance=mtolerance)
+                layerfinalindices.append(len(planet.rarr)-1)
+                layermasses.append(planet.M-sum(layermasses))
+            
+            # adjust initial density if total mass wrong
+            if planet.M < mtotal:
+                #rhoi *= 1.0+2*mtolerance*changefac
+                #Pi *= 1.0+2*mtolerance*changefac
+                rhoi *= 1.0 + (0.04*(mtotal-planet.M)/mtotal + 1.8*mtolerance)*changefac
+                #Pi *= 1.0+2*mtolerance*changefac
+            elif planet.M > mtotal:
+                #rhoi *= 1.0-1*mtolerance*changefac
+                #Pi *= 1.0-1*mtolerance*changefac
+                rhoi *= 1.0 - (0.02*(planet.M-mtotal)/mtotal + 0.5*mtolerance)*changefac
+                #Pi *= 1.0-1*mtolerance*changefac
+
+            itercount += 1
+            
+        if not fixcoreT:
+            Tcmb_accept = True
+    
+        if planet.temperature[layerfinalindices[0]] < npy.interp(planet.pressure[layerfinalindices[0]]/1.E10,isentropes[1].pressure,isentropes[1].temperature):
+            print('WARNING! Core colder than mantle!   {:10.3f}  {:10.3f}  | S: {:.3f}'.format(planet.temperature[layerfinalindices[0]],npy.interp(planet.pressure[layerfinalindices[0]]/1.E10,isentropes[1].pressure,isentropes[1].temperature),S[0]))
+            if fixcoreT:
+                S[0] += 0.01
+        else:
+            Tcmb_accept = True
+    
+    print('Iterations:    ',itercount,'\n')        
+
+    planet.cf = layermasses[0]/planet.M
+    planet.mat = npy.digitize(range(len(planet.rarr)),layerfinalindices,right=True)
+#    planet.entropy = npy.where(npy.arange(len(planet.rarr))<=iendcore,Score,Smantle)*1e7
+    
+    print('MODEL PLANET:')
+    print('Score (kJ/K/kg)         = {:10.3f}'.format(S[0]))
+    print('Smantle (kJ/K/kg)       = {:10.3f}'.format(S[1]))
+    print('Tcmb (K)                = {:10.3f}  [{:10.3f}]'.format(planet.temperature[layerfinalindices[0]],npy.interp(planet.pressure[layerfinalindices[0]]/1.E10,isentropes[1].pressure,isentropes[1].temperature)))
+    print('Mantle Tp (K)           = {:10.3f}'.format(planet.temperature[-1])) #min(tarr)
+    print('Pcenter (GPa)           = {:10.3f}'.format(planet.pressure[0]/1.E10))
+    print('Tcenter (K)             = {:10.3f}'.format(planet.temperature[0]))
+    print('rho center (g/cm3)      = {:10.3f}'.format(planet.density[0]))
+    print('Core radius (km, Rcmb)  = {:10.3f}{:10.3f}'.format(planet.rarr[layerfinalindices[0]]/1.e5, planet.rarr[layerfinalindices[0]]/Rcmb))
+    print('CMB pressure (GPa)      = {:10.3f}'.format(planet.pressure[layerfinalindices[0]]/1.E10))
+    print('Radius (km, Rearth)     = {:10.3f}{:10.3f}'.format(planet.rarr[-1]/1.e5, planet.rarr[-1]/Rearth))
+    print('Surface pressure (GPa)  = {:10.3f}'.format(planet.pressure[-1]/1.E10))
+    print('Surface gravity (m/s2)  = {:10.3f}'.format(G*planet.M/planet.rarr[-1]/planet.rarr[-1]/100.))
+    print('Vesc (km/s)             = {:10.3f}'.format(npy.sqrt(2*G*planet.M/planet.rarr[-1])/1.E5))
+    print('Mass/Mearth, Mcore/Mass = {:10.5f}{:10.4f}'.format(planet.M/Mearth, layermasses[0]/planet.M))
+    
+    return planet,isentropes
 
 
 
@@ -329,7 +672,7 @@ def make_SPH_planet(mass=Mearth, corefraction=0.3, Pmin=1.e6, Score=1.81, Smantl
     Smantle - 2nd layer entropy for 2 layer planet
     mtolerance - tolerance for total mass of planet
     layer1 - 1st layer material for 2 layer planet
-    layer 2 - 2nd layer material for 2 layer planet
+    layer2 - 2nd layer material for 2 layer planet
     layers - list of materials for layers (inside to out)
     S - list of layer entropies (inside to out)
     mantlepotT - mantle potential temperature for 2 layer planet
@@ -353,8 +696,10 @@ def make_SPH_planet(mass=Mearth, corefraction=0.3, Pmin=1.e6, Score=1.81, Smantl
             totmass = sum(mass)
             corefraction = mass[0]/totmass
             mass = totmass
-        planet,core,mantle = make_1D_planet(plot=plot, mantlepotT=mantlepotT, layer1=layer1, layer2=layer2, mass=mass, corefraction=corefraction, Pmin=Pmin, Score=Score, Smantle=Smantle, mtolerance=mtolerance, fixcoreT=fixcoreT, verbose=verbose, layers=layers, S=S, rhocent=rhocent)
+        planet,isentropes = make_1D_planet(plot=plot, mantlepotT=mantlepotT, layer1=layer1, layer2=layer2, mass=mass, corefraction=corefraction, Pmin=Pmin, Score=Score, Smantle=Smantle, mtolerance=mtolerance, fixcoreT=fixcoreT, verbose=verbose, layers=layers, S=S, rhocent=rhocent)
             
+        if len(layers) == 0:
+            core, mantle = isentropes
     
     partmass = Mearth / resolution   # mass per particle
     Np = int(planet.M / partmass)    # desired total number of particles
@@ -365,12 +710,12 @@ def make_SPH_planet(mass=Mearth, corefraction=0.3, Pmin=1.e6, Score=1.81, Smantl
     
     # use seagen to generate spherical planet particles
     particleplanet = seagen.GenSphere(Np,planet.rarr[1:],planet.density[1:],A1_T_prof=planet.temperature[1:],A1_P_prof=planet.pressure[1:],A1_mat_prof=planet.mat[1:],verbosity=0, A1_m_rel_prof=1.0*npy.ones(len(planet.mat[1:])))#, A1_force_more_shells=[False,True])
-    if len(layers) == 2 or len(layers) == 0:
-        setattr(particleplanet, "S", npy.where(particleplanet.mat==0, core.entropy*1e7, mantle.entropy*1e7))
-    else:
-        print('error: multi-layers not implemented yet')
-        return
-
+    if len(layers) == 0:
+        S = [Score,Smantle]
+    ##    setattr(particleplanet, "S", npy.where(particleplanet.mat==0, core.entropy*1e7, mantle.entropy*1e7))
+    ##else:
+    setattr(particleplanet, "S", npy.array(S)[particleplanet.mat]*1e7)
+    
     if verbose:
         print(npy.unique(particleplanet.A1_m))
         print( (particleplanet.A1_m.max()-npy.mean(particleplanet.A1_m))/npy.mean(particleplanet.A1_m), (particleplanet.A1_m.min()-npy.mean(particleplanet.A1_m))/npy.mean(particleplanet.A1_m) )
@@ -390,7 +735,11 @@ def make_SPH_planet(mass=Mearth, corefraction=0.3, Pmin=1.e6, Score=1.81, Smantl
     # load particle planet into planit snapshot
     sn = Snapshot()
     sn.ic_from_seagen(particleplanet)
-    
+    if len(layers) == 0:
+        sn.ensure_matIDs((layer1,layer2))
+    else:
+        sn.ensure_matIDs(layers)
+        
     if verbose:
         print(sn.m.sum()/Mearth, sn.m.std()/Mearth)
 
@@ -400,7 +749,10 @@ def make_SPH_planet(mass=Mearth, corefraction=0.3, Pmin=1.e6, Score=1.81, Smantl
         print(sn.m.sum()/Mearth, sn.m.std()/Mearth)
     
     if not profile:
-        return planet, core, mantle, sn, particleplanet
+        if len(layers) == 0:
+            return planet, core, mantle, sn, particleplanet
+        else:
+            return planet, isentropes, sn, particleplanet
     else:
         return sn, particleplanet
 
@@ -473,7 +825,7 @@ class PREMclass:
         # interpolate the Anzellini profile to match the PREM profile
         # the following defines a function = y(x)
         interp_func = interpolate.interp1d(Anzellini_pressure,Anzellini_temperature,fill_value="extrapolate") 
-        PREM.temperature = interp_func(PREM.pressure)
+        self.temperature = interp_func(self.pressure)
 
 
 

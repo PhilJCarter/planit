@@ -3,7 +3,8 @@ import random
 import numpy as npy
 from planit import eos
 
-@pytest.mark.parametrize('EOS', ['iron','Fe','FeSi','Fo','ANEOSPyrolite','5PhaseWater'])
+
+@pytest.mark.parametrize('EOS', ['iron', 'Fe', 'FeSi', 'Fo', 'ANEOSPyrolite', '5PhaseWater'])
 def test_eos_loading(EOS):
     assert eos.select(EOS) is not None
 
@@ -17,26 +18,26 @@ def test_isentrope_init():
 
 def test_calcprop_unknown():
     with pytest.raises(Exception):
-        eos.calcprop('3','rho','T',4,3000,401)
+        eos.calcprop('3', 'rho', 'T', 4, 3000, 401)
 
 
 @pytest.mark.parametrize('execcount', range(1000))
 def test_interp_ANEOS_U(execcount):
-    aneoslist = ['ANEOSIron','ANEOSForsterite','ANEOSFeSiAlloy','ANEOSPyrolite','5PhaseWater']
+    aneoslist = ['ANEOSIron', 'ANEOSForsterite', 'ANEOSFeSiAlloy', 'ANEOSPyrolite', '5PhaseWater']
     EOS = eos.select(random.choice(aneoslist))
-    j = npy.random.randint(0,high=len(EOS.rho))
-    i = npy.random.randint(0,high=len(EOS.T))
-    print(EOS.MODELNAME,j,i)
+    j = npy.random.randint(0, high=len(EOS.rho))
+    i = npy.random.randint(0, high=len(EOS.T))
+    print(EOS.MODELNAME, j, i)
     EOSpasser = EOS.make_passer_class()
-    assert eos.tabinterp.from_rhoT('U',EOS.rho[j]*(1.+1e-8),EOS.T[i]*(1.+1e-12),EOSpasser) == pytest.approx(EOS.U[i,j], rel=1e-3, abs=1e-11)
+    assert eos.tabinterp.from_rhoT('U', EOS.rho[j]*(1.+1e-8), EOS.T[i]*(1.+1e-12), EOSpasser) == pytest.approx(EOS.U[i,j], rel=1e-3, abs=1e-11)
 
 @pytest.mark.parametrize('execcount', range(1000))
 def test_interp_ANEOS_S(execcount):
-    aneoslist = ['ANEOSIron','ANEOSForsterite','ANEOSFeSiAlloy','5PhaseWater']
+    aneoslist = ['ANEOSIron', 'ANEOSForsterite', 'ANEOSFeSiAlloy', '5PhaseWater']
     EOS = eos.select(random.choice(aneoslist))
-    j = npy.random.randint(2,high=len(EOS.rho))
-    i = npy.random.randint(12,high=len(EOS.T))
-    print(EOS.MODELNAME,j,i)
+    j = npy.random.randint(2, high=len(EOS.rho))
+    i = npy.random.randint(12, high=len(EOS.T))
+    print(EOS.MODELNAME, j, i)
     EOSpasser = EOS.make_passer_class()
     #U = eos.tabinterp.from_rhoT('U',EOSpasser.rho[j]*(1.-1e-15),EOSpasser.T[i]*(1.-1e-15),EOSpasser)
-    assert eos.tabinterp.from_rhoU('S',EOS.rho[j]*(1.-1e-15),EOS.U[i,j]*(1.-1e-15),EOSpasser) == pytest.approx(EOS.S[i,j], rel=1.2e-1, abs=1e-6)
+    assert eos.tabinterp.from_rhoU('S', EOS.rho[j]*(1.-1e-15), EOS.U[i,j]*(1.-1e-15), EOSpasser) == pytest.approx(EOS.S[i,j], rel=1.2e-1, abs=1e-6)
