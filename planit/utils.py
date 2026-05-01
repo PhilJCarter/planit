@@ -34,24 +34,30 @@ class Node:
         self.children = []
 
         N = len(mass)
-        if N == 1:
-            self.m = mass[0]
-            self.com = pos[0]
-            self.id = ids[0]
-            self.pot = 0
-            leaves.append(self)
-        elif N == 2 and npy.sqrt(((pos[0]-pos[1])**2).sum()) < (self.size/2e50):
+        #if N == 1:
+        #    self.m = mass[0]
+        #    self.com = pos[0]
+        #    self.ids = ids
+        #    self.pot = 0
+        #    leaves.append(self)
+        if N <= 8:
             self.m = mass.sum()
-            self.com = (pos[0]+pos[1])/2.
-            self.id = ids[0]
+            self.com = pos.sum(axis=0)/len(mass)
+            self.ids = ids
             self.pot = 0
             leaves.append(self)
+        #elif N == 2 and npy.sqrt(((pos[0]-pos[1])**2).sum()) < (self.size/2e50):
+        #    self.m = mass.sum()
+        #    self.com = (pos[0]+pos[1])/2.
+        #    self.ids = ids
+        #    self.pot = 0
+        #    leaves.append(self)
         elif self.size == 0.0:
             if len(ids) > 2:
                 print('WARNING: ', len(ids), ' overlapping particles: ', ids)
             self.m = mass.sum()
             self.com = pos[0]
-            self.id = ids[0]
+            self.ids = ids
             self.pot = 0
             leaves.append(self)
         else:
@@ -87,7 +93,7 @@ def Walk_Pot(node, leaf, theta2):
             Walk_Pot(c, leaf, theta2)
 
 
-@numba.njit(parallel=True)
+@numba.njit(parallel=False)
 def _calc_potential_direct(m, x, y, z):
     pot = npy.zeros(len(m))
     for j in numba.prange(len(m)):
@@ -107,15 +113,13 @@ def _calc_potential_tree(m, x, y, z):
     pot = npy.zeros(len(m))
     for leaf in leaves:
         Walk_Pot(tree, leaf, theta2)
-        pot[leaf.id] = leaf.pot
+        pot[leaf.ids] = leaf.pot
     return pot
 
 
 def calc_potential(m, x, y, z):
-    if len(m) > 200000:
-        try:
-            return _calc_potential_tree(m, x, y, z)
-        except:
-            return _calc_potential_direct(m, x, y, z)
+    if len(m) > 200:
+        return _calc_potential_tree(m, x, y, z)
     else:
         return _calc_potential_direct(m, x, y, z)
+

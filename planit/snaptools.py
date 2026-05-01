@@ -784,7 +784,7 @@ class Snapshot:
             return False
            
 
-    def bound_mass(self, nrem=1, minbnd=200, maxiter=2000, tol=0.01, reorder=True, discardsmall=False, calc_pot_all=True, save=True):
+    def bound_mass(self, nrem=1, minbnd=500, maxiter=2000, tol=0.001, reorder=True, discardsmall=False, calc_pot_all=True, save=True):
         self.rem = npy.zeros(len(self.id)).astype(int)
     
         for r in range(1,nrem+1):
