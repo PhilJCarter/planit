@@ -15,6 +15,7 @@ import numpy as npy
 import numba
 from scipy import interpolate
 
+
 def loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS'):
     """
        Wrapper function for loading EoS
@@ -46,6 +47,7 @@ UserEOS1 = None
 UserEOS2 = None
 UserEOS3 = None
 UserEOS4 = None
+
 
 # Name lists for EoS
 ironnames  = ['Iron-ANEOS-SLVTv0.2G1','iron','ANEOSIron','Fe','Iron',401]
@@ -284,6 +286,4 @@ def _calc_prop(Qlab,Xlab,Ylab,X,Y,EOSlist):
                 Q[i] = npy.nan
             else:
                 Q[i] = tabinterp.from_rhoU1D(Qlab, X[i], Y[i], EOSlist[i])
-        #else:
-        #    raise NotImplementedError('Non-ANEOS EOS not currently supported.')            
     return Q

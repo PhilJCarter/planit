@@ -241,11 +241,11 @@ class Impact:
                     elif type in ['entropy','ent','S']:
                         cbar_ax.xaxis.set_label_text(r'$S$ (kJ$\,$K$^{-1}\,$kg$^{-1}$)')
                     elif type=='phase':
-                        cbar.ax.set_xticklabels(['','s','s+l','l','l+v','v','scf'])  #  colorbar ['s','s+l','l','l+v']
+                        #cbar.ax.set_xticklabels(['','s','s+l','l','l+v','v','scf'])  #  colorbar ['s','s+l','l','l+v']
+                        cbar.ax.set_xticklabels(['s','s+l','l','l+v','v','scf'])  #  colorbar ['s','s+l','l','l+v']
                         cbar_ax.xaxis.set_label_text(r'Phase')
                     cbar_ax.xaxis.set_label_position('top')
         plt.subplots_adjust(wspace=0, hspace=0)
-        #plt.tight_layout()
         plt.show()
 
 
@@ -285,13 +285,13 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
     tcut = 3600.   #time cut for pre-contact treatment
     
     # number of cells for grid
-    Ng = 1201j
-    Ngz = 15j
+    Ng = 2401j
+    Ngz = 21j
 
-    scsize = 2.
+    scsize = 1.5
 
     # density limits
-    rhomin=5e-5
+    rhomin=1e-5
     rhomax=10.
     # entropy limits
     cmin=1.5
@@ -333,7 +333,7 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
             n = len(seq)
             #if type in ['density','rho','pressure','P',]:
             if l==0:
-                cmap = plt.get_cmap('plasma') #'plasma'
+                cmap = plt.get_cmap('cmr.bubblegum') #'plasma'
                 cmapphase = plt.get_cmap('plasma', 6)
                 #cmapphase = matplotlib.colors.ListedColormap(plt.get_cmap('magma', 7).colors[1:])#.copy()
             elif l==1 and len(types)>2:
@@ -386,11 +386,11 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                     else:
                         coz = 0 #(z[imp.data[j].pot==imp.data[j].pot.min()])[0] #s.z[modz<zcut]
                     nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
-                    cols=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False)(rhoi[:,:,nn].T)
-                    cols=cmap(cols)
+                    cols = rhoi[:,:,nn].T
+                    #cols=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False)(rhoi[:,:,nn].T)
+                    #cols=cmap(cols)
                     ax = plt.gca()
                     im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],cmap=cmap,vmin=rhomin,vmax=rhomax,rasterized=True)#,norm=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False))#vmin=rhomin,vmax=rhomax
-                    #ax=plt.gca()
                     ax.tick_params(colors='w',which='both',labelcolor='k')
                     ax.spines['top'].set_color('w')
                     ax.spines['bottom'].set_color('w')
@@ -474,13 +474,29 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                 plt.minorticks_on()
                 if i==0:
                     if type=='density' or type=='rho':
-                        plt.text(0.05,0.95,chr(96+m),ha='left',va='top',fontsize=9,color='w',transform=plt.gca().transAxes)
+                        if uppercaselab:
+                            plt.text(0.05,0.95,chr(64+m),ha='left',va='top',fontsize=9,fontweight='bold',color='w',transform=plt.gca().transAxes)
+                        else:
+                            plt.text(0.05,0.95,chr(96+m),ha='left',va='top',fontsize=9,fontweight='bold',color='w',transform=plt.gca().transAxes)
                     else:
-                        plt.text(0.05,0.95,chr(96+m),ha='left',va='top',fontsize=9,color='k',transform=plt.gca().transAxes)
+                        if uppercaselab:
+                            plt.text(0.05,0.95,chr(64+m),ha='left',va='top',fontsize=9,fontweight='bold',color='k',transform=plt.gca().transAxes)
+                        else:
+                            plt.text(0.05,0.95,chr(96+m),ha='left',va='top',fontsize=9,fontweight='bold',color='k',transform=plt.gca().transAxes)
                 if type=='density' or type=='rho':
-                    plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,color='w',transform=plt.gca().transAxes)
+                    if ti<1.1:
+                        plt.text(0.96,0.96,'{:.2f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='w',transform=plt.gca().transAxes)
+                    elif ti>23.8:
+                        plt.text(0.96,0.96,'{:.0f} hrs'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='w',transform=plt.gca().transAxes)
+                    else:
+                        plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='w',transform=plt.gca().transAxes)
                 else:
-                    plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,color='k',transform=plt.gca().transAxes)
+                    if ti<1.1:
+                        plt.text(0.96,0.96,'{:.2f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='k',transform=plt.gca().transAxes)
+                    elif ti>23.8:
+                        plt.text(0.96,0.96,'{:.0f} hrs'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='k',transform=plt.gca().transAxes)
+                    else:
+                        plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='k',transform=plt.gca().transAxes)
 
                 ax = plt.gca()
                 if i>0:
@@ -525,7 +541,6 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                             cbar_ax.xaxis.set_label_text(r'$S$ (kJ$\,$K$^{-1}\,$kg$^{-1}$)')
                         elif type=='phase':
                             ##cbar = fig.colorbar(im1, cax=cax, ticks = np.arange(13)/12, orientation='vertical')
-                            ##cbar.ax.set_xticklabels(['','s','s+l','l','l+v'])  #  colorbar ['s','s+l','l','l+v']
                             cbar.ax.set_xticklabels(['','s','s+l','l','l+v','v','scf'])  #  colorbar ['s','s+l','l','l+v']
                             #cbar.ax.set_xticklabels(['s','s+l','l','l+v','v','scf'])  #  colorbar ['s','s+l','l','l+v']
                             cbar_ax.xaxis.set_label_text(r'Phase')
@@ -538,8 +553,6 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
             toprow = ax.get_position()
         k=1
 
-    #plt.subplots_adjust(right=0.99)
-    #plt.tight_layout()
     #fig.set_figwidth(10)
     print(colpos.x0,colpos.y0,colpos.x1,colpos.y1)
     plt.show()

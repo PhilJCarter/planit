@@ -2,7 +2,6 @@
    planit snapshot and header classes
 """
 
-#from .main import *
 from .utils import *
 from . import eos
 
@@ -11,8 +10,6 @@ import numpy as npy
 import scipy
 import h5py
 import struct
-#import matplotlib
-#import matplotlib.pyplot as plt
 
 
 class SnapHeader:
@@ -395,8 +392,6 @@ class Snapshot:
                 self.T = eos.calcprop('T', 'U', 'rho', self.U, self.rho, self.materialIDs)
             if 'Potentials' in part.keys():
                 self.pot = part['Potentials'][:] * Lfactor**2/(Tfactor**2)
-            #else:
-            #    self.pot = npy.zeros(self.N) #???            
             if 'RemnantIDs' in part.keys():
                 self.rem = part['RemnantIDs'][:]
 
@@ -761,9 +756,9 @@ class Snapshot:
             self.write_hdf5(fname,units='cgs',mats=mats)
 
 ### edit
-    def identify(self, crust=False):
-        self.core = self.iron = npy.where(self.id <= IDOFF, 1, 0)
-        self.mant = self.fors = npy.where(self.id > IDOFF, 1, 0)
+#    def identify(self, crust=False):
+#        self.core = self.iron = npy.where(self.id <= IDOFF, 1, 0)
+#        self.mant = self.fors = npy.where(self.id > IDOFF, 1, 0)
 ### edit end
         
     def summary(self):
@@ -831,7 +826,7 @@ class Snapshot:
         if discardsmall:
             for r in range(1,self.rem.max()+1):
                 if len(self.m[self.rem==r]) < minbnd:
-                    self.rem[self.rem==r] = 0
+                    self.rem[self.rem==r] = -r
 
         if reorder:
             sm = [self.m[self.rem==r].sum() for r in range(1,self.rem.max()+1)]
@@ -900,9 +895,6 @@ class Snapshot:
         self.vapfrac = npy.where(self.vapfrac > 1, 1., self.vapfrac)
         self.vapfrac = npy.where(npy.isnan(self.vapfrac),0.,self.vapfrac)
 
-        # if release:
-        #     self.phase = npy.where(self.S<FoSsol(release),4,5)
-        # else:
         self.phase[self.materialIDs>=300] = npy.where(self.S[self.materialIDs>=300]<FoSsol(self.P[self.materialIDs>=300]),4,5)
         self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where(self.S>FoSmelt(self.P),6,self.phase)[self.id>=GADGET_EOS_OFFSET]
         self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where(self.S>FoSliq(self.P),2,self.phase)[self.id>=GADGET_EOS_OFFSET]

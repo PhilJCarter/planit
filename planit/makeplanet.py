@@ -465,13 +465,7 @@ def make_1D_2L_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Sm
     
     print('Iterations:    ',itercount,'\n')        
 
-    #planet = planet_profile()
-    #planet.M = menclosed
     planet.cf = mcore/planet.M
-    #planet.rarr = rarr
-    #planet.density = darr
-    #planet.pressure = parr
-    #planet.temperature = tarr
     planet.mat = npy.where(npy.arange(len(planet.rarr))<=iendcore,0,1)
     planet.entropy = npy.where(npy.arange(len(planet.rarr))<=iendcore,Score,Smantle)*1e7
     
@@ -712,8 +706,6 @@ def make_SPH_planet(mass=Mearth, corefraction=0.3, Pmin=1.e6, Score=1.81, Smantl
     particleplanet = seagen.GenSphere(Np,planet.rarr[1:],planet.density[1:],A1_T_prof=planet.temperature[1:],A1_P_prof=planet.pressure[1:],A1_mat_prof=planet.mat[1:],verbosity=0, A1_m_rel_prof=1.0*npy.ones(len(planet.mat[1:])))#, A1_force_more_shells=[False,True])
     if len(layers) == 0:
         S = [Score,Smantle]
-    ##    setattr(particleplanet, "S", npy.where(particleplanet.mat==0, core.entropy*1e7, mantle.entropy*1e7))
-    ##else:
     setattr(particleplanet, "S", npy.array(S)[particleplanet.mat]*1e7)
     
     if verbose:

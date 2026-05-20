@@ -23,7 +23,7 @@ an impact simulation.\
 `utils` provides additional utility functions for analysis.
 
 ## Installation
-<!-- **planit** is available in PyPI and can be installed with `pip install planit`.-->
+**planit** is available in PyPI and can be installed with `pip install planit`.
 
 ## Equations of State (EoS)
 
@@ -39,6 +39,9 @@ They can be accessed using the names given above (as well as some variations) or
 corresponding SWIFT/WoMa ID number.\
 User supplied tables in standard SESAME format can also be used.
 
+>[!WARNING]
+> HM80 EoS support is not fully tested yet!
+
 > [!NOTE]
 > `ANEOSPyrolite` has been assigned the SWIFT/WoMa ID 403 in planit but does not currently have an 
 assigned ID in SWIFT. Using a modified version of SWIFT or using the user supplied EoS functionality 
@@ -53,6 +56,4 @@ requested mass and component mass fractions are matched (within tolerance). The 
 behaviour prevents the unphyiscal scenario of a core cooler than the mantle at the 
 core-mantle boundary.
 
-> [!NOTE]
-> `makeplanet` currently only supports 2-layer planets
 

@@ -27,6 +27,7 @@ EOSpasser_spec = [
     ('T_2D', numba.types.float64[:, :])
 ]
 
+
 @numba.experimental.jitclass(EOSpasser_spec)
 class EOSpasser():
     """
