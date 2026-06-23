@@ -26,21 +26,24 @@ class Impact:
         self.nsnaps = 0
         self.snap = self.data = None
         
-    def load(self,loc,thermo=False,inter=1,compress=True,code='swift'):
+    def load(self,loc,thermo=False,inter=1,compress=True,code='swift',ndigits=4,prefix='snapshot',prefix2=None):
         Nf2 = 0
         if code=='swift':
-            flist = sorted(glob.glob(loc+'snapshot_*.hdf5'))
-            flist2 = sorted(glob.glob(loc+'xsnapshot_*.hdf5'))
+            flist = sorted(glob.glob(loc+prefix+'_*.hdf5'))
+            if prefix2:
+                flist2 = sorted(glob.glob(loc+prefix2+'_*.hdf5'))
         else:
-            flist = sorted(glob.glob(loc+'snapshot_*'))
-            flist2 = sorted(glob.glob(loc+'xsnapshot_*'))
+            flist = sorted(glob.glob(loc+prefix+'_*'))
+            if prefix2:
+                flist2 = sorted(glob.glob(loc+prefix2+'_*'))
         Nf1 = [(flist[x].split('/')[-1]).split('_')[1].split('.')[0] for x in range(len(flist))]
-        Nf2 = [(flist2[x].split('/')[-1]).split('_')[1].split('.')[0] for x in range(len(flist2))]
+        if prefix2:
+            Nf2 = [(flist2[x].split('/')[-1]).split('_')[1].split('.')[0] for x in range(len(flist2))]
         if len(Nf1)>0:
             Nf = int(sorted(npy.array(Nf1).astype(int))[-1])
         else:
             Nf = 0
-        if len(Nf2)>0:
+        if prefix2 and len(Nf2)>0:
             Nf2 = int(sorted(npy.array(Nf2).astype(int))[-1])
         else:
             Nf2 = 0
@@ -62,17 +65,13 @@ class Impact:
             if i==0 or i==len(self.data)-1:
                 honly = False
             self.data[i] = ImpSnapshot()
-            #try:
             if code=='swift' or code=='Swift':
-                #print(files[i])
                 if i<Nf2:
-                    self.data[i].load(loc+'xsnapshot_{:>04d}.hdf5'.format(int(files[i])),headonly=honly,thermo=thermo,compress=compress)
+                    self.data[i].load(loc+prefix2+'_{:>0{width}}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
                 else:
-                    self.data[i].load(loc+'snapshot_{:>04d}.hdf5'.format(int(files[i])),headonly=honly,thermo=thermo,compress=compress)
+                    self.data[i].load(loc+prefix+'_{:>0{width}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
             else:
-                self.data[i].load(loc+'snapshot_{:>04d}'.format(int(files[i])),headonly=honly,thermo=thermo,compress=compress)
-            #except:
-            #    self.data[i].load(loc+'snapshot_{:>03d}'.format(int(files[i])),headonly=honly,thermo=thermo,compress=compress)
+                self.data[i].load(loc+prefix+'_{:>0{width}d}'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
 
 
     def plotseq(self, n=4, type='materials', seq=None, times=None, scale='Mm', potmin=True, tcut = 3600., zoom=1.):

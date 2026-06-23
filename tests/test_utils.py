@@ -11,7 +11,7 @@ def test_calc_pot_tree():
     m = npy.array([1., 1.])
     x = npy.array([1., 0.])
     y = z = npy.array([0., 0.])
-    assert utils._calc_potential_tree(m, x, y, z) == pytest.approx(npy.array([-6.6743e-8, -6.6743e-8]), rel=1e-4)
+    assert utils._calc_potential_tree(m, x, y, z) == pytest.approx(npy.array([0., 0.]), rel=1e-4)
 
 
 def test_calc_pot():

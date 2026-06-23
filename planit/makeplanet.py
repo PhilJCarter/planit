@@ -395,7 +395,7 @@ def make_1D_2L_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Sm
         planet.pressure = parr
         
         itercount = 0
-        maxiter = 50000
+        maxiter = 5000
         maxiterm = 5000
 
         if mtolerance < 5e-4:
@@ -432,12 +432,12 @@ def make_1D_2L_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Sm
             planet.temperature = tarr
             
             # inner loop 1 to make core of required mass
-            planet.add_isentropic_layer(mass=mcore,Pmin=Pmin,iendprevlayer=0,isentrope=core,dR=dR,maxiter=maxiterm,masstolerance=0)
+            planet.add_isentropic_layer(mass=mcore,Pmin=Pmin,iendprevlayer=0,isentrope=core,dR=dR,maxiter=maxiterm,masstolerance=mtolerance)
 
             iendcore = len(planet.rarr)-1
             
             # inner loop 2 to add mantle up to surface pressure
-            planet.add_isentropic_layer(mass=mtotal-mcore,Pmin=Pmin,iendprevlayer=iendcore,isentrope=mantle,dR=dR,maxiter=maxiterm,masstolerance=1e-1)   
+            planet.add_isentropic_layer(mass=mtotal-mcore,Pmin=Pmin,iendprevlayer=iendcore,isentrope=mantle,dR=dR,maxiter=maxiterm,masstolerance=mtolerance)   
 
             # adjust initial density if total mass wrong
             if planet.M < mtotal:
@@ -682,18 +682,21 @@ def make_SPH_planet(mass=Mearth, corefraction=0.3, Pmin=1.e6, Score=1.81, Smantl
     else:
         if len(layers) != len(S):
             raise ValueError('Number of layers must match number of entropies:', len(layers), len(S))
-        if len(layers) == 2:
-            layer1 = layers[0]
-            layer2 = layers[1]
-            Score = S[0]
-            Smantle = S[1]
-            totmass = sum(mass)
-            corefraction = mass[0]/totmass
-            mass = totmass
-        planet,isentropes = make_1D_planet(plot=plot, mantlepotT=mantlepotT, layer1=layer1, layer2=layer2, mass=mass, corefraction=corefraction, Pmin=Pmin, Score=Score, Smantle=Smantle, mtolerance=mtolerance, fixcoreT=fixcoreT, verbose=verbose, layers=layers, S=S, rhocent=rhocent)
+        if not layers: # or len(layers) == 2:
+            #layer1 = layers[0]
+            #layer2 = layers[1]
+            #Score = S[0]
+            #Smantle = S[1]
+            #totmass = sum(mass)
+            #corefraction = mass[0]/totmass
+            #mass = totmass
+            planet,core,mantle = make_1D_planet(plot=plot, mantlepotT=mantlepotT, layer1=layer1, layer2=layer2, mass=mass, corefraction=corefraction, Pmin=Pmin, Score=Score, Smantle=Smantle, mtolerance=mtolerance, fixcoreT=fixcoreT, verbose=verbose, layers=layers, S=S, rhocent=rhocent)
             
-        if len(layers) == 0:
-            core, mantle = isentropes
+        else:
+            planet,isentropes = make_1D_planet(plot=plot, mantlepotT=mantlepotT, layer1=layer1, layer2=layer2, mass=mass, corefraction=corefraction, Pmin=Pmin, Score=Score, Smantle=Smantle, mtolerance=mtolerance, fixcoreT=fixcoreT, verbose=verbose, layers=layers, S=S, rhocent=rhocent)
+            
+        #if len(layers) == 0:
+        #    core, mantle = isentropes
     
     partmass = Mearth / resolution   # mass per particle
     Np = int(planet.M / partmass)    # desired total number of particles

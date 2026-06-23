@@ -467,7 +467,6 @@ class Snapshot:
         self.vz = npy.zeros(self.N)
         self.vel = npy.zeros((self.N, 3))
 
-        #self.id = npy.where(partplanet.mat==0, npy.arange(len(partplanet.mat)), npy.arange(len(partplanet.mat))-len(partplanet.mat[partplanet.mat==0])+IDOFF )
         extraIDoff = [len(partplanet.mat[partplanet.mat<x]) for x in npy.unique(partplanet.mat)]
         extraIDoff = npy.array(extraIDoff)
         self.id = npy.arange(len(partplanet.mat)) + partplanet.mat * (GADGET_EOS_OFFSET) - extraIDoff[partplanet.mat]
@@ -477,7 +476,7 @@ class Snapshot:
         self.rho = partplanet.rho
         self.P = partplanet.P
         self.T = partplanet.T
-        #self.U = eos.calcprop('U', 'rho', 'S', self.rho, self.S, self.materialIDs)
+        ##self.U = eos.calcprop('U', 'rho', 'S', self.rho, self.S, self.materialIDs) # handled elsewhere
         
         self.hsml = npy.ones(self.N) * init_h
         self.pot = npy.zeros(self.N)
@@ -663,11 +662,10 @@ class Snapshot:
     def write_hdf5(self, outname, units='cgs', mats=[401,400], shift2center = True):
     
         self.G2_to_swift(mats=mats, fname=outname, write=False)
-#        self.ensure_matIDs(mats)
                 
         if npy.ndim(self.header.flag_entr_ics) < 1:
             if self.header.flag_entr_ics==1:
-                print('Entropy in U block')
+                #print('Entropy in U block')
                 intEblock = self.S
             else:   ## normal for converting gadget2-planetary to swift
                 intEblock = self.U
@@ -755,11 +753,13 @@ class Snapshot:
         if write:
             self.write_hdf5(fname,units='cgs',mats=mats)
 
+
 ### edit
 #    def identify(self, crust=False):
 #        self.core = self.iron = npy.where(self.id <= IDOFF, 1, 0)
 #        self.mant = self.fors = npy.where(self.id > IDOFF, 1, 0)
 ### edit end
+
         
     def summary(self):
         print('N SPH:', self.N)
@@ -798,7 +798,7 @@ class Snapshot:
                 pm = self.m[self.rem==0]
                 if calc_pot_all:
                     pot = calc_potential(pm,px,py,pz)
-                else: # and len(self.rem[self.rem==r-1])<minbnd
+                else:
                     pot = self.pot[self.rem==0]
                 seed = pid[(pot==pot.min())][0]
 
@@ -819,9 +819,6 @@ class Snapshot:
                 self.rem[self.rem==0] = npy.where((ke+pe)[self.rem==0]<0,r,self.rem[self.rem==0])
             
                 icount += 1
-            #print(icount)
-            #if len(self.id[self.rem==r]) < minbnd and len(self.id[self.rem==r-1]) < minbnd:
-            #    break
         
         if discardsmall:
             for r in range(1,self.rem.max()+1):
@@ -849,7 +846,8 @@ class Snapshot:
                 npy.savetxt(self.file+'_rem.txt', npy.transpose([self.id,self.rem]), header='Id  Remnant', fmt='%d')
         
         self.bnd = self.rem
-                                
+
+                             
 ### edit                
     def calc_phase(self,release=False,plot=False):
         if npy.unique(self.materialIDs)[-1] == 402:
@@ -909,6 +907,7 @@ class Snapshot:
         # should be P,T!
         self.phase[self.id<GADGET_EOS_OFFSET] = npy.where((self.P > CoreEOS.cp.P*1e10)*(self.S > CoreEOS.cp.S*1e3*1e7), 8, self.phase)[self.id < GADGET_EOS_OFFSET]
 ### edit end
+
 
     def calc_vap_frac(self, plot=False):
         self.calc_phase(plot=False)
