@@ -1,6 +1,6 @@
 [project]
 name = "planit"
-version = "0.9.2"
+version = "0.9.3"
 authors = [
     {name = "Philip Carter", email = "p.carter@bristol.ac.uk"},
 ]
@@ -8,6 +8,6 @@ description = "The PLANetary Impact Toolkit provides tools for accessing, manipu
 readme = "README.md"
 license = "GPL-3.0-or-later"
 license-files = ["LICEN[CS]E*"]
-dependencies = ["numpy","scipy","matplotlib","numba","h5py","seagen"]
+dependencies = ["numpy","scipy","matplotlib","numba","h5py","seagen","cmasher"]
 [project.urls]
 Homepage = "https://github.com/PhilJCarter/planit"

@@ -11,18 +11,26 @@ import h5py
 import glob
 import matplotlib
 import matplotlib.pyplot as plt
-
+import cmasher
 
 class ImpSnapshot(Snapshot):
     pass
 
 
 class Impact:
+    """
+    Gadget/Swift impact class
+    
+    A wrapper for holding multiple snapshots
+    
+    load()
+    plotseq()
+    """
     def __init__(self):
-        self.targ = None
-        self.proj = None
-        self.v = None
-        self.b = None
+        #self.targ = None
+        #self.proj = None
+        #self.v = None
+        #self.b = None
         self.nsnaps = 0
         self.snap = self.data = None
         

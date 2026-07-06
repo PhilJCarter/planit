@@ -19,7 +19,14 @@ Rcmb = 348000000. # CMB radius in cm (from PREM)
 
 
 class planet_profile:
-    """1D planet profile class"""
+    """
+    1D planet profile class
+    
+    load()
+    write()
+    add_isentropic_layer()
+    add_adiabatic_layer()
+    """
     def __init__(self):
         self.M = 0.
         self.cf = 0.
@@ -977,7 +984,7 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
         
 
 
-
+### in progress...
 class EquilRun:
     def __init__(self):
         self.M = 0

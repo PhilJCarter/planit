@@ -22,6 +22,9 @@ an impact simulation.\
 `eos` provides classes and functions for accessing and using equations of state.\
 `utils` provides additional utility functions for analysis.
 
+> [!NOTE]
+> Currently only two-layer planets with a forsterite mantle are *fully* supported.
+
 ## Installation
 **planit** is available in PyPI and can be installed with `pip install planit`.
 

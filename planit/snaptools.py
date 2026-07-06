@@ -142,6 +142,9 @@ class Snapshot:
 
 
     def ensure_matIDs(self,mats):
+        """
+        If materialIDs missing, add correct material IDs
+        """
         eosIDs = [eos.select(mat).womaID for mat in mats]
         if npy.ndim(self.materialIDs) < 1:
             self.materialIDs = npy.choose( (self.id/GADGET_EOS_OFFSET).astype(int), eosIDs )
@@ -736,6 +739,9 @@ class Snapshot:
 
 
     def G2_to_swift(self, mats=[401,400], box=5000.*6.371e8, fname=None, write=True):
+        """
+        Convert Gadget2 format to Swift format
+        """
         self.ensure_matIDs(mats)
         #define U
         if len(self.U) == 0:
@@ -770,6 +776,9 @@ class Snapshot:
 
 
     def eq_test(self, threshold=0.01):
+        """
+        Test for succesful equilibration
+        """
         r = npy.sqrt( (self.x-npy.average(self.x,weights=self.m))**2 + (self.y-npy.average(self.y,weights=self.m))**2 + (self.z-npy.average(self.z,weights=self.m))**2 )
         vesc = npy.sqrt( 2*G*self.m.sum()/r.max() )        
         vrms = ( npy.sqrt( ( (self.vx-npy.average(self.vx,weights=self.m))**2 + (self.vy-npy.average(self.vy,weights=self.m))**2 + (self.vz-npy.average(self.vz,weights=self.m))**2 ).mean() ) )
@@ -780,6 +789,9 @@ class Snapshot:
            
 
     def bound_mass(self, nrem=1, minbnd=500, maxiter=2000, tol=0.001, reorder=True, discardsmall=False, calc_pot_all=True, save=True):
+        """
+        Calculate bound remnants
+        """
         self.rem = npy.zeros(len(self.id)).astype(int)
     
         for r in range(1,nrem+1):
@@ -850,6 +862,10 @@ class Snapshot:
                              
 ### edit                
     def calc_phase(self,release=False,plot=False):
+        """
+        Calculate phase and melt/vapor fractions
+        """
+        ### currently only works for forsterite mantle and iron or alloy core!
         if npy.unique(self.materialIDs)[-1] == 402:
             CoreEOS = eos.select('alloy')
         else:
