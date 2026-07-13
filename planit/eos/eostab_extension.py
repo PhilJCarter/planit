@@ -36,14 +36,14 @@ class EOSpasser():
     def __init__(self,ND,NT,NU):
         self.ND = ND
         self.NT = NT
-        self.rho = np.zeros(self.ND)
-        self.T   = np.zeros(self.NT)
-        self.P   = np.zeros((self.ND,self.NT))
-        self.U   = np.zeros((self.ND,self.NT))
-        self.A   = np.zeros((self.ND,self.NT))
-        self.S   = np.zeros((self.ND,self.NT))
-        self.cs  = np.zeros((self.ND,self.NT))
-        self.cv  = np.zeros((self.ND,self.NT))
+        self.rho = npy.zeros(self.ND)
+        self.T   = npy.zeros(self.NT)
+        self.P   = npy.zeros((self.ND,self.NT))
+        self.U   = npy.zeros((self.ND,self.NT))
+        self.A   = npy.zeros((self.ND,self.NT))
+        self.S   = npy.zeros((self.ND,self.NT))
+        self.cs  = npy.zeros((self.ND,self.NT))
+        self.cv  = npy.zeros((self.ND,self.NT))
         # self.KPA = np.zeros((self.ND,self.NT))
         # self.MDQ = np.zeros(self.ND*self.NT)
         self.TYPE = ''

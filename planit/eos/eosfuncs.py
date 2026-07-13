@@ -36,11 +36,11 @@ def loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS'):
 ANEOSIron       = None
 ANEOSFeSiAlloy  = None
 ANEOSForsterite = None
-ANEOSPyrolite = None
+ANEOSPyrolite   = None
 
-FivePhaseWater = None
+FivePhaseWater  = None
 AQUAWater = None
-HM80HHe = None
+HM80HHe   = None
 
 UserEOS0 = None
 UserEOS1 = None
@@ -50,18 +50,18 @@ UserEOS4 = None
 
 
 # Name lists for EoS
-ironnames  = ['Iron-ANEOS-SLVTv0.2G1','iron','ANEOSIron','Fe','Iron',401]
-alloynames = ['Fe85Si15-ANEOS-SLVTv0.2G1','alloy','ANEOSFeSiAlloy','FeSi','Alloy','IronAlloy','ironalloy',402]
-forsteritenames = ['Forsterite-ANEOS-SLVTv1.0G1','forsterite','ANEOSForsterite','Forsterite','Fo',400]
-pyrolitenames = ['Pyrolite_ANEOS_SLVTv0.2','pyrolite','Pyrolite','ANEOSPyrolite',403]
-aquawaternames = ['Water-AQUA-v1.0','AQUA','AQUAWater','aqua',304]
-fivephasewaternames = ['5PhaseEOSv8.3','5PhaseWater','5phasewater','SS08','SenftStewartWater','SenftStewart08',303]
-hm80HHenames = ['HM80-HHe-v2.0','HM80_HHe','HM80HHe',200]
+ironnames  = ['Iron-ANEOS-SLVTv0.2G1', 'iron', 'ANEOSIron', 'Fe', 'Iron', 401]
+alloynames = ['Fe85Si15-ANEOS-SLVTv0.2G1', 'alloy', 'ANEOSFeSiAlloy', 'FeSi', 'Alloy', 'IronAlloy', 'ironalloy', 402]
+forsteritenames = ['Forsterite-ANEOS-SLVTv1.0G1', 'forsterite', 'ANEOSForsterite', 'Forsterite', 'Fo', 400]
+pyrolitenames = ['Pyrolite_ANEOS_SLVTv0.2', 'pyrolite', 'Pyrolite', 'ANEOSPyrolite', 403]
+aquawaternames = ['Water-AQUA-v1.0', 'AQUA', 'AQUAWater', 'aqua', 304]
+fivephasewaternames = ['5PhaseEOSv8.3', '5PhaseWater', '5phasewater', 'SS08', 'SenftStewartWater', 'SenftStewart08', 303]
+hm80HHenames = ['HM80-HHe-v2.0', 'HM80_HHe', 'HM80HHe', 200]
 
-user0names = ['User0',900]
-user1names = ['User1',901]
-user2names = ['User2',902]
-user3names = ['User3',903]
+user0names = ['User0', 900]
+user1names = ['User1', 901]
+user2names = ['User2', 902]
+user3names = ['User3', 903]
 user4names = ['User4',904]
 
 
@@ -78,7 +78,7 @@ def select(name, eosname=None, eosdir=None):
     elif name in alloynames:
         global ANEOSFeSiAlloy
         if not ANEOSFeSiAlloy:
-            ANEOSFeSiAlloy  = loadEOS(eos='Fe85Si15-ANEOS-SLVTv0.2G1', eostype='ANEOS')
+            ANEOSFeSiAlloy = loadEOS(eos='Fe85Si15-ANEOS-SLVTv0.2G1', eostype='ANEOS')
         return ANEOSFeSiAlloy
     elif name in forsteritenames:
         global ANEOSForsterite
@@ -131,7 +131,7 @@ def select(name, eosname=None, eosdir=None):
             UserEOS4 = loadANEOSEOS(eos=eosname, eostype='SESAME', eosdir=eosdir, user=True)
         return UserEOS4
     else:
-        raise ValueError('Unknown EOS:',name)
+        raise ValueError('Unknown EOS:', name)
         #return None
         
         
@@ -265,6 +265,7 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
     
     Q = _calc_prop(Qlab,Xlab,Ylab,X,Y,EOSlist.tolist())
     return Q*uconversion_Q
+
 
 @numba.njit(parallel=True)
 def _calc_prop(Qlab,Xlab,Ylab,X,Y,EOSlist):

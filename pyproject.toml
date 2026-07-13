@@ -1,6 +1,6 @@
 [project]
 name = "planit"
-version = "0.9.3"
+version = "1.0.0"
 authors = [
     {name = "Philip Carter", email = "p.carter@bristol.ac.uk"},
 ]

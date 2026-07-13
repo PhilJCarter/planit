@@ -12,7 +12,7 @@ Philip J. Carter (p.carter@bristol.ac.uk)
 
 Sarah T. Stewart (sstewa56@asu.edu)
 
-v0.9
+v1.0
 
 """
 
@@ -29,7 +29,6 @@ from .impacttools import Impact
 IronEOS       = eos.ANEOSIron        # for backwards compatibility
 AlloyEOS      = eos.ANEOSFeSiAlloy
 ForsteriteEOS = eos.ANEOSForsterite
-
 
 
 def loadsnap(file, headonly = False, thermo=False, compress=False, mats=[402,400]):
