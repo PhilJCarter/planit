@@ -1,6 +1,6 @@
 # This workflow will upload a Python Package to PyPI when a release is created
 
-name: Upload Python Package
+name: Publish Python Package
 
 on:
   release:
@@ -12,6 +12,7 @@ permissions:
 jobs:
   tests:
     uses: ./.github/workflows/python-test.yml
+    
   release-build:
     runs-on: ubuntu-latest
 
