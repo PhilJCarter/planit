@@ -28,7 +28,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
-        python -m pip install numpy scipy matplotlib seagen==1.5 numba h5py
+        python -m pip install numpy scipy matplotlib seagen==1.5 numba h5py cmasher
         # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Lint with flake8
       run: |
