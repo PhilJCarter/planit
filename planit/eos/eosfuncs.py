@@ -64,12 +64,87 @@ user2names = ['User2', 902]
 user3names = ['User3', 903]
 user4names = ['User4',904]
 
+USER_EOS_SLOTS = {
+    'User0': 900,
+    'User1': 901,
+    'User2': 902,
+    'User3': 903,
+    'User4': 904,
+}
+"""Custom EOS slot names and their reserved SWIFT/WoMa material IDs."""
+
+_USER_EOS_CACHE_NAMES = {
+    slot: f'UserEOS{index}'
+    for index, slot in enumerate(USER_EOS_SLOTS)
+}
+
+
+def _user_slot_name(name):
+    """Return the canonical user-slot name for a name or WoMa ID."""
+    for slot, womaID in USER_EOS_SLOTS.items():
+        if name == slot or name == womaID:
+            return slot
+    return None
+
+
+def _select_user_eos(slot, eosname=None, eosdir=None):
+    """Load or return a custom EOS slot without hiding invalid requests."""
+    cache_name = _USER_EOS_CACHE_NAMES[slot]
+    cached_eos = globals()[cache_name]
+    has_eosname = eosname is not None
+    has_eosdir = eosdir is not None
+
+    if has_eosname != has_eosdir:
+        raise ValueError(
+            f'Custom EOS {slot} requires both eosname and eosdir; '
+            'provide neither only to retrieve an already loaded table.'
+        )
+
+    if not has_eosname:
+        if cached_eos is None:
+            raise ValueError(
+                f'Custom EOS {slot} is not loaded. Provide both eosname and eosdir.'
+            )
+        return cached_eos
+
+    # Assign only after the loader succeeds, so a malformed replacement cannot
+    # leave a slot uninitialised or make select() silently return stale data.
+    new_eos = loadANEOSEOS(
+        eos=eosname,
+        eostype='SESAME',
+        eosdir=eosdir,
+        user=True,
+        womaID=USER_EOS_SLOTS[slot],
+    )
+    globals()[cache_name] = new_eos
+    return new_eos
+
 
 def select(name, eosname=None, eosdir=None):
+    """Return an EOS table, loading it if necessary.
+
+    Bundled EOS tables can be selected by their established names or material
+    IDs.  Custom SESAME tables use one of the five ``User0``--``User4`` slots
+    (or their IDs 900--904) and must be loaded with both ``eosname`` and
+    ``eosdir``::
+
+        table = select('User0', eosname='MyMaterial', eosdir='/path/to/table')
+
+    ``eosdir`` may be a string or path-like object and does not need a trailing
+    slash.  Repeating this call with both arguments replaces that slot after a
+    successful load.  Calling ``select('User0')`` later returns the cached
+    table; calling it before a successful load, or supplying only one of the
+    two arguments, raises ``ValueError``.
     """
-       Return EoS table object specified by name, 
-       loading it first if not already loaded
-    """
+    user_slot = _user_slot_name(name)
+    if user_slot is not None:
+        return _select_user_eos(user_slot, eosname=eosname, eosdir=eosdir)
+    if isinstance(name, str) and name.startswith('User'):
+        raise ValueError(
+            f'Unknown user EOS slot {name!r}. Supported slots are User0 through User4 '
+            '(WoMa IDs 900 through 904).'
+        )
+
     if name in ironnames:
         global ANEOSIron
         if not ANEOSIron:
@@ -105,31 +180,6 @@ def select(name, eosname=None, eosdir=None):
         if not HM80HHe:
             HM80HHe = loadEOS(eos='HM80-HHe-v2.0', eostype='HM80')
         return HM80HHe
-    elif name in user0names:
-        global UserEOS0
-        if (not UserEOS0) or (eosdir and eosname):
-            UserEOS0 = loadANEOSEOS(eos=eosname, eostype='SESAME', eosdir=eosdir, user=True)
-        return UserEOS0
-    elif name in user1names:
-        global UserEOS1
-        if (not UserEOS1) or (eosdir and eosname):
-            UserEOS1 = loadANEOSEOS(eos=eosname, eostype='SESAME', eosdir=eosdir, user=True)
-        return UserEOS1
-    elif name in user2names:
-        global UserEOS2
-        if (not UserEOS2) or (eosdir and eosname):
-            UserEOS2 = loadANEOSEOS(eos=eosname, eostype='SESAME', eosdir=eosdir, user=True)
-        return UserEOS2
-    elif name in user3names:
-        global UserEOS3
-        if (not UserEOS3) or (eosdir and eosname):
-            UserEOS3 = loadANEOSEOS(eos=eosname, eostype='SESAME', eosdir=eosdir, user=True)
-        return UserEOS3
-    elif name in user4names:
-        global UserEOS4
-        if (not UserEOS4) or (eosdir and eosname):
-            UserEOS4 = loadANEOSEOS(eos=eosname, eostype='SESAME', eosdir=eosdir, user=True)
-        return UserEOS4
     else:
         raise ValueError('Unknown EOS:', name)
         #return None
