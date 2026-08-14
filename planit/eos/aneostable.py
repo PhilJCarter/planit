@@ -14,10 +14,10 @@ REQUIRED_SESAME_FILES = (
     'NEW-SESAME-STD-NOTENSION.TXT',
     'NEW-SESAME-EXT.TXT',
 )
-"""Files required for a custom PlanIt SESAME EOS table."""
+"""Files required for a custom planit SESAME EOS table."""
 
 USER_WOMA_IDS = frozenset(range(900, 905))
-"""WoMa IDs reserved by PlanIt for custom EOS tables."""
+"""WoMa IDs reserved by planit for custom EOS tables."""
 
 
 def _validate_user_sesame_request(eos, eosdir, womaID):

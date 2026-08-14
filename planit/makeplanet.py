@@ -3,9 +3,10 @@
 """
 
 from .main import *
+from .globaldefs import *
 from .snaptools import Snapshot
 from . import eos
-from .utils import *
+#from . import utils
 
 import numpy as npy
 from scipy import interpolate

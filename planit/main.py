@@ -16,15 +16,12 @@ v1.0
 
 """
 
-import os
-
-eospath = os.path.dirname(__file__) + '/eos/data/'
-datadir = os.path.dirname(__file__) + '/data/'
-
+from .globaldefs import *
 from . import eos
-from .utils import *
+from . import utils
 from .snaptools import Snapshot
 from .impacttools import Impact
+
 
 IronEOS       = eos.ANEOSIron        # for backwards compatibility
 AlloyEOS      = eos.ANEOSFeSiAlloy

@@ -2,8 +2,9 @@
    planit impact class and analysis tools
 """
 
+from .globaldefs import *
 from .snaptools import Snapshot
-from .utils import *
+#from . import utils
 
 import numpy as npy
 import scipy
@@ -34,38 +35,42 @@ class Impact:
         self.nsnaps = 0
         self.snap = self.data = None
         
-    def load(self,loc,thermo=False,inter=1,compress=True,code='swift',ndigits=4,prefix='snapshot',prefix2=None):
-        Nf2 = 0
-        if code=='swift':
-            flist = sorted(glob.glob(loc+prefix+'_*.hdf5'))
-            if prefix2:
-                flist2 = sorted(glob.glob(loc+prefix2+'_*.hdf5'))
+    def load(self,loc,thermo=False,inter=1,compress=True,code='swift',ndigits=4,prefix='snapshot',prefix2=None,flist=None):
+        Nf2 = Nf = 0
+        flist2 = []
+        if flist:
+            files = flist
         else:
-            flist = sorted(glob.glob(loc+prefix+'_*'))
-            if prefix2:
-                flist2 = sorted(glob.glob(loc+prefix2+'_*'))
-        Nf1 = [(flist[x].split('/')[-1]).split('_')[1].split('.')[0] for x in range(len(flist))]
-        if prefix2:
-            Nf2 = [(flist2[x].split('/')[-1]).split('_')[1].split('.')[0] for x in range(len(flist2))]
-        if len(Nf1)>0:
-            Nf = int(sorted(npy.array(Nf1).astype(int))[-1])
-        else:
-            Nf = 0
-        if prefix2 and len(Nf2)>0:
-            Nf2 = int(sorted(npy.array(Nf2).astype(int))[-1])
-        else:
-            Nf2 = 0
-        print(Nf+Nf2)
-        self.nsnaps = len(flist)+len(flist2)
-        if self.nsnaps>2:
-            if Nf2>0:
-                files = npy.append(npy.arange(0,Nf2+1,inter),npy.arange(0,Nf+1,inter))
+            if code=='swift':
+                flist = sorted(glob.glob(loc+prefix+'_*.hdf5'))
+                if prefix2:
+                    flist2 = sorted(glob.glob(loc+prefix2+'_*.hdf5'))
             else:
-                files = npy.arange(0,Nf+1,inter)
-        elif self.nsnaps>0:
-            files = npy.array([0,Nf])
-        else:
-            files = []
+                flist = sorted(glob.glob(loc+prefix+'_*'))
+                if prefix2:
+                    flist2 = sorted(glob.glob(loc+prefix2+'_*'))
+            Nf1 = [(flist[x].split('/')[-1]).split('_')[1].split('.')[0] for x in range(len(flist))]
+            if prefix2:
+                Nf2 = [(flist2[x].split('/')[-1]).split('_')[1].split('.')[0] for x in range(len(flist2))]
+            if len(Nf1)>0:
+                Nf = int(sorted(npy.array(Nf1).astype(int))[-1])
+            else:
+                Nf = 0
+            if prefix2 and len(Nf2)>0:
+                Nf2 = int(sorted(npy.array(Nf2).astype(int))[-1])
+            else:
+                Nf2 = 0
+            print(Nf+Nf2)
+            self.nsnaps = len(flist)+len(flist2)
+            if self.nsnaps>2:
+                if Nf2>0:
+                    files = npy.append(npy.arange(0,Nf2+1,inter),npy.arange(0,Nf+1,inter))
+                else:
+                    files = npy.arange(0,Nf+1,inter)
+            elif self.nsnaps>0:
+                files = npy.array([0,Nf])
+            else:
+                files = []
         self.data = npy.ndarray((len(files),),dtype=object)
 
         for i in range(len(self.data)):
@@ -257,7 +262,7 @@ class Impact:
 
 
 
-def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm', potmin=True, zoom=1.):
+def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm', potmin=True, zoom=1.,uppercaselab=False):
     if (not isinstance(imps,list)) and (not isinstance(types,list)):
         return imps.plotseq(n=n,type=types,seq=seqs,times=times,scale=scale,potmin=potmin,zoom=zoom)
     elif not isinstance(imps,list):
@@ -292,8 +297,8 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
     tcut = 3600.   #time cut for pre-contact treatment
     
     # number of cells for grid
-    Ng = 2401j
-    Ngz = 21j
+    Ng = 1801j
+    Ngz = 15j
 
     scsize = 1.5
 
@@ -317,9 +322,9 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
     
     fig = plt.figure()#figsize=(10,4))
     fig.set_figwidth(8.)
-    fig.set_figheight(8./max(n)*(len(imps)*len(types)) + 10.)#-0.1
+    fig.set_figheight(8./max(n)*(len(imps)*len(types)) + 1.*len(imps)**1.75)#-0.1
     gs = fig.add_gridspec(ncols=max(n), nrows=len(imps)*len(types),wspace=0,hspace=0,right=0.98,top=0.96)
-    print(max(n),len(imps)*len(types))
+    #print(max(n),len(imps)*len(types))
     
     for imp, seq, zoomfac in zip(imps, seqs, zoom):#, types):
         axlim = 2*int(npy.ceil((imp.data[0].x.max()-imp.data[0].x.min())/scf/8.)) #4
@@ -397,7 +402,7 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                     #cols=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False)(rhoi[:,:,nn].T)
                     #cols=cmap(cols)
                     ax = plt.gca()
-                    im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],cmap=cmap,vmin=rhomin,vmax=rhomax,rasterized=True)#,norm=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False))#vmin=rhomin,vmax=rhomax
+                    im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],cmap=cmap,rasterized=True,norm=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False))#vmin=rhomin,vmax=rhomax
                     ax.tick_params(colors='w',which='both',labelcolor='k')
                     ax.spines['top'].set_color('w')
                     ax.spines['bottom'].set_color('w')
@@ -532,12 +537,12 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                         pbox = ax.get_position()
                         xw = 0.33
                         if m==1:
-                            cbar_ax = fig.add_axes([pbox.x1-xw, pbox.y1+0.26/max(1,2*len(imps)-1.9)*xw, xw, 0.032/max(1,2*len(imps)-1.8)])#0.27
+                            cbar_ax = fig.add_axes([pbox.x1-xw, pbox.y1+0.26/max(1,2*len(imps)-1.9)*xw, xw, 0.02/max(1,2*len(imps)**0.8-1.8)])#0.27
                             #cbar_ax = fig.add_axes([pbox.x1-xw, pbox.y1+0.32*xw, xw, 0.015])
                         elif m==len(imps)*len(types):
                             pbox = firstplot.get_position()
                             #cbar_ax = fig.add_axes([pbox.x1-xw, pbox.y0-0.6/max(1,1.5*len(imps)-0.7)*xw, xw, 0.032/max(1,2*len(imps)-1.8)])#0.47
-                            cbar_ax = fig.add_axes([pbox.x0, pbox.y1+0.26/max(1,2*len(imps)-1.9)*xw, xw, 0.032/max(1,2*len(imps)-1.8)])#0.47
+                            cbar_ax = fig.add_axes([pbox.x0, pbox.y1+0.26/max(1,2*len(imps)-1.9)*xw, xw, 0.02/max(1,2*len(imps)**0.8-1.8)])#0.47
                         cbar = fig.colorbar(im,cax=cbar_ax,orientation='horizontal')
                         ##plt.minorticks_on()
                         if type=='density' or type=='rho':
@@ -548,7 +553,8 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                             cbar_ax.xaxis.set_label_text(r'$S$ (kJ$\,$K$^{-1}\,$kg$^{-1}$)')
                         elif type=='phase':
                             ##cbar = fig.colorbar(im1, cax=cax, ticks = np.arange(13)/12, orientation='vertical')
-                            cbar.ax.set_xticklabels(['','s','s+l','l','l+v','v','scf'])  #  colorbar ['s','s+l','l','l+v']
+                            cbar.ax.set_xticks([3,4,5,6,7,8])
+                            cbar.ax.set_xticklabels(['s','s+l','l','l+v','v','scf'])  #  colorbar ['s','s+l','l','l+v']
                             #cbar.ax.set_xticklabels(['s','s+l','l','l+v','v','scf'])  #  colorbar ['s','s+l','l','l+v']
                             cbar_ax.xaxis.set_label_text(r'Phase')
                         
@@ -561,6 +567,6 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
         k=1
 
     #fig.set_figwidth(10)
-    print(colpos.x0,colpos.y0,colpos.x1,colpos.y1)
-    plt.show()
+    #print(colpos.x0,colpos.y0,colpos.x1,colpos.y1)
+    #plt.show()
     return fig

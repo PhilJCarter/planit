@@ -182,7 +182,6 @@ def select(name, eosname=None, eosdir=None):
         return HM80HHe
     else:
         raise ValueError('Unknown EOS:', name)
-        #return None
         
         
 class isentrope_class(eos_isentrope_class):

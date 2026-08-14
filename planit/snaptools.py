@@ -2,7 +2,8 @@
    planit snapshot and header classes
 """
 
-from .utils import *
+from .globaldefs import *
+from . import utils
 from . import eos
 
 import os
@@ -809,7 +810,7 @@ class Snapshot:
                 pz = self.z[self.rem==0]
                 pm = self.m[self.rem==0]
                 if calc_pot_all:
-                    pot = calc_potential(pm,px,py,pz)
+                    pot = utils.calc_potential(pm,px,py,pz)
                 else:
                     pot = self.pot[self.rem==0]
                 seed = pid[(pot==pot.min())][0]
@@ -818,12 +819,15 @@ class Snapshot:
 
             while abs((self.m[self.rem==r].sum()-prevmass)/prevmass) > tol and icount < maxiter:
                 sm = prevmass = self.m[self.rem==r].astype('float64',copy=False).sum()
-                sx = (self.x[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
-                sy = (self.y[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
-                sz = (self.z[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
-                svx = (self.vx[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
-                svy = (self.vy[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
-                svz = (self.vz[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
+                #sx = (self.x[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
+                #sy = (self.y[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
+                #sz = (self.z[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
+                #svx = (self.vx[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
+                #svy = (self.vy[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
+                #svz = (self.vz[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
+                
+                sx,sy,sz = utils.com(self.m[self.rem==r].astype('float64',copy=False),self.x[self.rem==r].astype('float64',copy=False),self.y[self.rem==r].astype('float64',copy=False),self.z[self.rem==r].astype('float64',copy=False))
+                svx,svy,svz = utils.com_v(self.m[self.rem==r].astype('float64',copy=False),self.vx[self.rem==r].astype('float64',copy=False),self.vy[self.rem==r].astype('float64',copy=False),self.vz[self.rem==r].astype('float64',copy=False))
             
                 ke = 0.5 * self.m.astype('float64',copy=False) * ( (self.vx-svx)**2 + (self.vy-svy)**2 + (self.vz-svz)**2 ).astype('float64',copy=False)
                 pe = - G * self.m.astype('float64',copy=False) * sm / npy.sqrt( (self.x-sx)**2 + (self.y-sy)**2 + (self.z-sz)**2 ).astype('float64',copy=False)

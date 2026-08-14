@@ -1,4 +1,6 @@
+from .globaldefs import *
 from .main import *
+from . import utils
 from . import eos
 from .impacttools import Impact, multiplotseq
 from .makeplanet import planet_profile

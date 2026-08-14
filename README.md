@@ -44,7 +44,7 @@ User supplied SESAME tables can also be loaded into one of five custom slots.
 
 ### Custom SESAME EoS tables
 
-PlanIt supports custom tables in the same SESAME-style layout used by its bundled ANEOS
+**planit** supports custom tables in the same SESAME-style layout used by its bundled ANEOS
 and 5-phase-water tables. A table directory must contain all of these files:
 
 - `NEW-SESAME-STD.TXT`
