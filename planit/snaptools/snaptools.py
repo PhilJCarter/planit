@@ -356,13 +356,13 @@ class Snapshot:
                 #svy = (self.vy[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
                 #svz = (self.vz[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
                 
-                sx,sy,sz = utils.com(self.m[self.rem==r].astype('float64',copy=False),self.x[self.rem==r].astype('float64',copy=False),self.y[self.rem==r].astype('float64',copy=False),self.z[self.rem==r].astype('float64',copy=False))
-                svx,svy,svz = utils.com_v(self.m[self.rem==r].astype('float64',copy=False),self.vx[self.rem==r].astype('float64',copy=False),self.vy[self.rem==r].astype('float64',copy=False),self.vz[self.rem==r].astype('float64',copy=False))
+                sx,sy,sz = utils.com(self.m[self.rem==r].astype('float64',copy=False), self.x[self.rem==r].astype('float64',copy=False), self.y[self.rem==r].astype('float64',copy=False), self.z[self.rem==r].astype('float64',copy=False))
+                svx,svy,svz = utils.com_v(self.m[self.rem==r].astype('float64',copy=False), self.vx[self.rem==r].astype('float64',copy=False), self.vy[self.rem==r].astype('float64',copy=False), self.vz[self.rem==r].astype('float64',copy=False))
                 
                 ke = 0.5 * self.m.astype('float64',copy=False) * ( (self.vx-svx)**2 + (self.vy-svy)**2 + (self.vz-svz)**2 ).astype('float64',copy=False)
                 pe = - G * self.m.astype('float64',copy=False) * sm / npy.sqrt( (self.x-sx)**2 + (self.y-sy)**2 + (self.z-sz)**2 ).astype('float64',copy=False)
 
-                self.rem[self.rem==0] = npy.where((ke+pe)[self.rem==0]<0,r,self.rem[self.rem==0])
+                self.rem[self.rem==0] = npy.where((ke+pe)[self.rem==0] < 0, r, self.rem[self.rem==0])
             
                 icount += 1
         
@@ -372,7 +372,7 @@ class Snapshot:
                     self.rem[self.rem==r] = -r
 
         if reorder:
-            sm = [self.m[self.rem==r].sum() for r in range(1,self.rem.max()+1)]
+            sm = [self.m[self.rem==r].sum() for r in range(1, self.rem.max()+1)]
             order = npy.argsort(sm)
             sbnd = self.rem.copy()
             rr = 1
@@ -405,49 +405,49 @@ class Snapshot:
         self.meltfrac = npy.zeros(len(self.materialIDs))
         self.phase = npy.zeros(len(self.materialIDs))
     
-        FoSsol=scipy.interpolate.interp1d(MantleEOS.mc.Ps*1e10,MantleEOS.mc.Ss*1e3*1e7,bounds_error=False)
-        FoSmelt=scipy.interpolate.interp1d(MantleEOS.mc.Pl*1e10,MantleEOS.mc.Sl*1e3*1e7,bounds_error=False)
-        CSsol=scipy.interpolate.interp1d(CoreEOS.mc.Ps*1e10,CoreEOS.mc.Ss*1e3*1e7,bounds_error=False)
-        CSmelt=scipy.interpolate.interp1d(CoreEOS.mc.Pl*1e10,CoreEOS.mc.Sl*1e3*1e7,bounds_error=False)
+        FoSsol=scipy.interpolate.interp1d(MantleEOS.mc.Ps*1e10,MantleEOS.mc.Ss*1e3*1e7, bounds_error=False)
+        FoSmelt=scipy.interpolate.interp1d(MantleEOS.mc.Pl*1e10,MantleEOS.mc.Sl*1e3*1e7, bounds_error=False)
+        CSsol=scipy.interpolate.interp1d(CoreEOS.mc.Ps*1e10,CoreEOS.mc.Ss*1e3*1e7, bounds_error=False)
+        CSmelt=scipy.interpolate.interp1d(CoreEOS.mc.Pl*1e10,CoreEOS.mc.Sl*1e3*1e7, bounds_error=False)
 
         if release:
-            self.meltfrac[self.materialIDs>=300] = (self.S[self.materialIDs>=300] - FoSsol(release)) / (FoSmelt(release) - FoSsol(release))
-            self.meltfrac[self.id<GADGET_EOS_OFFSET] = (self.S[self.id<GADGET_EOS_OFFSET] - CSsol(release)) / (CSmelt(release) - CSsol(release))
+            self.meltfrac[self.materialIDs >= 300] = (self.S[self.materialIDs >= 300] - FoSsol(release)) / (FoSmelt(release) - FoSsol(release))
+            self.meltfrac[self.id < GADGET_EOS_OFFSET] = (self.S[self.id < GADGET_EOS_OFFSET] - CSsol(release)) / (CSmelt(release) - CSsol(release))
         else:
-            self.meltfrac[self.materialIDs>=300] = (self.S[self.materialIDs>=300] - FoSsol(self.P[self.materialIDs>=300])) / (FoSmelt(self.P[self.materialIDs>=300]) - FoSsol(self.P[self.materialIDs>=300]))
-            self.meltfrac[self.id<GADGET_EOS_OFFSET] = (self.S[self.id<GADGET_EOS_OFFSET] - CSsol(self.P[self.id<GADGET_EOS_OFFSET])) / (CSmelt(self.P[self.id<GADGET_EOS_OFFSET]) - CSsol(self.P[self.id<GADGET_EOS_OFFSET]))
+            self.meltfrac[self.materialIDs >= 300] = (self.S[self.materialIDs >= 300] - FoSsol(self.P[self.materialIDs >= 300])) / (FoSmelt(self.P[self.materialIDs >= 300]) - FoSsol(self.P[self.materialIDs >= 300]))
+            self.meltfrac[self.id < GADGET_EOS_OFFSET] = (self.S[self.id < GADGET_EOS_OFFSET] - CSsol(self.P[self.id < GADGET_EOS_OFFSET])) / (CSmelt(self.P[self.id < GADGET_EOS_OFFSET]) - CSsol(self.P[self.id < GADGET_EOS_OFFSET]))
         self.meltfrac = npy.where(self.meltfrac < 0, 0., self.meltfrac)
         self.meltfrac = npy.where(self.meltfrac > 1, 1., self.meltfrac)
-        self.meltfrac = npy.where(npy.isnan(self.meltfrac),0.,self.meltfrac)
+        self.meltfrac = npy.where(npy.isnan(self.meltfrac), 0., self.meltfrac)
     
-        FoSliq=scipy.interpolate.interp1d(MantleEOS.vc.Pl*1e10,MantleEOS.vc.Sl*1e3*1e7,bounds_error=False)
-        FoSvap=scipy.interpolate.interp1d(MantleEOS.vc.Pv*1e10,MantleEOS.vc.Sv*1e3*1e7,bounds_error=False)
-        CSliq=scipy.interpolate.interp1d(CoreEOS.vc.Pl*1e10,CoreEOS.vc.Sl*1e3*1e7,bounds_error=False)
-        CSvap=scipy.interpolate.interp1d(CoreEOS.vc.Pv*1e10,CoreEOS.vc.Sv*1e3*1e7,bounds_error=False)
+        FoSliq=scipy.interpolate.interp1d(MantleEOS.vc.Pl*1e10,MantleEOS.vc.Sl*1e3*1e7, bounds_error=False)
+        FoSvap=scipy.interpolate.interp1d(MantleEOS.vc.Pv*1e10,MantleEOS.vc.Sv*1e3*1e7, bounds_error=False)
+        CSliq=scipy.interpolate.interp1d(CoreEOS.vc.Pl*1e10,CoreEOS.vc.Sl*1e3*1e7, bounds_error=False)
+        CSvap=scipy.interpolate.interp1d(CoreEOS.vc.Pv*1e10,CoreEOS.vc.Sv*1e3*1e7, bounds_error=False)
 
         if release:
-            self.vapfrac[self.materialIDs>=300] = (self.S[self.materialIDs>=300] - FoSliq(release)) / (FoSvap(release) - FoSliq(release))
-            self.vapfrac[self.id<GADGET_EOS_OFFSET] = (self.S[self.id<GADGET_EOS_OFFSET] - CSliq(release)) / (CSvap(release) - CSliq(release))
+            self.vapfrac[self.materialIDs >= 300] = (self.S[self.materialIDs >= 300] - FoSliq(release)) / (FoSvap(release) - FoSliq(release))
+            self.vapfrac[self.id < GADGET_EOS_OFFSET] = (self.S[self.id < GADGET_EOS_OFFSET] - CSliq(release)) / (CSvap(release) - CSliq(release))
         else:
-            self.vapfrac[self.materialIDs>=300] = (self.S[self.materialIDs>=300] - FoSliq(self.P[self.materialIDs>=300])) / (FoSvap(self.P[self.materialIDs>=300]) - FoSliq(self.P[self.materialIDs>=300]))
-            self.vapfrac[self.id<GADGET_EOS_OFFSET] = (self.S[self.id<GADGET_EOS_OFFSET] - CSliq(self.P[self.id<GADGET_EOS_OFFSET])) / (CSvap(self.P[self.id<GADGET_EOS_OFFSET]) - CSliq(self.P[self.id<GADGET_EOS_OFFSET]))
+            self.vapfrac[self.materialIDs >= 300] = (self.S[self.materialIDs >= 300] - FoSliq(self.P[self.materialIDs >= 300])) / (FoSvap(self.P[self.materialIDs >= 300]) - FoSliq(self.P[self.materialIDs >= 300]))
+            self.vapfrac[self.id < GADGET_EOS_OFFSET] = (self.S[self.id < GADGET_EOS_OFFSET] - CSliq(self.P[self.id < GADGET_EOS_OFFSET])) / (CSvap(self.P[self.id < GADGET_EOS_OFFSET]) - CSliq(self.P[self.id < GADGET_EOS_OFFSET]))
         self.vapfrac = npy.where(self.vapfrac < 0, 0., self.vapfrac)
         self.vapfrac = npy.where(self.vapfrac > 1, 1., self.vapfrac)
         self.vapfrac = npy.where(npy.isnan(self.vapfrac),0.,self.vapfrac)
 
-        self.phase[self.materialIDs>=300] = npy.where(self.S[self.materialIDs>=300]<FoSsol(self.P[self.materialIDs>=300]),4,5)
-        self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where(self.S>FoSmelt(self.P),6,self.phase)[self.id>=GADGET_EOS_OFFSET]
-        self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where(self.S>FoSliq(self.P),2,self.phase)[self.id>=GADGET_EOS_OFFSET]
-        self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where(self.S>FoSvap(self.P),7,self.phase)[self.id>=GADGET_EOS_OFFSET]
+        self.phase[self.materialIDs >= 300] = npy.where(self.S[self.materialIDs >= 300]<FoSsol(self.P[self.materialIDs>=300]),4,5)
+        self.phase[self.id >= GADGET_EOS_OFFSET] = npy.where(self.S > FoSmelt(self.P), 6, self.phase)[self.id >= GADGET_EOS_OFFSET]
+        self.phase[self.id >= GADGET_EOS_OFFSET] = npy.where(self.S > FoSliq(self.P), 2, self.phase)[self.id >= GADGET_EOS_OFFSET]
+        self.phase[self.id >= GADGET_EOS_OFFSET] = npy.where(self.S > FoSvap(self.P), 7, self.phase)[self.id >= GADGET_EOS_OFFSET]
         # should be P,T!
-        self.phase[self.id>=GADGET_EOS_OFFSET] = npy.where((self.P>MantleEOS.cp.P*1e10)*(self.S>MantleEOS.cp.S*1e3*1e7),8,self.phase)[self.id>=GADGET_EOS_OFFSET]
+        self.phase[self.id >= GADGET_EOS_OFFSET] = npy.where((self.P > MantleEOS.cp.P*1e10)*(self.S > MantleEOS.cp.S*1e3*1e7), 8, self.phase)[self.id >= GADGET_EOS_OFFSET]
 
         self.phase[self.id < GADGET_EOS_OFFSET] = npy.where(self.S < CSsol(self.P), 4, 5)[self.id < GADGET_EOS_OFFSET]
         self.phase[self.id < GADGET_EOS_OFFSET] = npy.where(self.S > CSmelt(self.P), 6, self.phase)[self.id < GADGET_EOS_OFFSET]
         self.phase[self.id < GADGET_EOS_OFFSET] = npy.where(self.S > CSliq(self.P), 2, self.phase)[self.id < GADGET_EOS_OFFSET]
         self.phase[self.id < GADGET_EOS_OFFSET] = npy.where(self.S > CSvap(self.P), 7, self.phase)[self.id < GADGET_EOS_OFFSET]
         # should be P,T!
-        self.phase[self.id<GADGET_EOS_OFFSET] = npy.where((self.P > CoreEOS.cp.P*1e10)*(self.S > CoreEOS.cp.S*1e3*1e7), 8, self.phase)[self.id < GADGET_EOS_OFFSET]
+        self.phase[self.id < GADGET_EOS_OFFSET] = npy.where((self.P > CoreEOS.cp.P*1e10)*(self.S > CoreEOS.cp.S*1e3*1e7), 8, self.phase)[self.id < GADGET_EOS_OFFSET]
 ### edit end
 
 
