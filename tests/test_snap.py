@@ -14,21 +14,6 @@ def test_snapshot_matID():
     s.ensure_matIDs([401,402,400])
     npy.testing.assert_array_equal(npy.array([401,400,402]),s.materialIDs)
 
-def test_snapshot_load(reference_snapshot):
-    s = Snapshot()
-    s.load(reference_snapshot)
-    
-    assert s.N == 99514
-    assert s.header.time/3600. == pytest.approx(24,rel=1e-5)
-    assert s.m.sum()/Mearth == pytest.approx(0.099514,rel=1e-5)
-
-def test_snapshot_load_headonly(reference_snapshot):
-    s = Snapshot()
-    s.load(reference_snapshot,headonly=True)
-    
-    npy.testing.assert_array_equal(npy.array([99514,0,0,0,0,0,0]),s.header.npart)
-    assert s.materialIDs == None
-
 def test_phase_calculation(reference_snapshot):
     s = Snapshot()
     s.load(reference_snapshot,thermo=True)

@@ -10,7 +10,7 @@ def load_snapshot(snap, fname, headonly = False, thermo=False, compress=False, m
     """
     Loads snapshot data from file
     """
-    if not (h5py.is_hdf5(fname) or fname.count('.hdf5') > 0):
+    if not (h5py.is_hdf5(fname) or str(fname).count('.hdf5') > 0):
         load_G2_1(snap, fname, headonly=headonly, thermo=thermo, compress=compress, mats=mats)
     else:
         load_hdf5(snap, fname, headonly=headonly, thermo=thermo, compress=compress)
@@ -77,6 +77,9 @@ def load_G2_1(snap, fname, headonly=False, thermo=False, compress=False, mats=[4
     struct.unpack('i', f.read(4))  #SKIP
     snap.S = npy.array(struct.unpack(count + 'f', f.read(snap.N*4)))
     struct.unpack('i', f.read(4))  #SKIP
+
+    if (snap.S == 0).all():
+        snap.S = npy.empty(0)
 
     struct.unpack('i', f.read(4))  #SKIP
     snap.rho = npy.array(struct.unpack(count + 'f', f.read(snap.N*4)))
@@ -164,8 +167,8 @@ def load_G2_1(snap, fname, headonly=False, thermo=False, compress=False, mats=[4
     #print("Read", snap.N, "particles.\n")
     f.close()
     
-    if os.path.exists(snap.file+'_rem.txt'):
-        ids,rems = npy.loadtxt(snap.file+'_rem.txt', unpack=True)
+    if os.path.exists(str(snap.file)+'_rem.txt'):
+        ids,rems = npy.loadtxt(str(snap.file)+'_rem.txt', unpack=True)
         if npy.array_equal(ids,snap.id):
             snap.rem = rems
         else:
@@ -188,18 +191,29 @@ def load_hdf5(snap, fname, headonly=False, recenter=True, thermo=False, compress
             Lfactor = units.attrs["Unit length in cgs (U_L)"]
             Mfactor = units.attrs["Unit mass in cgs (U_M)"]
             Tfactor = units.attrs["Unit time in cgs (U_t)"]
+            if npy.ndim(Lfactor)>0:
+                Lfactor = Lfactor[0]
+            if npy.ndim(Mfactor)>0:
+                Mfactor = Mfactor[0]
+            if npy.ndim(Tfactor)>0:
+                Tfactor = Tfactor[0]
         else:
             Lfactor = Mfactor = Tfactor = 1.
 
         snap.header.npart = header.attrs['NumPart_ThisFile']
         snap.header.mass = header.attrs['MassTable'] * Mfactor
         snap.header.time = header.attrs['Time'] * Tfactor
+        if npy.ndim(snap.header.time)>0:
+            snap.header.time = snap.header.time[0]
         snap.header.redshift = 0.0
         snap.header.flag_sfr = 0
         snap.header.flag_feedbacktp = 0
         snap.header.npartTotal = header.attrs['NumPart_Total']
         snap.header.flag_cooling = 0
-        snap.header.num_files = header.attrs['NumFilesPerSnapshot']
+        if npy.ndim(header.attrs['NumFilesPerSnapshot'])>0:
+            snap.header.num_files = header.attrs['NumFilesPerSnapshot'].max()
+        else:
+            snap.header.num_files = header.attrs['NumFilesPerSnapshot']
         if npy.ndim(header.attrs['BoxSize'])>0:
             snap.header.BoxSize = (header.attrs['BoxSize']).max() * Lfactor
         else:
@@ -210,7 +224,10 @@ def load_hdf5(snap, fname, headonly=False, recenter=True, thermo=False, compress
         snap.header.flag_stellarage = 0
         snap.header.flag_metals = 0
         snap.header.nallhw = npy.zeros(6).astype(int)
-        snap.header.flag_entr_ics = header.attrs['Flag_Entropy_ICs']
+        if npy.ndim(header.attrs['Flag_Entropy_ICs'])>0:
+            snap.header.flag_entr_ics = header.attrs['Flag_Entropy_ICs'][0]
+        else:
+            snap.header.flag_entr_ics = header.attrs['Flag_Entropy_ICs']
 
         snap.N = snap.header.npart[0]
         snap.file = fname
@@ -344,7 +361,7 @@ def write_snapshot(snap, fname):
     """
     Write snapshot to file
     """
-    if not (h5py.is_hdf5(fname) or fname.count('.hdf5') > 0):
+    if not (h5py.is_hdf5(fname) or str(fname).count('.hdf5') > 0):
         write_G2_1(snap, fname)
     else:
         write_hdf5(snap, fname)
@@ -356,11 +373,19 @@ def write_G2_1(snap, fname):
     f.write(struct.pack('i', 256))  #SKIP
 
     #HEADER
-    f.write(struct.pack('iiiiii', *snap.header.npart))
-    f.write(struct.pack('dddddd', *snap.header.mass))
+    if len(snap.header.npart>6):
+        npart = snap.header.npart[0:6]
+        mass = snap.header.mass[0:6]
+        npartTotal = snap.header.npartTotal[0:6]
+    else:
+        npart = snap.header.npart
+        mass = snap.header.mass
+        npartTotal = snap.header.npartTotal
+    f.write(struct.pack('iiiiii', *npart))
+    f.write(struct.pack('dddddd', *mass))
     f.write(struct.pack('ddii', snap.header.time, snap.header.redshift,
                  snap.header.flag_sfr, snap.header.flag_feedbacktp))
-    f.write(struct.pack('iiiiii', *snap.header.npartTotal))
+    f.write(struct.pack('iiiiii', *npartTotal))
     f.write(struct.pack('iiddddii', snap.header.flag_cooling,
                  snap.header.num_files,snap.header.BoxSize,
                  snap.header.Omega0,snap.header.OmegaLambda,
@@ -399,7 +424,10 @@ def write_G2_1(snap, fname):
     f.write(struct.pack('i', snap.N))  #SKIP
 
     f.write(struct.pack('i', snap.N))  #SKIP
-    f.write(struct.pack(count + 'f', *snap.S))
+    if len(snap.S) == len(snap.id):
+        f.write(struct.pack(count + 'f', *snap.S))
+    else:
+        f.write(struct.pack(count + 'f', *npy.zeros(snap.N)))
     f.write(struct.pack('i', snap.N))  #SKIP
 
     f.write(struct.pack('i', snap.N))  #SKIP
@@ -486,10 +514,13 @@ def write_hdf5(snap, outname, units='cgs', mats=[401,400], shift2center = True):
         f['/PartType0/Density'] = part.create_dataset('Densities', data=snap.rho * Mfactor/Lfactor**3, compression='gzip')
         f['/PartType0/SmoothingLength'] = part.create_dataset('SmoothingLengths', data=snap.hsml * Lfactor, compression='gzip')
         f['/PartType0/Potential'] = part.create_dataset('Potentials', data=snap.pot * Lfactor**2/(Tfactor**2), compression='gzip')
-        part.create_dataset('Entropies', data=npy.where(npy.isnan(snap.S), 0.0, snap.S  * Lfactor**2/(Tfactor**2)), compression='gzip')
+        if len(snap.S) == len(snap.id):
+            part.create_dataset('Entropies', data=npy.where(npy.isnan(snap.S), 0.0, snap.S  * Lfactor**2/(Tfactor**2)), compression='gzip')
         if snap.inclthermo:
-            part.create_dataset('Pressures', data=snap.P * Mfactor / (Lfactor * Tfactor**2), compression='gzip')
-            part.create_dataset('Temperatures', data=snap.T, compression='gzip')
+            if len(snap.P) == len(snap.id):
+                part.create_dataset('Pressures', data=snap.P * Mfactor / (Lfactor * Tfactor**2), compression='gzip')
+            if len(snap.T) == len(snap.id):
+                part.create_dataset('Temperatures', data=snap.T, compression='gzip')
         if snap.rem:
             part.create_dataset('RemnantIDs', data=snap.rem, compression='gzip')
 
