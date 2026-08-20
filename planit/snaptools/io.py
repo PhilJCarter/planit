@@ -8,49 +8,67 @@ import h5py
 import struct
 
 
-def load_snapshot(snap, fname, headonly=False, thermo=False, compress=False, mats=[402, 400]):
+def load_snapshot(snap, fname, headonly=False, thermo=False, compress=False, mats=[402, 400], loadprops=['all',]):
     """
     Loads snapshot data from file
     """
+    if headonly:
+        loadprops = ['header',]
+    
     if not (h5py.is_hdf5(fname) or str(fname).count('.hdf5') > 0):
-        load_G2_1(snap, fname, headonly=headonly, thermo=thermo, mats=mats)
+        load_G2_1(snap, fname, headonly=headonly, thermo=thermo, mats=mats, loadprops=loadprops)
     else:
-        load_hdf5(snap, fname, headonly=headonly, thermo=thermo)
+        load_hdf5(snap, fname, headonly=headonly, thermo=thermo, loadprops=loadprops)
 
-    # REARRANGE
-    snap.pos = npy.array(snap.pos).reshape((snap.N, 3))
-    snap.x = snap.pos.T[0]
-    snap.y = snap.pos.T[1]
-    snap.z = snap.pos.T[2]
+    if not headonly:
+        # REARRANGE
+        if any(x in ['all','x','y','z'] for x in loadprops):
+            snap.pos = npy.array(snap.pos).reshape((snap.N, 3))
+        if any(x in ['all','x'] for x in loadprops):
+            snap.x = snap.pos.T[0]
+        if any(x in ['all','y'] for x in loadprops):
+            snap.y = snap.pos.T[1]
+        if any(x in ['all','z'] for x in loadprops):
+            snap.z = snap.pos.T[2]
+    
+        if any(x in ['all','vx','vy','vz'] for x in loadprops):
+            snap.vel = npy.array(snap.vel).reshape((snap.N, 3))
+        if any(x in ['all','vx'] for x in loadprops):
+            snap.vx = snap.vel.T[0]
+        if any(x in ['all','vy'] for x in loadprops):
+            snap.vy = snap.vel.T[1]
+        if any(x in ['all','vz'] for x in loadprops):
+            snap.vz = snap.vel.T[2]
+    
+        if snap.N <= 5e9 and any(x in ['all','id'] for x in loadprops) and compress:
+            snap.id = snap.id.astype('uint32', copy=False)
+        if compress:
+            if any(x in ['all','m'] for x in loadprops):
+                snap.m = snap.m.astype('float32', copy=False)
+            if any(x in ['all','x','y','z'] for x in loadprops):
+                snap.pos = npy.array(snap.pos).astype('float32', copy=False)
+            if any(x in ['all','vx','vy','vz'] for x in loadprops):
+                snap.vel = npy.array(snap.vel).astype('float32', copy=False)
+            if any(x in ['all','S'] for x in loadprops) and len(snap.S) > 0:
+                snap.S = snap.S.astype('float32', copy=False)
+            if any(x in ['all','rho'] for x in loadprops):
+                snap.rho = snap.rho.astype('float32', copy=False)
+            if any(x in ['all','hsml'] for x in loadprops):
+                snap.hsml = snap.hsml.astype('float32', copy=False)
+            if any(x in ['all','pot'] for x in loadprops):
+                snap.pot = snap.pot.astype('float32', copy=False)
+            if any(x in ['all','U'] for x in loadprops) and len(snap.U) > 0:
+                snap.U = snap.U.astype('float32', copy=False)
+            if thermo:
+                if any(x in ['all','P'] for x in loadprops) and len(snap.P) > 0:
+                    snap.P = snap.P.astype('float32', copy=False)
+                if any(x in ['all','T'] for x in loadprops) and len(snap.T) > 0:
+                    snap.T = snap.T.astype('float32', copy=False)
+                if any(x in ['all','cs'] for x in loadprops) and len(snap.cs) > 0:
+                    snap.cs = snap.cs.astype('float32', copy=False)
 
-    snap.vel = npy.array(snap.vel).reshape((snap.N, 3))
-    snap.vx = snap.vel.T[0]
-    snap.vy = snap.vel.T[1]
-    snap.vz = snap.vel.T[2]
 
-    if snap.N <= 5e9 and compress:
-        snap.id = snap.id.astype('uint32', copy=False)
-    if compress:
-        snap.m = snap.m.astype('float32', copy=False)
-        snap.pos = npy.array(snap.pos).astype('float32', copy=False)
-        snap.vel = npy.array(snap.vel).astype('float32', copy=False)
-        if len(snap.S) > 0:
-            snap.S = snap.S.astype('float32', copy=False)
-        snap.rho = snap.rho.astype('float32', copy=False)
-        snap.hsml = snap.hsml.astype('float32', copy=False)
-        snap.pot = snap.pot.astype('float32', copy=False)
-        if len(snap.U) > 0:
-            snap.U = snap.U.astype('float32', copy=False)
-        if thermo:
-            if len(snap.P) > 0:
-                snap.P = snap.P.astype('float32', copy=False)
-            if len(snap.T) > 0:
-                snap.T = snap.T.astype('float32', copy=False)
-            if len(snap.cs) > 0:
-                snap.cs = snap.cs.astype('float32', copy=False)
-
-
-def load_G2_1(snap, fname, headonly=False, thermo=False, mats=[402, 400]):
+def load_G2_1(snap, fname, headonly=False, thermo=False, mats=[402, 400], loadprops=['all',]):
     """
     Load a snapshot in Gadget's standard file format (1)
     """
@@ -60,30 +78,33 @@ def load_G2_1(snap, fname, headonly=False, thermo=False, mats=[402, 400]):
     struct.unpack('i', f.read(4))  #SKIP
 
     #HEADER
-    snap.header.npart = npy.array(struct.unpack('iiiiii', f.read(24)))
-    snap.header.mass = npy.array(struct.unpack('dddddd', f.read(48)))
-    (snap.header.time, snap.header.redshift, snap.header.flag_sfr,
-        snap.header.flag_feedbacktp) = struct.unpack('ddii', f.read(24))
-    snap.header.npartTotal = npy.array(struct.unpack('iiiiii', f.read(24)))
-    (snap.header.flag_cooling, snap.header.num_files) = struct.unpack('ii', f.read(8))
-    (snap.header.BoxSize,) = struct.unpack('d', f.read(8))
-    (snap.header.Omega0, snap.header.OmegaLambda, snap.header.HubbleParam,
-        snap.header.flag_stellarage,
-        snap.header.flag_metals) = struct.unpack('dddii', f.read(32))
-    snap.header.nallhw = npy.array(struct.unpack('iiiiii', f.read(24)))
-    (snap.header.flag_entr_ics,) = struct.unpack('i', f.read(4))
-    struct.unpack('60x', f.read(60))
-
-    struct.unpack('i', f.read(4))  #SKIP
-
-    if snap.header.num_files != 1:
-        print("WARNING! Number of files:", snap.header.num_files,
-               ", not currently supported.\n")
-
-    snap.N = snap.header.npart[0]
-    snap.file = fname
-    snap.inclthermo = thermo
+    if any(x in ['all','header'] for x in loadprops):
+        snap.header.npart = npy.array(struct.unpack('iiiiii', f.read(24)))
+        snap.header.mass = npy.array(struct.unpack('dddddd', f.read(48)))
+        (snap.header.time, snap.header.redshift, snap.header.flag_sfr,
+            snap.header.flag_feedbacktp) = struct.unpack('ddii', f.read(24))
+        snap.header.npartTotal = npy.array(struct.unpack('iiiiii', f.read(24)))
+        (snap.header.flag_cooling, snap.header.num_files) = struct.unpack('ii', f.read(8))
+        (snap.header.BoxSize,) = struct.unpack('d', f.read(8))
+        (snap.header.Omega0, snap.header.OmegaLambda, snap.header.HubbleParam,
+            snap.header.flag_stellarage,
+            snap.header.flag_metals) = struct.unpack('dddii', f.read(32))
+        snap.header.nallhw = npy.array(struct.unpack('iiiiii', f.read(24)))
+        (snap.header.flag_entr_ics,) = struct.unpack('i', f.read(4))
+        struct.unpack('60x', f.read(60))
     
+        struct.unpack('i', f.read(4))  #SKIP
+    
+        if snap.header.num_files != 1:
+            print("WARNING! Number of files:", snap.header.num_files,
+                   ", not currently supported.\n")
+    
+        snap.N = snap.header.npart[0]
+        snap.file = fname
+        snap.inclthermo = thermo
+    else:
+        f.read(260)
+        
     if headonly:
         f.close()
         return
@@ -93,64 +114,87 @@ def load_G2_1(snap, fname, headonly=False, thermo=False, mats=[402, 400]):
 
     #PARTICLE DATA
     struct.unpack('i', f.read(4))  #SKIP
-    snap.pos = struct.unpack(count3 + 'f', f.read(3*snap.N*4))
+    buffer = f.read(3*snap.N*4)
+    if any(x in ['all','x','y','z'] for x in loadprops):
+        snap.pos = struct.unpack(count3 + 'f', buffer)
     struct.unpack('i', f.read(4))  #SKIP
 
     struct.unpack('i', f.read(4))  #SKIP
-    snap.vel = struct.unpack(count3 + 'f', f.read(3*snap.N*4))
+    buffer = f.read(3*snap.N*4)
+    if any(x in ['all','vx','vy','vz'] for x in loadprops):
+        snap.vel = struct.unpack(count3 + 'f', buffer)
     struct.unpack('i', f.read(4))  #SKIP
 
     struct.unpack('i', f.read(4))  #SKIP
-    snap.id = npy.array(struct.unpack(count + 'i', f.read(snap.N*4)))
+    buffer = f.read(snap.N*4)
+    if any(x in ['all','id'] for x in loadprops):
+        snap.id = npy.array(struct.unpack(count + 'i', buffer))
     struct.unpack('i', f.read(4))  #SKIP
 
     struct.unpack('i', f.read(4))  #SKIP
-    snap.m = npy.array(struct.unpack(count + 'f', f.read(snap.N*4)))
+    buffer = f.read(snap.N*4)
+    if any(x in ['all','m'] for x in loadprops):
+        snap.m = npy.array(struct.unpack(count + 'f', buffer))
     struct.unpack('i', f.read(4))  #SKIP
 
     struct.unpack('i', f.read(4))  #SKIP
-    snap.S = npy.array(struct.unpack(count + 'f', f.read(snap.N*4)))
-    struct.unpack('i', f.read(4))  #SKIP
-
-    if (snap.S == 0).all():
-        snap.S = npy.empty(0)
-
-    struct.unpack('i', f.read(4))  #SKIP
-    snap.rho = npy.array(struct.unpack(count + 'f', f.read(snap.N*4)))
+    buffer = f.read(snap.N*4)
+    if any(x in ['all','S'] for x in loadprops):
+        snap.S = npy.array(struct.unpack(count + 'f', buffer))
+        if (snap.S == 0).all():
+            snap.S = npy.empty(0)
     struct.unpack('i', f.read(4))  #SKIP
 
     struct.unpack('i', f.read(4))  #SKIP
-    snap.hsml = npy.array(struct.unpack(count + 'f', f.read(snap.N*4)))
+    buffer = f.read(snap.N*4)
+    if any(x in ['all','rho'] for x in loadprops):
+        snap.rho = npy.array(struct.unpack(count + 'f', buffer))
     struct.unpack('i', f.read(4))  #SKIP
 
     struct.unpack('i', f.read(4))  #SKIP
-    snap.pot = npy.array(struct.unpack(count + 'f', f.read(snap.N*4)))
+    buffer = f.read(snap.N*4)
+    if any(x in ['all','hsml'] for x in loadprops):
+        snap.hsml = npy.array(struct.unpack(count + 'f', buffer))
+    struct.unpack('i', f.read(4))  #SKIP
+
+    struct.unpack('i', f.read(4))  #SKIP
+    buffer = f.read(snap.N*4)
+    if any(x in ['all','pot'] for x in loadprops):
+        snap.pot = npy.array(struct.unpack(count + 'f', buffer))
     struct.unpack('i', f.read(4))  #SKIP
 
     if thermo:
         if len(f.read(4)) == 4:     #SKIP
-            snap.P = npy.array(struct.unpack(count + 'f', f.read(snap.N*4)))
+            buffer = f.read(snap.N*4)
+            if any(x in ['all','P'] for x in loadprops):
+                snap.P = npy.array(struct.unpack(count + 'f', buffer))
             struct.unpack('i', f.read(4))  #SKIP
-        else:
+        elif any(x in ['all','P'] for x in loadprops):
             snap.ensure_matIDs(mats)
             snap.P = eos.calcprop('P', 'rho', 'S', snap.rho, snap.S, snap.materialIDs)
         
         if len(f.read(4)) == 4:     #SKIP
-            snap.T = npy.array(struct.unpack(count + 'f', f.read(snap.N*4)))
+            buffer = f.read(snap.N*4)
+            if any(x in ['all','T'] for x in loadprops):
+                snap.T = npy.array(struct.unpack(count + 'f', buffer))
             struct.unpack('i', f.read(4))  #SKIP
-        else:
+        elif any(x in ['all','T'] for x in loadprops):
             snap.ensure_matIDs(mats)
             snap.T = eos.calcprop('T', 'rho', 'S', snap.rho, snap.S, snap.materialIDs)
         
         if len(f.read(4)) == 4:     #SKIP
-            snap.U = npy.array(struct.unpack(count+'f', f.read(snap.N*4)))
+            buffer = f.read(snap.N*4)
+            if any(x in ['all','U'] for x in loadprops):
+                snap.U = npy.array(struct.unpack(count+'f', buffer))
             struct.unpack('i', f.read(4))  #SKIP
-        else:
+        elif any(x in ['all','U'] for x in loadprops):
             snap.ensure_matIDs(mats)
             snap.U = eos.calcprop('U', 'rho', 'S', snap.rho, snap.S, snap.materialIDs)
         
         if len(f.read(4)) == 4:     #SKIP
-            snap.cs = npy.array(struct.unpack(count+'f', f.read(snap.N*4)))
+            buffer = f.read(snap.N*4)
+            if any(x in ['all','cs'] for x in loadprops):
+                snap.cs = npy.array(struct.unpack(count+'f', buffer))
             struct.unpack('i', f.read(4))  #SKIP
         
 #            if len(f.read(4)) == 4: # acceleration near end in _long format
@@ -170,7 +214,7 @@ def load_G2_1(snap, fname, headonly=False, thermo=False, mats=[402, 400]):
     #print("Read", snap.N, "particles.\n")
     f.close()
     
-    if os.path.exists(str(snap.file)+'_rem.txt'):
+    if os.path.exists(str(snap.file)+'_rem.txt') and any(x in ['all','rem','bnd'] for x in loadprops):
         ids, rems = npy.loadtxt(str(snap.file)+'_rem.txt', unpack=True)
         if npy.array_equal(ids, snap.id):
             snap.rem = rems
@@ -178,7 +222,7 @@ def load_G2_1(snap, fname, headonly=False, thermo=False, mats=[402, 400]):
             print('array mismatch')
 
 
-def load_hdf5(snap, fname, headonly=False, recenter=True, thermo=False, debug=False):
+def load_hdf5(snap, fname, headonly=False, recenter=True, thermo=False, debug=False, loadprops=['all',]):
     """
     Load an HDF5 snapshot
     """
@@ -205,77 +249,84 @@ def load_hdf5(snap, fname, headonly=False, recenter=True, thermo=False, debug=Fa
         else:
             Lfactor = Mfactor = Tfactor = 1.
 
-        snap.header.npart = header.attrs['NumPart_ThisFile']
-        snap.header.mass = header.attrs['MassTable'] * Mfactor
-        snap.header.time = header.attrs['Time'] * Tfactor
-        if npy.ndim(snap.header.time) > 0:
-            snap.header.time = snap.header.time[0]
-        snap.header.redshift = 0.0
-        snap.header.flag_sfr = 0
-        snap.header.flag_feedbacktp = 0
-        snap.header.npartTotal = header.attrs['NumPart_Total']
-        snap.header.flag_cooling = 0
-        if npy.ndim(header.attrs['NumFilesPerSnapshot']) > 0:
-            snap.header.num_files = header.attrs['NumFilesPerSnapshot'].max()
-        else:
-            snap.header.num_files = header.attrs['NumFilesPerSnapshot']
-        if npy.ndim(header.attrs['BoxSize']) > 0:
-            snap.header.BoxSize = (header.attrs['BoxSize']).max() * Lfactor
-        else:
-            snap.header.BoxSize = header.attrs['BoxSize'] * Lfactor
-        snap.header.Omega0 = 0.0
-        snap.header.OmegaLambda = 0.0
-        snap.header.HubbleParam = 1.0
-        snap.header.flag_stellarage = 0
-        snap.header.flag_metals = 0
-        snap.header.nallhw = npy.zeros(6).astype(int)
-        if npy.ndim(header.attrs['Flag_Entropy_ICs']) > 0:
-            snap.header.flag_entr_ics = header.attrs['Flag_Entropy_ICs'][0]
-        else:
-            snap.header.flag_entr_ics = header.attrs['Flag_Entropy_ICs']
-
-        snap.N = snap.header.npart[0]
-        snap.file = fname
-        snap.inclthermo = thermo
+        if any(x in ['all','header'] for x in loadprops):
+            snap.header.npart = header.attrs['NumPart_ThisFile']
+            snap.header.mass = header.attrs['MassTable'] * Mfactor
+            snap.header.time = header.attrs['Time'] * Tfactor
+            if npy.ndim(snap.header.time) > 0:
+                snap.header.time = snap.header.time[0]
+            snap.header.redshift = 0.0
+            snap.header.flag_sfr = 0
+            snap.header.flag_feedbacktp = 0
+            snap.header.npartTotal = header.attrs['NumPart_Total']
+            snap.header.flag_cooling = 0
+            if npy.ndim(header.attrs['NumFilesPerSnapshot']) > 0:
+                snap.header.num_files = header.attrs['NumFilesPerSnapshot'].max()
+            else:
+                snap.header.num_files = header.attrs['NumFilesPerSnapshot']
+            if npy.ndim(header.attrs['BoxSize']) > 0:
+                snap.header.BoxSize = (header.attrs['BoxSize']).max() * Lfactor
+            else:
+                snap.header.BoxSize = header.attrs['BoxSize'] * Lfactor
+            snap.header.Omega0 = 0.0
+            snap.header.OmegaLambda = 0.0
+            snap.header.HubbleParam = 1.0
+            snap.header.flag_stellarage = 0
+            snap.header.flag_metals = 0
+            snap.header.nallhw = npy.zeros(6).astype(int)
+            if npy.ndim(header.attrs['Flag_Entropy_ICs']) > 0:
+                snap.header.flag_entr_ics = header.attrs['Flag_Entropy_ICs'][0]
+            else:
+                snap.header.flag_entr_ics = header.attrs['Flag_Entropy_ICs']
+    
+            snap.N = snap.header.npart[0]
+            snap.file = fname
+            snap.inclthermo = thermo
     
         if headonly:
-            print('only load header')
             f.close()
             return
     
-        snap.pos = part['Coordinates'][:].reshape((snap.header.npart[0], 3)) * Lfactor
-        if recenter:
-            snap.pos -= snap.header.BoxSize/2.
-        snap.vel = part['Velocities'][:].reshape((snap.header.npart[0], 3)) * Lfactor/Tfactor
-        if 'MaterialIDs' in part.keys():
+        if any(x in ['all','x','y','z'] for x in loadprops):
+            snap.pos = part['Coordinates'][:].reshape((snap.header.npart[0], 3)) * Lfactor
+            if recenter:
+                snap.pos -= snap.header.BoxSize/2.
+        if any(x in ['all','vx','vy','vz'] for x in loadprops):
+            snap.vel = part['Velocities'][:].reshape((snap.header.npart[0], 3)) * Lfactor/Tfactor
+        if 'MaterialIDs' in part.keys() and any(x in ['all','materialIDs'] for x in loadprops):
             snap.materialIDs = part['MaterialIDs'][:]
+        if any(x in ['all','id'] for x in loadprops):
 #### edit
-        # move to conversion routines?
-        if part['ParticleIDs'][:].max() < GADGET_EOS_OFFSET and len(npy.unique(snap.materialIDs)) > 1:
-            snap.id = npy.where(snap.materialIDs > 400, part['ParticleIDs'][:], part['ParticleIDs'][:]+GADGET_EOS_OFFSET)
-            snap.id = npy.where(snap.materialIDs < 400, snap.id+GADGET_EOS_OFFSET, snap.id)
+            # move to conversion routines?
+            if part['ParticleIDs'][:].max() < GADGET_EOS_OFFSET and len(npy.unique(snap.materialIDs)) > 1:
+                snap.id = npy.where(snap.materialIDs > 400, part['ParticleIDs'][:], part['ParticleIDs'][:]+GADGET_EOS_OFFSET)
+                snap.id = npy.where(snap.materialIDs < 400, snap.id+GADGET_EOS_OFFSET, snap.id)
 #### edit end
-        else:
-            snap.id = part['ParticleIDs'][:]
-        snap.m = part['Masses'][:] * Mfactor
-        snap.rho = part['Densities'][:] * Mfactor/(Lfactor**3)
-        snap.hsml = part['SmoothingLengths'][:] * Lfactor
-        snap.U = part['InternalEnergies'][:] * Lfactor**2/(Tfactor**2)
-        if 'Entropies' in part.keys() and part['Entropies'][:].max() > 0:
+            else:
+                snap.id = part['ParticleIDs'][:]
+        if any(x in ['all','m'] for x in loadprops):
+            snap.m = part['Masses'][:] * Mfactor
+        if any(x in ['all','rho'] for x in loadprops):
+            snap.rho = part['Densities'][:] * Mfactor/(Lfactor**3)
+        if any(x in ['all','hsml'] for x in loadprops):
+            snap.hsml = part['SmoothingLengths'][:] * Lfactor
+        if any(x in ['all','U'] for x in loadprops):
+            snap.U = part['InternalEnergies'][:] * Lfactor**2/(Tfactor**2)
+        if 'Entropies' in part.keys() and part['Entropies'][:].max() > 0 and any(x in ['all','S'] for x in loadprops):
             snap.S = part['Entropies'][:] * Lfactor**2/(Tfactor**2)
-        elif thermo:
+        elif thermo and any(x in ['all','S'] for x in loadprops):
             snap.S = eos.calcprop('S', 'U', 'rho', snap.U, snap.rho, snap.materialIDs)
-        if 'Pressures' in part.keys():
+        if 'Pressures' in part.keys() and any(x in ['all','P'] for x in loadprops):
             snap.P = part['Pressures'][:] * Mfactor / (Lfactor * Tfactor**2)
-        elif thermo:
+        elif thermo and any(x in ['all','P'] for x in loadprops):
             snap.P = eos.calcprop('P', 'U', 'rho', snap.U, snap.rho, snap.materialIDs)
-        if 'Temperatures' in part.keys():
+        if 'Temperatures' in part.keys() and any(x in ['all','T'] for x in loadprops):
             snap.T = part['Temperatures'][:]
-        elif thermo:
+        elif thermo and any(x in ['all','T'] for x in loadprops):
             snap.T = eos.calcprop('T', 'U', 'rho', snap.U, snap.rho, snap.materialIDs)
-        if 'Potentials' in part.keys():
+        if 'Potentials' in part.keys() and any(x in ['all','pot'] for x in loadprops):
             snap.pot = part['Potentials'][:] * Lfactor**2/(Tfactor**2)
-        if 'RemnantIDs' in part.keys():
+        if 'RemnantIDs' in part.keys() and any(x in ['all','rem','bnd'] for x in loadprops):
             snap.rem = part['RemnantIDs'][:]
 
     if debug:

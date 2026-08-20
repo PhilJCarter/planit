@@ -114,24 +114,24 @@ class Snapshot:
         """
         if attr in ['x','y','z','vx','vy','vz','pos','vel','id','m','S','rho','hsml','pot','P','T','U','cs'] and self.file:
             if len(super().__getattribute__(attr))==0 and self.file:
-                self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo)
+                self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo, loadprops=[attr,])
         elif attr in ['rem', 'bnd']:
             if super().__getattribute__(attr) is None and self.file:
                 if h5py.is_hdf5(self.file):
                     with h5py.File(self.file,'r') as f:
                         if 'RemnantIDs' in f['PartType0'].keys():   
-                            self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo)
+                            self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo, loadprops=[attr,])
                         #else:
                         #    #self.bound_mass()
                         #    print('run bound_mass()')
                 else:
-                    if os.path.exists(self.file+'_rem.txt'):
-                        self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo)
+                    if os.path.exists(str(self.file)+'_rem.txt'):
+                        self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo, loadprops=[attr,])
                     #else:
                     #    #self.bound_mass()
                     #    print('run bound_mass()')
         elif attr in ['vapfrac','meltfrac','phase']:
-            if super().__getattribute__(attr) is None:
+            if super().__getattribute__(attr) is None and len(self.S) > 0:
                 self.calc_phase()
         return super().__getattribute__(attr)
 
@@ -152,11 +152,11 @@ class Snapshot:
             self.materialIDs = npy.choose( (self.id/GADGET_EOS_OFFSET).astype(int), eosIDs )
                 
         
-    def load(self, fname, headonly = False, thermo=False, compress=False, mats=[402,400]):
+    def load(self, fname, headonly = False, thermo=False, compress=False, mats=[402,400], loadprops=['all',]):
         """
         Loads snapshot data from file
         """
-        io.load_snapshot(self, fname, headonly=headonly, thermo=thermo, compress=compress, mats=mats)
+        io.load_snapshot(self, fname, headonly=headonly, thermo=thermo, compress=compress, mats=mats, loadprops=loadprops)
     
 
     def ic_from_seagen(self, partplanet, thermo=False, init_h=100e5):
@@ -225,10 +225,10 @@ class Snapshot:
         Remove particle from Snapshot
         """
         if pid not in self.id:
-            return
+            raise ValueError('Particle:', pid, 'not found in Snapshot')
         self.header.npart[0] = self.header.npart[0]-1
         self.N = self.header.npart[0]
-
+        
         self.x = npy.delete(self.x, npy.where(self.id == pid))
         self.y = npy.delete(self.y, npy.where(self.id == pid))
         self.z = npy.delete(self.z, npy.where(self.id == pid))
@@ -236,28 +236,35 @@ class Snapshot:
         self.vy = npy.delete(self.vy, npy.where(self.id == pid))
         self.vz = npy.delete(self.vz, npy.where(self.id == pid))
         self.m = npy.delete(self.m, npy.where(self.id == pid))
-        self.S = npy.delete(self.S, npy.where(self.id == pid))
+        if self.materialIDs is not None:
+            self.materialIDs = npy.delete(self.materialIDs, npy.where(self.id == pid))
+        if len(self.S) > 0:
+            self.S = npy.delete(self.S, npy.where(self.id == pid))
         self.rho = npy.delete(self.rho, npy.where(self.id == pid))
         self.hsml = npy.delete(self.hsml, npy.where(self.id == pid))
         self.pot = npy.delete(self.pot, npy.where(self.id == pid))
-        #if type(self.P) != int:
-        if self.inclthermo:
+        if len(self.P) > 0:
             self.P = npy.delete(self.P, npy.where(self.id == pid))
+        if len(self.T) > 0:
             self.T = npy.delete(self.T, npy.where(self.id == pid))
+        if len(self.U) > 0:
             self.U = npy.delete(self.U, npy.where(self.id == pid))
+        if len(self.cs) > 0:
             self.cs = npy.delete(self.cs, npy.where(self.id == pid))
 #        if type(self.accel) != int:
 #            self.ax = npy.delete(self.ax, npy.where(self.id == pid))
 #            self.ay = npy.delete(self.ay, npy.where(self.id == pid))
 #            self.az = npy.delete(self.az, npy.where(self.id == pid))
 #            self.dt = npy.delete(self.dt, npy.where(self.id == pid))
-        #if type(self.vapfrac) != int:
         if self.rem is not None:
             self.rem = npy.delete(self.rem, npy.where(self.id == pid))
-        if self.vapfrac is not None:
+        if super().__getattribute__('vapfrac') is not None:
+            # calc_phase would be triggered by a normal lookup and requires id to already be shortened, 
+            # but id needs to be last attribute in order for particle ID matching. Also don't really want 
+            # to calculate in this case anyway
             self.vapfrac = npy.delete(self.vapfrac, npy.where(self.id == pid))
             self.meltfrac = npy.delete(self.meltfrac, npy.where(self.id == pid))
-            self.phase = npy.delete(self.phasefrac, npy.where(self.id == pid))
+            self.phase = npy.delete(self.phase, npy.where(self.id == pid))
 
         self.id = npy.delete(self.id, npy.where(self.id == pid))
 
@@ -269,7 +276,7 @@ class Snapshot:
         io.write_snapshot(self, fname)
 
 
-    def G2_to_swift(self, mats=[401,400], box=5000.*6.371e8, fname=None, write=True):
+    def G2_to_swift(self, mats=[401,400], box=5000.*6.371e8, fname=None, write=False):
         """
         Convert Gadget2 format to Swift format
         """

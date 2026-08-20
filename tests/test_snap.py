@@ -26,3 +26,27 @@ def test_equilibration_check(reference_snapshot):
     s.load(reference_snapshot)
     assert s.eq_test(threshold=0.001)
 
+def test_particle_removal(reference_snapshot):
+    s = Snapshot()
+    s.load(reference_snapshot)
+    print(s.N,len(s.m))
+    s.remove(npy.random.choice(s.id))
+    print(s.N,len(s.m))
+    assert s.N == len(s.m) == 99513
+
+def test_particle_removal_G2(reference_snapshot,tmp_path):
+    s0 = Snapshot()
+    s0.load(reference_snapshot)
+    s0.write(tmp_path / "test")
+    s1 = Snapshot()
+    s1.load(tmp_path / "test")
+    print(s1.N,len(s1.m))
+    s1.remove(npy.random.choice(s1.id))
+    print(s1.N,len(s1.m))
+    assert s1.N == len(s1.m) == 99513
+
+def test_particle_removal(reference_snapshot):
+    with pytest.raises(ValueError):
+        s = Snapshot()
+        s.load(reference_snapshot)
+        s.remove(-396)
