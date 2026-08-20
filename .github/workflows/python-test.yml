@@ -42,7 +42,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        pytest --cov=planit
+        pytest --cov=planit --cov-report html:cov_html
         
     - if: ${{ (matrix.python-version == '3.10') && (matrix.os == 'ubuntu-latest') }}
       name: badge
@@ -57,6 +57,7 @@ jobs:
         
         # Add the SVG and commit it
         git add coverage.svg
+        git add cov_html
         git commit -m "Update coverage badge" || echo "No changes to commit"
         
         # Push the branch forcefully
