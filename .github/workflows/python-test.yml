@@ -31,6 +31,9 @@ jobs:
         python -m pip install flake8 pytest pytest-cov
         python -m pip install numpy scipy matplotlib seagen==1.5 numba h5py cmasher
         # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Install planit
+      run: |
+        pip install -e .
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
