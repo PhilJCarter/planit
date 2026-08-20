@@ -43,26 +43,12 @@ jobs:
     - name: Test with pytest
       run: |
         pytest --cov=planit
-
-  badge:
-    runs-on: ubuntu-latest
-    needs:
-      - build
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
         
-    - name: Install dependencies
-      run: pip install coverage-badge
-      
-    - name: Generate the badge SVG
-      run: coverage-badge -o coverage.svg -f
-      
-    - name: Commit and push to 'badges' branch
+    - if: ${{ (matrix.python-version == '3.10') && (matrix.os == 'ubuntu-latest') }}
+      name: badge
       run: |
+        pip install coverage-badge
+        coverage-badge -o coverage.svg -f
         # Tell git who is making the commit
         git config --local user.name "github-actions[bot]"
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
