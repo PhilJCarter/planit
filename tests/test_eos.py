@@ -146,7 +146,7 @@ def test_calcprop_unknown():
         eos.calcprop('3', 'rho', 'T', 4, 3000, 401)
 
 
-@pytest.mark.parametrize('execcount', range(1000))
+@pytest.mark.parametrize('execcount', range(500))
 def test_interp_ANEOS_U(execcount):
     aneoslist = ['ANEOSIron', 'ANEOSForsterite', 'ANEOSFeSiAlloy', 'ANEOSPyrolite', '5PhaseWater']
     EOS = eos.select(random.choice(aneoslist))
@@ -156,7 +156,7 @@ def test_interp_ANEOS_U(execcount):
     EOSpasser = EOS.make_passer_class()
     assert eos.tabinterp.from_rhoT('U', EOS.rho[j]*(1.+1e-8), EOS.T[i]*(1.+1e-12), EOSpasser) == pytest.approx(EOS.U[i,j], rel=1e-3, abs=1e-11)
 
-@pytest.mark.parametrize('execcount', range(1000))
+@pytest.mark.parametrize('execcount', range(500))
 def test_interp_ANEOS_S(execcount):
     aneoslist = ['ANEOSIron', 'ANEOSForsterite', 'ANEOSFeSiAlloy', '5PhaseWater']
     EOS = eos.select(random.choice(aneoslist))

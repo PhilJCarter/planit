@@ -8,11 +8,12 @@ from .snaptools import Snapshot
 
 import numpy as npy
 import scipy
-import h5py
+#import h5py
 import glob
 import matplotlib
 import matplotlib.pyplot as plt
 import cmasher
+
 
 class ImpSnapshot(Snapshot):
     pass
