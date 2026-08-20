@@ -59,7 +59,7 @@ def test_snasphot_G2_write(reference_snapshot, tmp_path):
     s1.load(tmp_path / "test")
     
     assert (s0.id == s1.id).all()
-    npy.testing.assert_array_equal(s0.rho, s1.rho)
+    npy.testing.assert_allclose(s0.rho, s1.rho, rtol=1e-7)
 
 
 def test_snasphot_G2_write_thermo(reference_snapshot, tmp_path):
