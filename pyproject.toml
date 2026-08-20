@@ -8,6 +8,7 @@ description = "The PLANetary Impact Toolkit provides tools for accessing, manipu
 readme = "README.md"
 license = "GPL-3.0-or-later"
 license-files = ["LICEN[CS]E*"]
+requires-python = ">=3.10"
 dependencies = ["numpy","scipy","matplotlib","numba","h5py","seagen","cmasher"]
 [project.urls]
 Homepage = "https://github.com/PhilJCarter/planit"
