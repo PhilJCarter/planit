@@ -54,8 +54,10 @@ jobs:
         # Tell git who is making the commit
         git config --local user.name "github-actions[bot]"
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        
+
+        git stash
         git checkout gh-pages
+        git stash pop
         
         # Add the SVG and commit it
         git add coverage.svg
