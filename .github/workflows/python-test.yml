@@ -55,13 +55,17 @@ jobs:
         git config --local user.name "github-actions[bot]"
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
 
+        git add coverage.svg
+        git add -f cov_html/*
+        
         git stash
         git checkout gh-pages
         git stash pop
         
-        # Add the SVG and commit it
+        
         git add coverage.svg
         git add -f cov_html/*
+        
         git commit -m "Update coverage badge" || echo "No changes to commit"
         
         # Push the branch forcefully
