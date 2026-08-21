@@ -183,8 +183,9 @@ class Snapshot:
         self.header.HubbleParam = 1.0
         self.header.flag_stellarage = self.header.flag_metals = 0
         self.header.nallhw = npy.array([0, 0, 0, 0, 0, 0])
-        if body1.header.flag_entr_ics[0] != body2.header.flag_entr_ics[0]:
-            raise ValueError("Entropy IC flags must match!", body1.header.flag_entr_ics[0], body2.header.flag_entr_ics[0])
+        #if body1.header.flag_entr_ics[0] != body2.header.flag_entr_ics[0]:
+        if body1.header.flag_entr_ics != body2.header.flag_entr_ics:
+            raise ValueError("Entropy IC flags must match!", body1.header.flag_entr_ics, body2.header.flag_entr_ics)
             
         self.header.flag_entr_ics = body1.header.flag_entr_ics
 

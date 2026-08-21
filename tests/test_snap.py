@@ -26,6 +26,7 @@ def test_equilibration_check(reference_snapshot):
     s.load(reference_snapshot)
     assert s.eq_test(threshold=0.001)
 
+
 def test_particle_removal(reference_snapshot):
     s = Snapshot()
     s.load(reference_snapshot)
@@ -33,6 +34,7 @@ def test_particle_removal(reference_snapshot):
     s.remove(npy.random.choice(s.id))
     print(s.N,len(s.m))
     assert s.N == len(s.m) == 99513
+
 
 def test_particle_removal_G2(reference_snapshot,tmp_path):
     s0 = Snapshot()
@@ -45,6 +47,7 @@ def test_particle_removal_G2(reference_snapshot,tmp_path):
     print(s1.N,len(s1.m))
     assert s1.N == len(s1.m) == 99513
 
+
 def test_particle_removal(reference_snapshot):
     with pytest.raises(ValueError):
         s = Snapshot()
@@ -55,6 +58,38 @@ def test_particle_removal(reference_snapshot):
 def test_bound_mass_single_body(reference_snapshot):
     s = Snapshot()
     s.load(reference_snapshot)
-    s.bound_mass(save=False)
+    s.bound_mass(nrem=5, save=False)
     assert s.m[s.rem==1].sum() == s.m.sum()
     assert len(s.id[s.rem==0]) == 0
+
+
+def test_bound_mass_save(tmp_reference_snapshot):
+    s0 = Snapshot()
+    s0.load(tmp_reference_snapshot)
+    s0.bound_mass(discardsmall=True, save=True)
+    
+    s1 = Snapshot()
+    s1.load(tmp_reference_snapshot)
+    
+    npy.testing.assert_array_equal(s0.rem, s1.rem)
+
+
+def test_combine(reference_snapshot):
+    s1 = Snapshot()
+    s1.load(reference_snapshot)
+    s2 = Snapshot()
+    s2.load(reference_snapshot)
+    s1.combine(s1,s2)
+    
+    assert s1.N == 2*s2.N
+    assert len(s1.vx) == 2*len(s2.vy)
+
+
+def test_combine_incompatible(reference_snapshot):
+    s1 = Snapshot()
+    s1.load(reference_snapshot)
+    s2 = Snapshot()
+    s2.load(reference_snapshot)
+    s2.header.flag_entr_ics = 1
+    with pytest.raises(ValueError):
+        s1.combine(s1,s2)
