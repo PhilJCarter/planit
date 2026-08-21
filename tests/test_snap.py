@@ -50,3 +50,11 @@ def test_particle_removal(reference_snapshot):
         s = Snapshot()
         s.load(reference_snapshot)
         s.remove(-396)
+
+
+def test_bound_mass_single_body(reference_snapshot):
+    s = Snapshot()
+    s.load(reference_snapshot)
+    s.bound_mass(save=False)
+    assert s.m[s.rem==1].sum() == s.m.sum()
+    assert len(s.id[s.rem==0]) == 0
