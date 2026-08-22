@@ -42,13 +42,15 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
+    - if: ${{ ! (matrix.python-version == '3.10') && (matrix.os == 'ubuntu-latest') }}
+      name: Test with pytest
       run: |
-        pytest --cov=planit --cov-report html:cov_html
+        pytest
         
     - if: ${{ (matrix.python-version == '3.10') && (matrix.os == 'ubuntu-latest') }}
-      name: badge
+      name: Test with pytest and make badge
       run: |
+        NUMBA_DISABLE_JIT=1 pytest --cov=planit --cov-report html:cov_html
         pip install coverage-badge
         coverage-badge -o coverage.svg -f
         # Tell git who is making the commit
@@ -61,7 +63,6 @@ jobs:
         git stash
         git checkout gh-pages
         git stash pop
-        
         
         git add coverage.svg
         git add -f cov_html/*
