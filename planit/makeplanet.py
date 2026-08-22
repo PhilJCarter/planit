@@ -47,7 +47,7 @@ class planet_profile:
     def add_isentropic_layer(self,mass=0,Pmin=0,iendprevlayer=0,isentrope=None,dR=Rearth/3000.,maxiter=200, firstlayer=False, masstolerance=1e-3):
         if isentrope is None:
             raise ValueError('isentrope must be defined')
-        if len(self.rarr) != len(self.density) != len(self.temperature) != len(self.pressure):
+        if not len(self.rarr) == len(self.density) == len(self.temperature) == len(self.pressure):
             raise ValueError('Arrays rarr, darr, parr, tarr must have same length')
         if len(self.rarr)<1:
             raise ValueError('Central values must be provided!')
@@ -89,13 +89,14 @@ class planet_profile:
     def add_adiabatic_layer(self,mass=0,Pmin=0,iendprevlayer=0,EOS=None,dR=Rearth/3000.,maxiter=200, firstlayer=False, masstolerance=1e-3):
         if EOS is None:
             raise ValueError('EOS must be defined')
-        if len(self.rarr) != len(self.density) != len(self.temperature) != len(self.pressure):
+        if not len(self.rarr) == len(self.density) == len(self.temperature) == len(self.pressure):
             raise ValueError('Arrays rarr, darr, parr, tarr must have same length')
-        if len(self.rarr)<1:
+        if len(self.rarr) < 1:
             raise ValueError('Central values must be provided!')
 
         if EOS.TYPE != 'HM80':
-            S = eos.tabinterp.from_rhoT('S',self.density[-1],self.temperature[-1],EOS.make_passer_class())
+            S = eos.tabinterp.from_rhoT('S',self.density[-1],self.temperature[-1],EOS.make_passer_class())*eos.uconversion_S_inv
+            print(S)
             isentrope = eos.isentrope_class(S,EOS.MODELNAME)
             self.add_isentropic_layer(mass=mass,Pmin=Pmin,iendprevlayer=iendprevlayer,isentrope=isentrope,dR=dR,maxiter=maxiter,masstolerance=masstolerance)
         else:  # HM80 only
@@ -297,8 +298,10 @@ def make_1D_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Smant
     verbose - print extra information
     
     """
-    if len(layers) != len(S) != len(mass):
-        raise ValueError('number of layers must match. layers, S, mass:', len(layers), len(S), len(mass))
+    
+    if layers or S:
+        if not len(layers) == len(S) == len(mass):
+            raise ValueError('number of layers must match. layers, S, mass:', len(layers), len(S), len(mass) if npy.ndim(mass) > 0 else 0)
     if not layers or len(layers) == 2:
         if layers:
             layer1 = layers[0]
@@ -512,7 +515,7 @@ def make_1D_NL_planet(mass=[0.3*Mearth,0.7*Mearth], Pmin=1.e6, S=[1.81,3.02],
         if EOS is None:
             raise ValueError('Unknown EOS:',layer)
         layerEOS.append(EOS)
-        if EOS.TYPE == 'HM80' or layerS == 'adiabat':
+        if EOS.TYPE == 'HM80' or layerS == 'adiabat' or layerS == 'adiabatic':
             isentropes.append('adiabat')
         else:
             isentropes.append(eos.isentrope_class(layerS,layer))    
