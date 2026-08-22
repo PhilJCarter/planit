@@ -55,13 +55,18 @@ jobs:
         git config --local user.name "github-actions[bot]"
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
 
-        git checkout gh-pages
-        
         NUMBA_DISABLE_JIT=1 pytest --cov=planit --cov-report html:cov_html
         coverage-badge -o coverage.svg -f
         git add coverage.svg
         git add -f cov_html/*
+
+        git stash
+        git checkout gh-pages
+        git checkout stash -- .
         
+        git add coverage.svg
+        git add -f cov_html/*
+
         git commit -m "Update coverage badge" || echo "No changes to commit"
         
         # Push the branch forcefully
