@@ -79,10 +79,12 @@ class EOStable(extEOStable):
         passer.T = self.T
         passer.P = self.P
         passer.U = self.U
-        passer.A = self.A
+        if len(self.A) > 0:
+            passer.A = self.A
         passer.S = self.S
         passer.cs = self.cs
-        passer.cv = self.cv
+        if len(self.cv) > 0:
+            passer.cv = self.cv
         # passer.KPA = self.KPA
         # passer.MDQ = self.MDQ
         passer.TYPE = self.TYPE
