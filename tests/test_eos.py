@@ -25,6 +25,8 @@ def empty_user_eos_slots(monkeypatch):
         ('Fo', 400),
         ('ANEOSPyrolite', 403),
         ('5PhaseWater', 303),
+        ('AQUA', 304),
+        ('HM80HHe', 200),
     ],
 )
 def test_eos_loading(EOS, womaID):
@@ -141,6 +143,15 @@ def test_isentrope_init():
     i = eos.isentrope_class()
     assert i.entropy is None
 
+@pytest.mark.parametrize( ('mat', 'ent'), [('iron', 1.9), ('Fo', 2.3), ('5phasewater', 4.2)] )
+def test_isentrope_extraction(mat,ent):
+    i = eos.isentrope_class()
+    i.extract(mat,ent)
+    assert i.material == mat
+    assert i.pressure is not None
+    assert i.temperature is not None
+
+
 def test_calcprop_unknown():
     with pytest.raises(Exception):
         eos.calcprop('3', 'rho', 'T', 4, 3000, 401)
@@ -148,13 +159,27 @@ def test_calcprop_unknown():
 
 @pytest.mark.parametrize('execcount', range(500))
 def test_interp_ANEOS_U(execcount):
-    aneoslist = ['ANEOSIron', 'ANEOSForsterite', 'ANEOSFeSiAlloy', 'ANEOSPyrolite', '5PhaseWater']
+    aneoslist = ['ANEOSIron', 'ANEOSForsterite', 'ANEOSFeSiAlloy', 'ANEOSPyrolite', '5PhaseWater', 'AQUA']
     EOS = eos.select(random.choice(aneoslist))
     j = npy.random.randint(0, high=len(EOS.rho))
     i = npy.random.randint(0, high=len(EOS.T))
     print(EOS.MODELNAME, j, i)
     EOSpasser = EOS.make_passer_class()
     assert eos.tabinterp.from_rhoT('U', EOS.rho[j]*(1.+1e-8), EOS.T[i]*(1.+1e-12), EOSpasser) == pytest.approx(EOS.U[i,j], rel=1e-3, abs=1e-11)
+
+
+@pytest.mark.parametrize('execcount', range(300))
+def test_interp_ANEOS_P(execcount):
+    aneoslist = ['ANEOSIron', 'ANEOSForsterite', 'ANEOSPyrolite', '5PhaseWater', 'AQUA']
+    mat = random.choice(aneoslist)
+    EOS = eos.select(mat)
+    j = npy.random.randint(1, high=len(EOS.rho)-1)
+    i = npy.random.randint(1, high=len(EOS.T)-1)
+    print(EOS.MODELNAME, j, i)
+    EOSpasser = EOS.make_passer_class()
+    Pinterp = eos.calcprop('P', 'rho', 'T', EOS.rho[j]*(1.+1e-8), EOS.T[i]*(1.+1e-12), npy.array([mat]))
+    assert Pinterp*eos.uconversion_P == pytest.approx(EOS.P[i,j], rel=1e-3, abs=1e-11)
+
 
 @pytest.mark.parametrize('execcount', range(500))
 def test_interp_ANEOS_S(execcount):
