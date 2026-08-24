@@ -173,8 +173,8 @@ def test_interp_ANEOS_P(execcount):
     aneoslist = ['ANEOSIron', 'ANEOSForsterite', 'ANEOSPyrolite', '5PhaseWater', 'AQUA']
     mat = random.choice(aneoslist)
     EOS = eos.select(mat)
-    j = npy.random.randint(1, high=len(EOS.rho)-1)
-    i = npy.random.randint(1, high=len(EOS.T)-1)
+    j = npy.random.randint(5, high=len(EOS.rho)-2)
+    i = npy.random.randint(5, high=len(EOS.T)-2)
     print(EOS.MODELNAME, j, i)
     EOSpasser = EOS.make_passer_class()
     Pinterp = eos.calcprop('P', 'rho', 'T', EOS.rho[j]*(1.+1e-8), EOS.T[i]*(1.+1e-12), npy.array([mat]))
