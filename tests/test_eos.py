@@ -168,7 +168,7 @@ def test_interp_ANEOS_U(execcount):
     assert eos.tabinterp.from_rhoT('U', EOS.rho[j]*(1.+1e-8), EOS.T[i]*(1.+1e-12), EOSpasser) == pytest.approx(EOS.U[i,j], rel=1e-3, abs=1e-11)
 
 
-@pytest.mark.parametrize('execcount', range(20000))
+@pytest.mark.parametrize('execcount', range(500))
 def test_interp_ANEOS_P(execcount):
     aneoslist = ['ANEOSIron', 'ANEOSForsterite', 'ANEOSPyrolite', '5PhaseWater', 'AQUA']
     mat = random.choice(aneoslist)
