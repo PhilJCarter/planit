@@ -3,8 +3,10 @@
 """
 
 from .eos_table import *
+import hashlib
 import numpy as npy
 import numba
+from pathlib import Path
 
 # numba type def for EOS passer class
 EOSpasser_spec = [
@@ -24,7 +26,9 @@ EOSpasser_spec = [
     ('womaID', numba.types.int64),
     ('NU', numba.types.int64),
     ('U_1D', numba.types.float64[:]),
-    ('T_2D', numba.types.float64[:, :])
+    ('T_2D', numba.types.float64[:, :]),
+    ('gadget_low_density_log', numba.types.boolean),
+    ('gadget_out_of_domain', numba.types.unicode_type),
 ]
 
 
@@ -51,6 +55,8 @@ class EOSpasser():
         self.NU = NU
         self.U_1D = np.zeros(self.NU)
         self.T_2D = np.zeros((self.NU,self.ND))
+        self.gadget_low_density_log = False
+        self.gadget_out_of_domain = 'error'
 
 
 # @numba.experimental.jitclass(extEOStable_spec+EOStable_spec)
@@ -132,6 +138,161 @@ class EOStable(extEOStable):
         data = npy.loadtxt(fname,skiprows=13,unpack=False)
         self.P = data[:self.ND].reshape(self.ND,self.NU).T/1.e9
         self.T_2D = data[self.ND:].reshape(self.ND,self.NU).T
+
+
+class GADtable(extGADtable):
+    """GADGET density--entropy table compatible with PlanIt's EOS tools.
+
+    The file values use the cgs units expected by GADGET.  They are converted
+    to the units used internally by PlanIt's table classes when loaded.
+    """
+
+    def __init__(self):
+        """Initialise an empty standard GADGET EOS table."""
+        extGADtable.__init__(self)
+        self.TYPE = 'GADGET'
+        self.womaID = 0
+        self.NT = 0
+        self.NU = 0
+        self.U_1D = npy.zeros(0)
+        self.T_2D = npy.zeros((0, 0))
+        self.gadget_low_density_log = False
+        self.gadget_out_of_domain = 'error'
+        self.source_path = ''
+        self.source_sha256 = ''
+        self.source_size = 0
+
+    def loadstdgadget(self, fname):
+        """Load and validate a standard GADGET density--entropy EOS file.
+
+        A standard file is a whitespace-separated sequence containing ``ND``,
+        ``NS``, the density and entropy axes, then the pressure, temperature,
+        specific internal energy, and sound-speed arrays.  Each property array
+        varies density first and is stored here with shape ``(NS, ND)``.
+        """
+        try:
+            source_path = Path(fname).expanduser()
+        except TypeError as exc:
+            raise ValueError('GADGET EOS file must be a path-like value.') from exc
+
+        if not source_path.is_file():
+            raise FileNotFoundError(
+                f'GADGET EOS file does not exist or is not a file: {source_path}'
+            )
+
+        raw_data = source_path.read_bytes()
+        try:
+            tokens = raw_data.decode('ascii').split()
+            values = npy.fromiter(
+                (float(token.replace('D', 'E').replace('d', 'e'))
+                 for token in tokens),
+                dtype=npy.float64,
+                count=len(tokens),
+            )
+        except (UnicodeDecodeError, ValueError) as exc:
+            raise ValueError(
+                f'GADGET EOS file contains non-numeric data: {source_path}'
+            ) from exc
+
+        if values.size < 2:
+            raise ValueError(
+                f'GADGET EOS file is missing its ND and NS dimensions: {source_path}'
+            )
+
+        dimensions = values[:2]
+        if (not npy.all(npy.isfinite(dimensions))
+                or npy.any(dimensions < 2)
+                or npy.any(dimensions != npy.floor(dimensions))):
+            raise ValueError(
+                'GADGET EOS dimensions ND and NS must be finite integers of at '
+                'least two.'
+            )
+
+        ND, NS = dimensions.astype(npy.int64)
+        grid_size = int(ND) * int(NS)
+        expected_size = 2 + int(ND) + int(NS) + 4 * grid_size
+        if values.size != expected_size:
+            raise ValueError(
+                f'GADGET EOS file contains {values.size} values; expected '
+                f'{expected_size} for ND={ND} and NS={NS}: {source_path}'
+            )
+
+        offset = 2
+        rho = values[offset:offset + ND].copy()
+        offset += ND
+        entropy = values[offset:offset + NS].copy()
+        offset += NS
+
+        arrays = []
+        for _ in range(4):
+            arrays.append(values[offset:offset + grid_size].reshape(NS, ND).copy())
+            offset += grid_size
+        pressure, temperature, internal_energy, sound_speed = arrays
+
+        if (not npy.all(npy.isfinite(rho))
+                or npy.any(rho <= 0.0)
+                or npy.any(npy.diff(rho) <= 0.0)):
+            raise ValueError(
+                'GADGET EOS density values must be finite, positive, and '
+                'strictly increasing.'
+            )
+        if (not npy.all(npy.isfinite(entropy))
+                or npy.any(npy.diff(entropy) <= 0.0)):
+            raise ValueError(
+                'GADGET EOS entropy values must be finite and strictly '
+                'increasing.'
+            )
+        for label, array in (
+                ('pressure', pressure),
+                ('temperature', temperature),
+                ('specific internal energy', internal_energy),
+                ('sound speed', sound_speed)):
+            if not npy.all(npy.isfinite(array)):
+                raise ValueError(
+                    f'GADGET EOS {label} values must all be finite.'
+                )
+
+        # GADGET stores cgs values.  PlanIt's table classes use GPa for
+        # pressure and MJ/kg or MJ/K/kg for specific quantities.
+        entropy *= 1.e-10
+        pressure *= 1.e-10
+        internal_energy *= 1.e-10
+
+        # Update the object only after the entire file has passed validation.
+        self.ND = int(ND)
+        self.NS = int(NS)
+        self.NT = int(NS)
+        self.rho = rho
+        self.S = entropy
+        self.P = pressure
+        self.T = temperature
+        self.U = internal_energy
+        self.cs = sound_speed
+        self.A = npy.zeros((self.NS, self.ND))
+        self.cv = npy.zeros((self.NS, self.ND))
+        self.KPA = npy.zeros((self.NS, self.ND))
+        self.MDQ = npy.zeros((self.NS, self.ND))
+        self.T_2D = self.T
+        self.source_path = str(source_path.resolve())
+        self.source_sha256 = hashlib.sha256(raw_data).hexdigest()
+        self.source_size = len(raw_data)
+
+    def make_passer_class(self):
+        """Construct a numba-compatible object for EOS interpolation."""
+        passer = EOSpasser(self.ND, self.NS, 0)
+        passer.rho = self.rho
+        passer.S = npy.ascontiguousarray(
+            npy.broadcast_to(self.S[:, npy.newaxis], (self.NS, self.ND))
+        )
+        passer.P = self.P
+        passer.U = self.U
+        passer.cs = self.cs
+        passer.T_2D = self.T
+        passer.TYPE = self.TYPE
+        passer.womaID = self.womaID
+        passer.gadget_low_density_log = self.gadget_low_density_log
+        passer.gadget_out_of_domain = self.gadget_out_of_domain
+        return passer
 
 
 # EOShugoniot_spec = [

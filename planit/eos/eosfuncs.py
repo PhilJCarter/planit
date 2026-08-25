@@ -87,48 +87,102 @@ def _user_slot_name(name):
     return None
 
 
-def _select_user_eos(slot, eosname=None, eosdir=None):
-    """Load or return a custom EOS slot without hiding invalid requests."""
+def _select_user_eos(
+        slot, eosname=None, eosdir=None, *, gadget_file=None,
+        gadget_low_density_log=False, gadget_out_of_domain='error'):
+    """Load or return a custom EOS slot without hiding invalid requests.
+
+    A user slot can contain either a SESAME-style table directory or one
+    Gadget-style density--entropy table.  A replacement is assigned to the
+    module cache only after it has loaded successfully.
+    """
     cache_name = _USER_EOS_CACHE_NAMES[slot]
     cached_eos = globals()[cache_name]
     has_eosname = eosname is not None
     has_eosdir = eosdir is not None
+    has_gadget_file = gadget_file is not None
 
-    if has_eosname != has_eosdir:
+    if has_eosdir and has_gadget_file:
         raise ValueError(
-            f'Custom EOS {slot} requires both eosname and eosdir; '
-            'provide neither only to retrieve an already loaded table.'
+            f'Custom EOS {slot} accepts either eosdir or gadget_file, not both.'
         )
 
-    if not has_eosname:
+    has_source = has_eosdir or has_gadget_file
+    if has_eosname != has_source:
+        raise ValueError(
+            f'Custom EOS {slot} requires both eosname and eosdir for SESAME, '
+            'or both eosname and gadget_file for Gadget; provide none of '
+            'these arguments only to retrieve an already loaded table.'
+        )
+
+    if not has_source:
+        if gadget_low_density_log or gadget_out_of_domain != 'error':
+            raise ValueError(
+                'Gadget interpolation options can only be set while loading '
+                'a gadget_file.'
+            )
         if cached_eos is None:
             raise ValueError(
-                f'Custom EOS {slot} is not loaded. Provide both eosname and eosdir.'
+                f'Custom EOS {slot} is not loaded. Provide eosname with either '
+                'eosdir or gadget_file.'
             )
         return cached_eos
 
     # Assign only after the loader succeeds, so a malformed replacement cannot
     # leave a slot uninitialised or make select() silently return stale data.
-    new_eos = loadANEOSEOS(
-        eos=eosname,
-        eostype='SESAME',
-        eosdir=eosdir,
-        user=True,
-        womaID=USER_EOS_SLOTS[slot],
-    )
+    if has_eosdir:
+        if gadget_low_density_log or gadget_out_of_domain != 'error':
+            raise ValueError(
+                'Gadget interpolation options cannot be used with eosdir.'
+            )
+        new_eos = loadANEOSEOS(
+            eos=eosname,
+            eostype='SESAME',
+            eosdir=eosdir,
+            user=True,
+            womaID=USER_EOS_SLOTS[slot],
+        )
+    else:
+        if not isinstance(eosname, str) or not eosname.strip():
+            raise ValueError('Custom EOS eosname must be a non-empty string.')
+        if not isinstance(gadget_low_density_log, (bool, npy.bool_)):
+            raise ValueError('gadget_low_density_log must be True or False.')
+        if gadget_out_of_domain not in ('error', 'clip'):
+            raise ValueError(
+                "gadget_out_of_domain must be either 'error' or 'clip'."
+            )
+
+        new_eos = GADtable()
+        new_eos.loadstdgadget(gadget_file)
+        new_eos.MODELNAME = eosname
+        new_eos.womaID = USER_EOS_SLOTS[slot]
+        new_eos.gadget_low_density_log = bool(gadget_low_density_log)
+        new_eos.gadget_out_of_domain = gadget_out_of_domain
+
     globals()[cache_name] = new_eos
     return new_eos
 
 
-def select(name, eosname=None, eosdir=None):
+def select(
+        name, eosname=None, eosdir=None, *, gadget_file=None,
+        gadget_low_density_log=False, gadget_out_of_domain='error'):
     """Return an EOS table, loading it if necessary.
 
     Bundled EOS tables can be selected by their established names or material
-    IDs.  Custom SESAME tables use one of the five ``User0``--``User4`` slots
-    (or their IDs 900--904) and must be loaded with both ``eosname`` and
+    IDs.  Custom tables use one of the five ``User0``--``User4`` slots (or
+    their IDs 900--904).  A SESAME table is loaded with ``eosname`` and
     ``eosdir``::
 
         table = select('User0', eosname='MyMaterial', eosdir='/path/to/table')
+
+    A Gadget density--entropy table is loaded with ``eosname`` and
+    ``gadget_file``::
+
+        table = select(
+            'User0',
+            eosname='MyMaterial',
+            gadget_file='/path/to/Gadget_EOS.txt',
+        )
 
     ``eosdir`` may be a string or path-like object and does not need a trailing
     slash.  Repeating this call with both arguments replaces that slot after a
@@ -138,11 +192,24 @@ def select(name, eosname=None, eosdir=None):
     """
     user_slot = _user_slot_name(name)
     if user_slot is not None:
-        return _select_user_eos(user_slot, eosname=eosname, eosdir=eosdir)
+        return _select_user_eos(
+            user_slot,
+            eosname=eosname,
+            eosdir=eosdir,
+            gadget_file=gadget_file,
+            gadget_low_density_log=gadget_low_density_log,
+            gadget_out_of_domain=gadget_out_of_domain,
+        )
     if isinstance(name, str) and name.startswith('User'):
         raise ValueError(
             f'Unknown user EOS slot {name!r}. Supported slots are User0 through User4 '
             '(WoMa IDs 900 through 904).'
+        )
+    if (eosname is not None or eosdir is not None or gadget_file is not None
+            or gadget_low_density_log or gadget_out_of_domain != 'error'):
+        raise ValueError(
+            'Custom EOS loading arguments can only be used with User0 '
+            'through User4 (WoMa IDs 900 through 904).'
         )
 
     if name in ironnames:
@@ -261,18 +328,30 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
        Xlab - label of 1st known property to calculate from
        Ylab - label of 2nd known property to calculate from
        X - array of 1st known property values
-       X - array of 2nd known property values
+       Y - array of 2nd known property values
        mats - array of material identifiers
        
        returns array of interpolated property at X, Y points
     """
-    if npy.ndim(X) == 0:
-        X = npy.array([X,])
-        Y = npy.array([Y,])
-        Z = npy.array([mats,])
-    
-    if not len(X)==len(Y)==len(mats):
+    # Work on floating-point copies because unit conversion and explicit
+    # Gadget endpoint clipping must not mutate arrays supplied by the caller.
+    X = npy.asarray(X, dtype=float)
+    Y = npy.asarray(Y, dtype=float)
+    mats = npy.asarray(mats)
+    if X.ndim == 0:
+        X = X.reshape(1)
+    if Y.ndim == 0:
+        Y = Y.reshape(1)
+    if mats.ndim == 0:
+        mats = mats.reshape(1)
+
+    if X.ndim != 1 or Y.ndim != 1 or mats.ndim != 1:
+        raise ValueError('X, Y, and mats arrays must be one-dimensional')
+    if not X.shape == Y.shape == mats.shape:
         raise ValueError('X, Y, and mats arrays must be the same size/shape')
+
+    X = X.copy()
+    Y = Y.copy()
         
     if Ylab == 'rho' and Xlab in ['T','U','S']:
         tmp = Y
@@ -298,6 +377,9 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
         raise NotImplementedError('Error: calculation of', Qlab, 'not supported.')
         return None
 
+    if X.size == 0:
+        return npy.empty(0, dtype=float)
+
     if Ylab == 'S':
         Y = Y*uconversion_S
     #elif Ylab == 'rho':
@@ -310,8 +392,116 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
     EOSlist = npy.empty(len(X),dtype=object)
     for mat in npy.unique(mats):
         EOS = select(mat)
+        material_mask = mats == mat
+
+        if EOS.TYPE == 'GADGET':
+            if Ylab != 'S' or Qlab not in ('P', 'T', 'U', 'cs'):
+                raise NotImplementedError(
+                    f'Gadget tables support P, T, U, or cs from rho and S; '
+                    f'calculation of {Qlab} from {Xlab} and {Ylab} is not available.'
+                )
+
+            entropy_axis = npy.asarray(EOS.S)
+            if entropy_axis.ndim == 2:
+                entropy_axis = entropy_axis[:, 0]
+
+            material_rho = X[material_mask]
+            material_entropy = Y[material_mask]
+            non_finite = ~(npy.isfinite(material_rho)
+                           & npy.isfinite(material_entropy))
+            rho_below = material_rho < EOS.rho[0]
+            rho_above = material_rho > EOS.rho[-1]
+            entropy_below = material_entropy < entropy_axis[0]
+            entropy_above = material_entropy > entropy_axis[-1]
+            outside = (non_finite | rho_below | rho_above
+                       | entropy_below | entropy_above)
+
+            if npy.any(non_finite):
+                raise ValueError(
+                    f'Gadget EOS {EOS.MODELNAME!r} received '
+                    f'{npy.count_nonzero(non_finite)} non-finite rho/S query '
+                    'point(s).'
+                )
+
+            if npy.any(outside):
+                if EOS.gadget_out_of_domain == 'error':
+                    raise ValueError(
+                        f'Gadget EOS {EOS.MODELNAME!r} query is outside the '
+                        f'table domain: rho below={npy.count_nonzero(rho_below)}, '
+                        f'rho above={npy.count_nonzero(rho_above)}, '
+                        f'S below={npy.count_nonzero(entropy_below)}, '
+                        f'S above={npy.count_nonzero(entropy_above)}. '
+                        f'Valid ranges are rho=[{EOS.rho[0]}, {EOS.rho[-1]}] '
+                        f'g cm^-3 and S=['
+                        f'{entropy_axis[0]*uconversion_S_inv}, '
+                        f'{entropy_axis[-1]*uconversion_S_inv}] '
+                        'erg g^-1 K^-1. Reload the slot '
+                        "with gadget_out_of_domain='clip' to reproduce Gadget "
+                        'endpoint clipping.'
+                    )
+                if EOS.gadget_out_of_domain != 'clip':
+                    raise ValueError(
+                        f'Unknown Gadget out-of-domain policy '
+                        f'{EOS.gadget_out_of_domain!r}.'
+                    )
+                X[material_mask] = npy.clip(
+                    material_rho, EOS.rho[0], EOS.rho[-1]
+                )
+                Y[material_mask] = npy.clip(
+                    material_entropy, entropy_axis[0], entropy_axis[-1]
+                )
+
+            # Raising from inside Numba's parallel interpolation loop can
+            # surface as a SystemError.  Check logarithmic cells here so the
+            # public function gives a clear and deterministic ValueError.
+            if EOS.gadget_low_density_log:
+                evaluation_rho = X[material_mask]
+                evaluation_entropy = Y[material_mask]
+                logarithmic = evaluation_rho <= 2.0
+                if npy.any(logarithmic):
+                    rho_log = evaluation_rho[logarithmic]
+                    entropy_log = evaluation_entropy[logarithmic]
+                    rho_index = npy.clip(
+                        npy.searchsorted(EOS.rho, rho_log) - 1,
+                        0,
+                        EOS.ND - 2,
+                    )
+                    entropy_index = npy.clip(
+                        npy.searchsorted(entropy_axis, entropy_log) - 1,
+                        0,
+                        EOS.NS - 2,
+                    )
+                    if Qlab == 'P':
+                        property_array = EOS.P
+                    elif Qlab == 'T':
+                        property_array = EOS.T
+                    elif Qlab == 'U':
+                        property_array = EOS.U
+                    else:
+                        property_array = EOS.cs
+
+                    invalid_log = (
+                        (entropy_log <= 0.0)
+                        | (entropy_axis[entropy_index] <= 0.0)
+                        | (entropy_axis[entropy_index + 1] <= 0.0)
+                        | (property_array[entropy_index, rho_index] <= 0.0)
+                        | (property_array[entropy_index, rho_index + 1] <= 0.0)
+                        | (property_array[entropy_index + 1, rho_index] <= 0.0)
+                        | (property_array[
+                            entropy_index + 1, rho_index + 1
+                        ] <= 0.0)
+                    )
+                    if npy.any(invalid_log):
+                        raise ValueError(
+                            'Logarithmic GADGET interpolation requires '
+                            'positive entropy and property values throughout '
+                            f'the selected table cell; {Qlab} has '
+                            f'{npy.count_nonzero(invalid_log)} invalid query '
+                            'point(s).'
+                        )
+
         passer = EOS.make_passer_class()
-        EOSlist = npy.where(mats==mat,passer,EOSlist)
+        EOSlist = npy.where(material_mask,passer,EOSlist)
     
     Q = _calc_prop(Qlab,Xlab,Ylab,X,Y,EOSlist.tolist())
     return Q*uconversion_Q
@@ -337,4 +527,9 @@ def _calc_prop(Qlab,Xlab,Ylab,X,Y,EOSlist):
                 Q[i] = npy.nan
             else:
                 Q[i] = tabinterp.from_rhoU1D(Qlab, X[i], Y[i], EOSlist[i])
+        elif EOSlist[i].TYPE == 'GADGET':
+            if Ylab == 'S':
+                Q[i] = tabinterp.from_gadget_rhoS(
+                    Qlab, X[i], Y[i], EOSlist[i]
+                )
     return Q

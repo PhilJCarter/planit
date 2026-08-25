@@ -247,6 +247,101 @@ def from_rhoS(Qlab,rho,S,EOS,dolog=True):
     return Q
 
 
+@numba.njit
+def from_gadget_rhoS(Qlab, rho, S, EOS):
+    """Interpolate a standard GADGET table from density and entropy.
+
+    GADGET tables use entropy as an independent axis and store temperature as
+    a two-dimensional property.  The optional logarithmic mode reproduces the
+    interpolation used by planetary GADGET builds at densities up to and
+    including 2 g/cm3.  Queries outside the table can either raise an error or
+    be clipped to the nearest endpoint, according to the setting stored in the
+    EOS passer.
+    """
+    if not npy.isfinite(rho) or not npy.isfinite(S):
+        raise ValueError('GADGET EOS density and entropy must be finite.')
+
+    outside_domain = (
+        rho < EOS.rho[0]
+        or rho > EOS.rho[EOS.ND - 1]
+        or S < EOS.S[0, 0]
+        or S > EOS.S[EOS.NT - 1, 0]
+    )
+    if EOS.gadget_out_of_domain == 'error':
+        if outside_domain:
+            raise ValueError('GADGET EOS query is outside the table domain.')
+    elif EOS.gadget_out_of_domain != 'clip':
+        raise ValueError(
+            "GADGET EOS out-of-domain policy must be 'error' or 'clip'."
+        )
+
+    # Clipping is also applied after the strict check so exact upper and lower
+    # endpoints always use a valid interpolation cell.
+    rho = min(max(rho, EOS.rho[0]), EOS.rho[EOS.ND - 1])
+    S = min(max(S, EOS.S[0, 0]), EOS.S[EOS.NT - 1, 0])
+
+    ir0 = npy.searchsorted(EOS.rho, rho) - 1
+    if ir0 < 0:
+        ir0 = 0
+    elif ir0 >= EOS.ND - 1:
+        ir0 = EOS.ND - 2
+
+    entropy_axis = EOS.S[:, 0]
+    iS0 = npy.searchsorted(entropy_axis, S) - 1
+    if iS0 < 0:
+        iS0 = 0
+    elif iS0 >= EOS.NT - 1:
+        iS0 = EOS.NT - 2
+
+    if Qlab == 'P':
+        Qarr = EOS.P
+    elif Qlab == 'T':
+        Qarr = EOS.T_2D
+    elif Qlab == 'U':
+        Qarr = EOS.U
+    elif Qlab == 'cs':
+        Qarr = EOS.cs
+    else:
+        raise ValueError('Unknown GADGET thermodynamic property.')
+
+    r0 = EOS.rho[ir0]
+    r1 = EOS.rho[ir0 + 1]
+    S0 = entropy_axis[iS0]
+    S1 = entropy_axis[iS0 + 1]
+    Q00 = Qarr[iS0, ir0]
+    Q01 = Qarr[iS0, ir0 + 1]
+    Q10 = Qarr[iS0 + 1, ir0]
+    Q11 = Qarr[iS0 + 1, ir0 + 1]
+
+    use_log = EOS.gadget_low_density_log and rho <= 2.0
+    if use_log:
+        if (S <= 0.0 or S0 <= 0.0 or S1 <= 0.0
+                or Q00 <= 0.0 or Q01 <= 0.0
+                or Q10 <= 0.0 or Q11 <= 0.0):
+            raise ValueError(
+                'Logarithmic GADGET interpolation requires positive entropy '
+                'and property values throughout the selected table cell.'
+            )
+        wr = ((npy.log10(rho) - npy.log10(r0))
+              / (npy.log10(r1) - npy.log10(r0)))
+        wS = ((npy.log10(S) - npy.log10(S0))
+              / (npy.log10(S1) - npy.log10(S0)))
+        Q00 = npy.log10(Q00)
+        Q01 = npy.log10(Q01)
+        Q10 = npy.log10(Q10)
+        Q11 = npy.log10(Q11)
+    else:
+        wr = (rho - r0) / (r1 - r0)
+        wS = (S - S0) / (S1 - S0)
+
+    Qa = Q00 + wr * (Q01 - Q00)
+    Qb = Q10 + wr * (Q11 - Q10)
+    Q = Qa + wS * (Qb - Qa)
+    if use_log:
+        Q = 10.0**Q
+    return Q
+
+
 
 @numba.njit
 def from_rhoU1D(Qlab,rho,U,EOS,dolog=True):
@@ -308,5 +403,3 @@ def from_rhoU1D(Qlab,rho,U,EOS,dolog=True):
         Q = 10**Q
 
     return Q
-
-
