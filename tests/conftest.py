@@ -1,5 +1,6 @@
 import pytest
 import os
+import shutil
 
 # __file__ is the absolute path to this current python script.
 # .parent gets the directory containing this script (the 'tests' folder).
@@ -13,3 +14,15 @@ def reference_snapshot():
     assert os.path.exists(file_path)
     
     return file_path
+
+
+@pytest.fixture
+def tmp_reference_snapshot(tmp_path):
+    """Creates a fresh copy of the data file for any test that requests it."""
+    source_file = DATA_DIR + 'reference_snapshot_100000.hdf5'
+    
+    tmp_file = str(tmp_path) + 'temp_snapshot.hdf5'
+    shutil.copy(source_file, tmp_file)
+    assert os.path.exists(tmp_file)
+    
+    yield tmp_file

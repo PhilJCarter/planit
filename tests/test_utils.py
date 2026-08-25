@@ -1,5 +1,6 @@
 import pytest
 from planit import utils
+from planit.globaldefs import G
 import numpy as npy
 
 
@@ -28,6 +29,14 @@ def test_calc_pot_tree():
     x = npy.array([1., 0.])
     y = z = npy.array([0., 0.])
     assert utils._calc_potential_tree(m, x, y, z) == pytest.approx(npy.array([0., 0.]), rel=1e-4)
+
+
+def test_calc_pot_tree_multiple_leaves():
+    m = npy.array([1./G, 1./G, 1./G, 1./G, 1./G, 1./G, 1./G, 1./G, 1./G, 1./G])
+    x = npy.array([-8., -6., -4., -2., 0., 2., 4., 6., 8., 10.])
+    y = z = npy.array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0.])
+    assert utils._calc_potential_tree(m, x, y, z) == pytest.approx(npy.array([-0.5, -0.5, -0.5, -0.5, -0.5,
+       -0.5, -0.5, -0.5, -0.5, -0.5]), rel=1e-5)
 
 
 def test_calc_pot():

@@ -17,9 +17,11 @@ def loadAQUAEOS(eos='Water-AQUA-v1.0', eostype='AQUA', debug = False):
         
     if eos == 'Water-AQUA-v1.0':
         eosdir = eospath + 'aqua-water/'
-
+        womaID = 304
+        
     NewEOS  = EOStable() # FIRST make new empty EOS object
     NewEOS.TYPE = eostype
+    NewEOS.womaID = womaID
     NewEOS.VERSION = 1.0
     
     NewEOS.loadaquatable(eosdir+'aqua_eos_rhot_v1_0.dat')
