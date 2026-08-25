@@ -168,17 +168,17 @@ def test_interp_ANEOS_U(execcount):
     assert eos.tabinterp.from_rhoT('U', EOS.rho[j]*(1.+1e-8), EOS.T[i]*(1.+1e-12), EOSpasser) == pytest.approx(EOS.U[i,j], rel=1e-3, abs=1e-11)
 
 
-@pytest.mark.parametrize('execcount', range(300))
+@pytest.mark.parametrize('execcount', range(20000))
 def test_interp_ANEOS_P(execcount):
     aneoslist = ['ANEOSIron', 'ANEOSForsterite', 'ANEOSPyrolite', '5PhaseWater', 'AQUA']
     mat = random.choice(aneoslist)
     EOS = eos.select(mat)
-    j = npy.random.randint(5, high=len(EOS.rho)-2)
-    i = npy.random.randint(5, high=len(EOS.T)-2)
+    j = npy.random.randint(2, high=len(EOS.rho)-2)
+    i = npy.random.randint(2, high=len(EOS.T)-2)
     print(EOS.MODELNAME, j, i)
     EOSpasser = EOS.make_passer_class()
-    Pinterp = eos.calcprop('P', 'rho', 'T', EOS.rho[j]*(1.+1e-8), EOS.T[i]*(1.+1e-12), npy.array([mat]))
-    assert Pinterp*eos.uconversion_P == pytest.approx(EOS.P[i,j], rel=1e-3, abs=1e-11)
+    Pinterp = eos.calcprop('P', 'rho', 'T', EOS.rho[j]*(1.+1e-14), EOS.T[i]*(1.+1e-14), npy.array([mat]))
+    assert Pinterp * eos.uconversion_P == pytest.approx(EOS.P[i,j], rel=1e-3)
 
 
 @pytest.mark.parametrize('execcount', range(500))
