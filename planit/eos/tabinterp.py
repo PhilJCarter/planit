@@ -249,18 +249,42 @@ def from_rhoS(Qlab,rho,S,EOS,dolog=True):
 
 @numba.njit
 def from_gadget_rhoS(Qlab, rho, S, EOS):
-    """Interpolate a standard GADGET table from density and entropy.
+    """Interpolate one GADGET property at density ``rho`` and entropy ``S``.
 
     GADGET tables use entropy as an independent axis and store temperature as
-    a two-dimensional property.  The optional logarithmic mode reproduces the
-    interpolation used by planetary GADGET builds at densities up to and
-    including 2 g/cm3.  Queries outside the table can either raise an error or
-    be clipped to the nearest endpoint, according to the setting stored in the
-    EOS passer.
+    a two-dimensional property.  Arrays on ``EOS`` are indexed as
+    ``[entropy_index, density_index]``.  Density is in g cm^-3; entropy and the
+    requested property are already in PlanIt's internal table units because
+    ``calcprop`` performs conversion at the public cgs interface.
+
+    The optional logarithmic mode reproduces a convention used by some
+    planetary GADGET builds at densities up to and including 2 g cm^-3.  It is
+    not assumed to be a general property of every GADGET EOS.  Queries outside
+    the table either raise an error or use the nearest endpoint, according to
+    the policy stored in the EOS passer when its user slot was loaded.
+
+    Parameters
+    ----------
+    Qlab : str
+        Property to return: ``P``, ``T``, ``U``, or ``cs``.
+    rho, S : float
+        Query density and entropy in the internal units described above.
+    EOS : EOSpasser
+        Numba-compatible table created by ``GADtable.make_passer_class``.
+
+    Returns
+    -------
+    float
+        Interpolated property in PlanIt's internal table units.
     """
+    # NaN and infinity cannot be converted into a meaningful endpoint value,
+    # even in clip mode, so reject them before any comparisons or indexing.
     if not npy.isfinite(rho) or not npy.isfinite(S):
         raise ValueError('GADGET EOS density and entropy must be finite.')
 
+    # Apply the load-time policy before clamping.  In strict mode, leaving the
+    # simulated EOS domain is an analysis error.  Clip mode is an explicit
+    # PlanIt nearest-boundary override and never extrapolates.
     outside_domain = (
         rho < EOS.rho[0]
         or rho > EOS.rho[EOS.ND - 1]
@@ -275,17 +299,23 @@ def from_gadget_rhoS(Qlab, rho, S, EOS):
             "GADGET EOS out-of-domain policy must be 'error' or 'clip'."
         )
 
-    # Clipping is also applied after the strict check so exact upper and lower
-    # endpoints always use a valid interpolation cell.
+    # Clamp after the strict check to implement the explicit clip policy.  In
+    # strict mode these min/max operations are no-ops; the index bounds below
+    # are what map exact first/last axis values onto adjacent valid 2x2 cells.
     rho = min(max(rho, EOS.rho[0]), EOS.rho[EOS.ND - 1])
     S = min(max(S, EOS.S[0, 0]), EOS.S[EOS.NT - 1, 0])
 
+    # searchsorted(...)-1 gives the lower node of the bracketing density cell.
+    # Move the two endpoints explicitly onto the first/last valid cell.
     ir0 = npy.searchsorted(EOS.rho, rho) - 1
     if ir0 < 0:
         ir0 = 0
     elif ir0 >= EOS.ND - 1:
         ir0 = EOS.ND - 2
 
+    # GADtable's one-dimensional entropy axis is repeated across density when
+    # constructing the generic EOSpasser, so every column is identical and
+    # the first column recovers the direct axis.
     entropy_axis = EOS.S[:, 0]
     iS0 = npy.searchsorted(entropy_axis, S) - 1
     if iS0 < 0:
@@ -293,6 +323,9 @@ def from_gadget_rhoS(Qlab, rho, S, EOS):
     elif iS0 >= EOS.NT - 1:
         iS0 = EOS.NT - 2
 
+    # Select the dependent-property grid.  Temperature is a two-dimensional
+    # T(S, rho) output for this format and therefore uses T_2D; EOS.T is a
+    # one-dimensional temperature axis for other PlanIt table types.
     if Qlab == 'P':
         Qarr = EOS.P
     elif Qlab == 'T':
@@ -304,6 +337,12 @@ def from_gadget_rhoS(Qlab, rho, S, EOS):
     else:
         raise ValueError('Unknown GADGET thermodynamic property.')
 
+    # Read one interpolation cell.  The first property index is entropy and
+    # the second is density:
+    #
+    #                 rho r0       rho r1
+    # entropy S0        Q00          Q01
+    # entropy S1        Q10          Q11
     r0 = EOS.rho[ir0]
     r1 = EOS.rho[ir0 + 1]
     S0 = entropy_axis[iS0]
@@ -313,8 +352,15 @@ def from_gadget_rhoS(Qlab, rho, S, EOS):
     Q10 = Qarr[iS0 + 1, ir0]
     Q11 = Qarr[iS0 + 1, ir0 + 1]
 
+    # Some planetary GADGET builds switch from log10 interpolation to ordinary
+    # linear interpolation above exactly 2 g cm^-3.  The boolean is explicit
+    # because other GADGET simulations may use a linear table at all densities.
     use_log = EOS.gadget_low_density_log and rho <= 2.0
     if use_log:
+        # rho is guaranteed positive by table validation and clipping.  Entropy
+        # and all four property corners must also be positive before taking
+        # logarithms; a negative tensile pressure cell, for example, remains
+        # valid for linear interpolation but cannot be evaluated in log mode.
         if (S <= 0.0 or S0 <= 0.0 or S1 <= 0.0
                 or Q00 <= 0.0 or Q01 <= 0.0
                 or Q10 <= 0.0 or Q11 <= 0.0):
@@ -322,6 +368,8 @@ def from_gadget_rhoS(Qlab, rho, S, EOS):
                 'Logarithmic GADGET interpolation requires positive entropy '
                 'and property values throughout the selected table cell.'
             )
+        # Form interpolation fractions in log10(rho) and log10(S), and
+        # interpolate log10(Q), matching the selected GADGET convention.
         wr = ((npy.log10(rho) - npy.log10(r0))
               / (npy.log10(r1) - npy.log10(r0)))
         wS = ((npy.log10(S) - npy.log10(S0))
@@ -331,9 +379,13 @@ def from_gadget_rhoS(Qlab, rho, S, EOS):
         Q10 = npy.log10(Q10)
         Q11 = npy.log10(Q11)
     else:
+        # Ordinary bilinear weights in the native rho--S coordinates.
         wr = (rho - r0) / (r1 - r0)
         wS = (S - S0) / (S1 - S0)
 
+    # First interpolate along density on the lower and upper entropy rows,
+    # then interpolate those two values along entropy.  In log mode these are
+    # logarithmic property values and the final exponentiation restores Q.
     Qa = Q00 + wr * (Q01 - Q00)
     Qb = Q10 + wr * (Q11 - Q10)
     Q = Qa + wS * (Qb - Qa)
