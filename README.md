@@ -1,6 +1,9 @@
 # planit
 
 [![Tests](https://github.com/PhilJCarter/planit/actions/workflows/python-test.yml/badge.svg)](https://github.com/PhilJCarter/planit/actions/workflows/python-test.yml)
+[![Coverage](https://PhilJCarter.github.io/planit/coverage.svg)](https://PhilJCarter.github.io/planit/cov_html/index.html)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/PhilJCarter/planit/tree/main?tab=GPL-3.0-1-ov-file#GPL-3.0-1-ov-file)
+
 
 The **Plan**etary **I**mpact **T**oolkit provides tools for accessing, manipulating, and 
 analysing smoothed particle hydrodynamcis (SPH) impact simulation data, and creating 
@@ -44,7 +47,7 @@ User supplied SESAME tables can also be loaded into one of five custom slots.
 
 ### Custom SESAME EoS tables
 
-PlanIt supports custom tables in the same SESAME-style layout used by its bundled ANEOS
+**planit** supports custom tables in the same SESAME-style layout used by its bundled ANEOS
 and 5-phase-water tables. A table directory must contain all of these files:
 
 - `NEW-SESAME-STD.TXT`

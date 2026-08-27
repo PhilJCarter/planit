@@ -310,7 +310,6 @@ def select(
         return HM80HHe
     else:
         raise ValueError('Unknown EOS:', name)
-        #return None
         
         
 class isentrope_class(eos_isentrope_class):
@@ -610,7 +609,7 @@ def _calc_prop(Qlab,Xlab,Ylab,X,Y,EOSlist):
     Q = npy.zeros(len(X))
     for i in numba.prange(len(X)):
 
-        if EOSlist[i].TYPE in ['ANEOS','SESAME','AQUA']:
+        if EOSlist[i].TYPE in ['ANEOS', 'SESAME', 'AQUA']:
             if Ylab == 'S':
                 Q[i] = tabinterp.from_rhoS(Qlab, X[i], Y[i], EOSlist[i])
             elif Ylab == 'U':
