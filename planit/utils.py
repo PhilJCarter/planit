@@ -4,14 +4,7 @@
 
 import numpy as npy
 import numba
-
-
-G = 6.6743E-8     # Gravitational constant cgs cm3/g/s2
-Mearth = 5.972E27 # Earth's mass g
-Rearth = 6.371e8  # Earth's radius in cm
-
-GADGET_EOS_OFFSET = IDOFF   = 200000000    # material id offset
-PROJ_ID_OFFSET    = BODYOFF = 100000000    # body id offset
+from .globaldefs import *
 
 
 def calc_hmax(rho_lim, part_mass):
@@ -25,6 +18,27 @@ def calc_hmax(rho_lim, part_mass):
     return h/Rearth * 1.206
 
 
+def com(m,x,y,z):
+    """
+        Calculate centre-of-mass
+    """
+    cx = (m*x).sum()/m.sum()
+    cy = (m*y).sum()/m.sum()
+    cz = (m*z).sum()/m.sum()
+    
+    return cx,cy,cz
+    
+
+def com_v(m,vx,vy,vz):
+    """
+        Calculate centre-of-mass velocity
+    """
+    cvx = (m*vx).sum()/m.sum()
+    cvy = (m*vy).sum()/m.sum()
+    cvz = (m*vz).sum()/m.sum()
+    
+    return cvx,cvy,cvz
+    
 
 class Node:
     def __init__(self, width, origin, pos, mass, ids, leaves=[]):

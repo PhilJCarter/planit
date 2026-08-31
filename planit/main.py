@@ -16,15 +16,12 @@ v1.0
 
 """
 
-import os
-
-eospath = os.path.dirname(__file__) + '/eos/data/'
-datadir = os.path.dirname(__file__) + '/data/'
-
+from .globaldefs import *
 from . import eos
-from .utils import *
-from .snaptools import Snapshot
+from . import utils
+from .snaptools import Snapshot, io
 from .impacttools import Impact
+
 
 IronEOS       = eos.ANEOSIron        # for backwards compatibility
 AlloyEOS      = eos.ANEOSFeSiAlloy
@@ -43,7 +40,7 @@ def loadimpact(loc,thermo=False,inter=1,compress=True,code='swift'):
     
 def load_seagen(partplanet, thermo=False, init_h=100e5):
     s = Snapshot()
-    s.load_seagen(partplanet, thermo=thermo, init_h=init_h)
+    io.load_seagen(s, partplanet, thermo=thermo, init_h=init_h)
     return s
 
 def combine(body1, body2, bidoffset=PROJ_ID_OFFSET, thermo=False, box=0.0):

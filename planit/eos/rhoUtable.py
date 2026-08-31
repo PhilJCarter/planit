@@ -19,6 +19,7 @@ def loadrhoUEOS(eos='HM80-HHe-v2.0', eostype='HM80', debug = False):
         
     if eos == 'HM80-HHe-v2.0':
         eosdir = eospath + 'HM80_HHe/'
+        NewEOS.womaID = 200
         NewEOS.VERSION = 2.0
         NewEOS.loadrhoUtable(eosdir+'HM80_HHe_extended.txt')
     
