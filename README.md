@@ -87,6 +87,91 @@ quality or full internal consistency of a table. `NEW-SESAME-EXT.TXT` is require
 minimal standard SESAME 201/301 file alone is not sufficient. Custom tables are cached
 only in the current Python process, and there are only five simultaneous custom slots.
 
+### Custom Gadget EoS tables
+
+PlanIt can also load a single Gadget-style density--entropy table into any of the
+`User0` through `User4` slots. Use `gadget_file` instead of `eosdir`:
+
+```python
+import numpy as np
+from planit import eos
+
+table = eos.select(
+    "User0",
+    eosname="My Gadget material",
+    gadget_file="/path/to/Gadget_EOS.txt",
+)
+
+# Density is in g cm^-3 and entropy is in erg g^-1 K^-1.
+density = np.array([1.0, 2.0])
+entropy = np.array([1.0e7, 2.0e7])
+material_ids = np.array([900, 900])
+
+internal_energy = eos.calcprop(
+    "U", "rho", "S", density, entropy, material_ids
+)
+```
+
+The file must contain a whitespace-separated serial list in the standard Gadget
+layout:
+
+1. the number of density values, `ND`, and entropy values, `NS`;
+2. `ND` density values in g cm^-3;
+3. `NS` specific entropy values in erg g^-1 K^-1; and
+4. `ND*NS` values for each of pressure, temperature, specific internal energy,
+   and sound speed, in that order.
+
+Each two-dimensional quantity is stored row-wise with density varying first, so its
+array shape is `(NS, ND)`. Pressure is in dyn cm^-2, temperature in K, specific
+internal energy in erg g^-1, and sound speed in cm s^-1. PlanIt accepts spaces, tabs,
+and line breaks between values, but rejects missing or additional values and invalid
+density or entropy axes.
+
+Custom Gadget tables support calculation of `P`, `T`, `U`, and `cs` from `rho` and
+`S`. The inputs and returned values use the Gadget units listed above. The usual
+`calcprop()` call is unchanged, and material IDs 900--904 identify the corresponding
+user slots.
+
+Gadget simulations do not all use the same interpolation convention. Linear
+interpolation is used by default. Set `gadget_low_density_log=True` only when the
+Gadget run used logarithmic interpolation at densities up to and including
+2 g cm^-3:
+
+```python
+table = eos.select(
+    "User0",
+    eosname="My Gadget material",
+    gadget_file="/path/to/Gadget_EOS.txt",
+    gadget_low_density_log=True,
+)
+```
+
+Interpolation above 2 g cm^-3 remains linear. This setting belongs to the loaded
+slot and is used by subsequent `calcprop()` calls. A query in the logarithmic region
+raises a `ValueError` if its entropy interval or property values include zero or a
+negative value, because their logarithms are undefined. Linear-only tables may use
+an entropy axis with an arbitrary zero point.
+
+Queries outside the density or entropy range raise a `ValueError` by default. To
+reproduce a Gadget run that clipped values to the nearest table boundary, load the
+table with `gadget_out_of_domain="clip"`:
+
+```python
+table = eos.select(
+    "User0",
+    eosname="My Gadget material",
+    gadget_file="/path/to/Gadget_EOS.txt",
+    gadget_out_of_domain="clip",
+)
+```
+
+Clipping uses the nearest endpoint and does not extrapolate the table. As for custom
+SESAME tables, a slot can be retrieved later with `eos.select("User0")`. Loading a
+new table into that slot replaces it only after the new file has been read and
+validated successfully. `eosdir` and `gadget_file` describe different table formats
+and cannot be supplied together. The loaded table records the resolved input path,
+file size, and SHA-256 checksum in `source_path`, `source_size`, and `source_sha256`.
+
 >[!WARNING]
 > HM80 EoS support is not fully tested yet!
 
@@ -103,4 +188,3 @@ isentropic layers, integrates outwards from the centre of the planet, and ensure
 requested mass and component mass fractions are matched (within tolerance). The default 
 behaviour prevents the unphyiscal scenario of a core cooler than the mantle at the 
 core-mantle boundary.
-
