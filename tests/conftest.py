@@ -26,3 +26,16 @@ def tmp_reference_snapshot(tmp_path):
     assert os.path.exists(tmp_file)
     
     yield tmp_file
+
+
+@pytest.fixture
+def tmp_reference_impact_seq(tmp_path):
+    """Creates a fresh dir with copies of the reference snapshot for any test that requests it."""
+    source_file = DATA_DIR + 'reference_snapshot_100000.hdf5'
+    
+    tmp_dir = str(tmp_path)
+    for i in range(0,12):
+        shutil.copy(source_file, tmp_dir + '/snap_{:>03d}.hdf5'.format(i))
+    assert os.path.exists(tmp_dir)
+    
+    yield tmp_dir
