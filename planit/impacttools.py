@@ -43,13 +43,13 @@ class Impact:
             files = flist
         else:
             if code=='swift':
-                flist = sorted(glob.glob(loc+prefix+'_*.hdf5'))
+                flist = sorted(glob.glob(loc+prefix+sep+'*.hdf5'))
                 if prefix2:
-                    flist2 = sorted(glob.glob(loc+prefix2+'_*.hdf5'))
+                    flist2 = sorted(glob.glob(loc+prefix2+sep+'*.hdf5'))
             else:
-                flist = sorted(glob.glob(loc+prefix+'_*'))
+                flist = sorted(glob.glob(loc+prefix+sep+'*'))
                 if prefix2:
-                    flist2 = sorted(glob.glob(loc+prefix2+'_*'))
+                    flist2 = sorted(glob.glob(loc+prefix2+sep+'*'))
             Nf1 = [(flist[x].split('/')[-1]).split(sep)[1].split('.')[0] for x in range(len(flist))]
             if prefix2:
                 Nf2 = [(flist2[x].split('/')[-1]).split(sep)[1].split('.')[0] for x in range(len(flist2))]

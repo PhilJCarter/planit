@@ -362,16 +362,16 @@ def decode_tipsy_header(header):
 def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=False, loadprops=['all',]):
 
     with open(fname,'rb') as tipsy:
-        tipsyheader = npy.fromfile(tipsy, dtype=tipsy_header_type, count=1)[0]
-        N, nGas, nDark, nStar = decode_header(header)
+        tipsyheader = npy.fromfile(tipsy, dtype=tipsy_header_type, count=1)
+        N, nGas, nDark, nStar = decode_tipsy_header(tipsyheader)
         if not headonly:
             if nDark>0:
                 dark = npy.fromfile(tipsy, dtype=dark_type, count=nDark)
-            gas  = np.fromfile(tipsy, dtype=gas_type, count=nGas)
+            gas  = npy.fromfile(tipsy, dtype=gas_type, count=nGas)
 
-    snap.header.npart = npy.array([tipsyheader.N, 0, 0, 0, 0, 0])
+    snap.header.npart = npy.array([tipsyheader['N'][0], 0, 0, 0, 0, 0])
     snap.header.mass = npy.array([0., 0., 0., 0., 0., 0.])
-    snap.header.time = tipsyheader.time
+    snap.header.time = tipsyheader['time']
     snap.header.redshift = 0.
     snap.header.flag_sfr = snap.header.flag_feedbacktp = snap.header.flag_cooling = 0
     snap.header.npartTotal = snap.header.npart
@@ -392,27 +392,27 @@ def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=
         return
     
     #PARTICLE DATA
-    snap.x = gas.x
-    snap.y = gas.y
-    snap.z = gas.z
+    snap.x = gas['x']
+    snap.y = gas['y']
+    snap.z = gas['z']
     snap.pos = npy.array((snap.x, snap.y, snap.z))
     snap.pos = snap.pos.T
     
-    snap.vx = gas.vx
-    snap.vy = gas.vy
-    snap.vz = gas.vz
+    snap.vx = gas['vx']
+    snap.vy = gas['vy']
+    snap.vz = gas['vz']
     snap.vel = npy.array((snap.vx, snap.vy, snap.vz))
     snap.vel = snap.vel.T
     
-    extraIDoff = [len(gas.metals[gas.metals == x]) for x in npy.unique(gas.metals)]
+    extraIDoff = [len(gas['metals'][gas['metals'] == x]) for x in npy.unique(gas['metals'])]
     extraIDoff = npy.array(extraIDoff)
-    materialint = npy.unique(gas.metals, return_inverse=True)[1]
-    snap.id = npy.arange(len(gas.metals)) + materialint * (GADGET_EOS_OFFSET) - extraIDoff[gas.metals]
+    materialint = npy.unique(gas['metals'], return_inverse=True)[1]
+    snap.id = npy.arange(len(gas['metals'])) + materialint * (GADGET_EOS_OFFSET) - extraIDoff[materialint]
 
-    snap.m = gas.mass
-    snap.rho = gas.rho
-    snap.T = gas.temp
-    snap.materialIDs = eos.pkdgrav3towoma(gas.metals)
+    snap.m = gas['mass'].astype(float)
+    snap.rho = gas['rho'].astype(float)
+    snap.T = gas['temp'].astype(float)
+    snap.materialIDs = eos.pkdgrav3towoma(gas['metals'])
     
     if any(x in ['all','S'] for x in loadprops):
         snap.S = eos.calcprop('S', 'rho', 'T', snap.rho, snap.T, snap.materialIDs)
@@ -421,8 +421,8 @@ def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=
     if any(x in ['all','U'] for x in loadprops):
         snap.U = eos.calcprop('U', 'rho', 'T', snap.rho, snap.T, snap.materialIDs)
     
-    snap.hsml = gas.hsmooth
-    snap.pot = gas.phi
+    snap.hsml = gas['hsmooth']
+    snap.pot = gas['phi']
     
     if os.path.exists(str(snap.file)+'_rem.txt') and any(x in ['all','rem','bnd'] for x in loadprops):
         ids, rems = npy.loadtxt(str(snap.file)+'_rem.txt', unpack=True)
