@@ -7,6 +7,11 @@ import os
 import h5py
 import struct
 
+# tipsy data types
+tipsy_header_type = npy.dtype([('time', '>f8'), ('N', '>u4'), ('Dims', '>u4'), ('Ngas', '>u4'), ('Ndark', '>u4'), ('Nstar', '>u4'), ('pad', '>u4')])
+dark_type = npy.dtype([('mass','>f4'), ('x', '>f4'), ('y', '>f4'), ('z', '>f4'), ('vx', '>f4'), ('vy', '>f4'), ('vz', '>f4'), ('eps','>f4'), ('phi','>f4')])
+gas_type  = npy.dtype([('mass','>f4'), ('x', '>f4'), ('y', '>f4'), ('z', '>f4'), ('vx', '>f4'), ('vy', '>f4'), ('vz', '>f4'), ('rho','>f4'), ('temp','>f4'), ('hsmooth','>f4'), ('metals','>f4'), ('phi','>f4')])
+
 
 def load_snapshot(snap, fname, headonly=False, thermo=False, compress=False, mats=[402, 400], loadprops=['all',]):
     """
@@ -16,7 +21,12 @@ def load_snapshot(snap, fname, headonly=False, thermo=False, compress=False, mat
         loadprops = ['header',]
     
     if not (h5py.is_hdf5(fname) or str(fname).count('.hdf5') > 0):
-        load_G2_1(snap, fname, headonly=headonly, thermo=thermo, mats=mats, loadprops=loadprops)
+        with open(fname, 'rb') as f:
+            i = struct.unpack('i', f.read(4))
+        if i[0] == 256:
+            load_G2_1(snap, fname, headonly=headonly, thermo=thermo, mats=mats, loadprops=loadprops)
+        else:
+            load_tipsy(snap, fname, headonly=headonly, thermo=thermo, loadprops=loadprops)
     else:
         load_hdf5(snap, fname, headonly=headonly, thermo=thermo, loadprops=loadprops)
 
@@ -331,6 +341,95 @@ def load_hdf5(snap, fname, headonly=False, recenter=True, thermo=False, debug=Fa
 
     if debug:
         print("Read", snap.N, "particles.\n")
+
+
+def decode_tipsy_header(header):
+    """Thomas Meier"""
+    pad  = int(header['pad'])
+    N    = int(header['N'])     + ((pad&0x000000ff)<<32)
+    nGas = int(header['Ngas'])  + ((pad&0x0000ff00)<<24)
+    nDark= int(header['Ndark']) + ((pad&0x00ff0000)<<16)
+    nStar= int(header['Nstar']) + ((pad&0xff000000)<< 8)
+    if nGas + nDark + nStar != N:
+        N = int(header['N'])
+        nGas = int(header['Ngas'])
+        nDark= int(header['Ndark'])
+        nStar= int(header['Nstar'])
+    print(f'Total: {N}, Gas:{nGas}, Dark:{nDark}, Star:{nStar}')
+    return N, nGas, nDark, nStar
+
+
+def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=False, loadprops=['all',]):
+
+    with open(fname,'rb') as tipsy:
+        tipsyheader = npy.fromfile(tipsy, dtype=tipsy_header_type, count=1)[0]
+        N, nGas, nDark, nStar = decode_header(header)
+        if not headonly:
+            if nDark>0:
+                dark = npy.fromfile(tipsy, dtype=dark_type, count=nDark)
+            gas  = np.fromfile(tipsy, dtype=gas_type, count=nGas)
+
+    snap.header.npart = npy.array([tipsyheader.N, 0, 0, 0, 0, 0])
+    snap.header.mass = npy.array([0., 0., 0., 0., 0., 0.])
+    snap.header.time = tipsyheader.time
+    snap.header.redshift = 0.
+    snap.header.flag_sfr = snap.header.flag_feedbacktp = snap.header.flag_cooling = 0
+    snap.header.npartTotal = snap.header.npart
+    snap.header.num_files = 1
+    snap.header.BoxSize = 0.0
+    snap.header.Omega0 = snap.header.OmegaLambda = 0.0
+    snap.header.HubbleParam = 1.0
+    snap.header.flag_stellarage = snap.header.flag_metals = 0
+    snap.header.nallhw = npy.array([0, 0, 0, 0, 0, 0])
+    snap.header.flag_entr_ics = 0
+
+    snap.N = snap.header.npart[0]
+    
+    snap.file = fname
+    snap.inclthermo = thermo
+    
+    if headonly:
+        return
+    
+    #PARTICLE DATA
+    snap.x = gas.x
+    snap.y = gas.y
+    snap.z = gas.z
+    snap.pos = npy.array((snap.x, snap.y, snap.z))
+    snap.pos = snap.pos.T
+    
+    snap.vx = gas.vx
+    snap.vy = gas.vy
+    snap.vz = gas.vz
+    snap.vel = npy.array((snap.vx, snap.vy, snap.vz))
+    snap.vel = snap.vel.T
+    
+    extraIDoff = [len(gas.metals[gas.metals == x]) for x in npy.unique(gas.metals)]
+    extraIDoff = npy.array(extraIDoff)
+    materialint = npy.unique(gas.metals, return_inverse=True)[1]
+    snap.id = npy.arange(len(gas.metals)) + materialint * (GADGET_EOS_OFFSET) - extraIDoff[gas.metals]
+
+    snap.m = gas.mass
+    snap.rho = gas.rho
+    snap.T = gas.temp
+    snap.materialIDs = eos.pkdgrav3towoma(gas.metals)
+    
+    if any(x in ['all','S'] for x in loadprops):
+        snap.S = eos.calcprop('S', 'rho', 'T', snap.rho, snap.T, snap.materialIDs)
+    if any(x in ['all','P'] for x in loadprops):
+        snap.P = eos.calcprop('P', 'rho', 'T', snap.rho, snap.T, snap.materialIDs)
+    if any(x in ['all','U'] for x in loadprops):
+        snap.U = eos.calcprop('U', 'rho', 'T', snap.rho, snap.T, snap.materialIDs)
+    
+    snap.hsml = gas.hsmooth
+    snap.pot = gas.phi
+    
+    if os.path.exists(str(snap.file)+'_rem.txt') and any(x in ['all','rem','bnd'] for x in loadprops):
+        ids, rems = npy.loadtxt(str(snap.file)+'_rem.txt', unpack=True)
+        if npy.array_equal(ids, snap.id):
+            snap.rem = rems
+        else:
+            print('array mismatch')
 
 
 def load_seagen(snap, partplanet, thermo=False, init_h=100e5):

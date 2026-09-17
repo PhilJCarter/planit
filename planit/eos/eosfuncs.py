@@ -50,9 +50,9 @@ UserEOS4 = None
 
 
 # Name lists for EoS
-ironnames  = ['Iron-ANEOS-SLVTv0.2G1', 'iron', 'ANEOSIron', 'Fe', 'Iron', 401]
-alloynames = ['Fe85Si15-ANEOS-SLVTv0.2G1', 'alloy', 'ANEOSFeSiAlloy', 'FeSi', 'Alloy', 'IronAlloy', 'ironalloy', 402]
-forsteritenames = ['Forsterite-ANEOS-SLVTv1.0G1', 'forsterite', 'ANEOSForsterite', 'Forsterite', 'Fo', 400]
+ironnames  = ['Iron-ANEOS-SLVTv0.2G1', 'iron', 'ANEOSIron', 'Fe', 'Iron', 401, 63]
+alloynames = ['Fe85Si15-ANEOS-SLVTv0.2G1', 'alloy', 'ANEOSFeSiAlloy', 'FeSi', 'Alloy', 'IronAlloy', 'ironalloy', 402, 64]
+forsteritenames = ['Forsterite-ANEOS-SLVTv1.0G1', 'forsterite', 'ANEOSForsterite', 'Forsterite', 'Fo', 400, 62]
 pyrolitenames = ['Pyrolite_ANEOS_SLVTv0.2', 'pyrolite', 'Pyrolite', 'ANEOSPyrolite', 403]
 aquawaternames = ['Water-AQUA-v1.0', 'AQUA', 'AQUAWater', 'aqua', 304]
 fivephasewaternames = ['5PhaseEOSv8.3', '5PhaseWater', '5phasewater', 'SS08', 'SenftStewartWater', 'SenftStewart08', 303]
@@ -251,6 +251,16 @@ uconversion_U = uconversion_U_cgs2SI/1e6
 uconversion_P_inv = 1./uconversion_P
 uconversion_U_inv = 1./uconversion_U
 uconversion_S_inv = 1./uconversion_S
+
+
+def pkdgrav3towoma(pkdmats):
+    """Translate pkdgrav3/EOSLib material numbers to swift/woma IDs"""
+    swiftmats = pkdmats.copy()
+    swiftmats[pkdmats==63] = 401 # iron
+    swiftmats[pkdmats==62] = 400 # forsterite
+    swiftmats[pkdmats==64] = 402 # FeSi alloy
+    
+    return swiftmats
 
 
 def calcprop(Qlab,Xlab,Ylab,X,Y,mats):

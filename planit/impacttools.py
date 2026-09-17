@@ -36,7 +36,7 @@ class Impact:
         self.nsnaps = 0
         self.snap = self.data = None
         
-    def load(self,loc,thermo=False,inter=1,compress=True,code='swift',ndigits=4,prefix='snapshot',prefix2=None,flist=None):
+    def load(self,loc,thermo=False,inter=1,compress=True,code='swift',ndigits=4,prefix='snapshot',sep='_',prefix2=None,flist=None):
         Nf2 = Nf = 0
         flist2 = []
         if flist:
@@ -50,9 +50,9 @@ class Impact:
                 flist = sorted(glob.glob(loc+prefix+'_*'))
                 if prefix2:
                     flist2 = sorted(glob.glob(loc+prefix2+'_*'))
-            Nf1 = [(flist[x].split('/')[-1]).split('_')[1].split('.')[0] for x in range(len(flist))]
+            Nf1 = [(flist[x].split('/')[-1]).split(sep)[1].split('.')[0] for x in range(len(flist))]
             if prefix2:
-                Nf2 = [(flist2[x].split('/')[-1]).split('_')[1].split('.')[0] for x in range(len(flist2))]
+                Nf2 = [(flist2[x].split('/')[-1]).split(sep)[1].split('.')[0] for x in range(len(flist2))]
             if len(Nf1)>0:
                 Nf = int(sorted(npy.array(Nf1).astype(int))[-1])
             else:
@@ -81,11 +81,11 @@ class Impact:
             self.data[i] = ImpSnapshot()
             if code=='swift' or code=='Swift':
                 if i<Nf2:
-                    self.data[i].load(loc+prefix2+'_{:>0{width}}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
+                    self.data[i].load(loc+prefix2+sep+'{:>0{width}}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
                 else:
-                    self.data[i].load(loc+prefix+'_{:>0{width}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
+                    self.data[i].load(loc+prefix+sep+'{:>0{width}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
             else:
-                self.data[i].load(loc+prefix+'_{:>0{width}d}'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
+                self.data[i].load(loc+prefix+sep+'{:>0{width}d}'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
 
 
     def plotseq(self, n=4, type='materials', seq=None, times=None, scale='Mm', potmin=True, tcut = 3600., zoom=1.):
