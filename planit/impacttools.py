@@ -383,27 +383,31 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                 modz = npy.abs(z)
                 vcut=2*imp.data[j].vel.max()
 
+                if imp.data[j].header.time < tcut:
+                    vcut = 0.5*imp.data[0].vel.min()
+
                 if type=='materials' or type=='mat':
                     select = (modz<zcut)*(x<=axlim*scf)*(x>=-axlim*scf)*(y<=axlim*scf)*(y>=-axlim*scf)
                     plt.scatter(x[select]/scf,y[select]/scf,s=scsize,c=(imp.data[j].id/BODYOFF).astype(int)[select],alpha=1.,cmap=cmap.reversed(),vmax=(imp.data[0].id/BODYOFF).astype(int).max(),vmin=0,ec=None,rasterized=True)
                     #print(npy.unique(-(imp.data[j].id/BODYOFF).astype(int)[modz<zcut]))
                 elif type=='density' or type=='rho':        
-                    if imp.data[j].header.time<tcut:
-                        vcut = 0.5*imp.data[0].vel.min() #-5.e5 #8
-                        rhoit = scipy.interpolate.griddata((x[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx>vcut)*(modz<zlim)]/scf),imp.data[j].rho[(imp.data[j].vx>vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                    rhoi = scipy.interpolate.griddata((x[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx<vcut)*(modz<zlim)]/scf),imp.data[j].rho[(imp.data[j].vx<vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                    if imp.data[j].header.time<tcut:
-                        rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
-                    if imp.data[j].header.time != 0 and potmin:
-                        coz = (z[imp.data[j].pot==imp.data[j].pot.min()])[0]/scf #s.z[modz<zcut]
-                    else:
-                        coz = 0 #(z[imp.data[j].pot==imp.data[j].pot.min()])[0] #s.z[modz<zcut]
-                    nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
-                    cols = rhoi[:,:,nn].T
-                    #cols=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False)(rhoi[:,:,nn].T)
-                    #cols=cmap(cols)
+                    #if imp.data[j].header.time<tcut:
+                    #    vcut = 0.5*imp.data[0].vel.min() #-5.e5 #8
+                        #rhoit = scipy.interpolate.griddata((x[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx>vcut)*(modz<zlim)]/scf),imp.data[j].rho[(imp.data[j].vx>vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
+                    #rhoi = scipy.interpolate.griddata((x[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx<vcut)*(modz<zlim)]/scf),imp.data[j].rho[(imp.data[j].vx<vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
+                    #if imp.data[j].header.time<tcut:
+                    #    rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
+                    #if imp.data[j].header.time != 0 and potmin:
+                    #    coz = (z[imp.data[j].pot==imp.data[j].pot.min()])[0]/scf #s.z[modz<zcut]
+                    #else:
+                    #    coz = 0 #(z[imp.data[j].pot==imp.data[j].pot.min()])[0] #s.z[modz<zcut]
+                    #nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
+                    #cols = rhoi[:,:,nn].T
+                    ##cols=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False)(rhoi[:,:,nn].T)
+                    ##cols=cmap(cols)
                     ax = plt.gca()
-                    im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],cmap=cmap,rasterized=True,norm=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False))#vmin=rhomin,vmax=rhomax
+                    #im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],cmap=cmap,rasterized=True,norm=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False))#vmin=rhomin,vmax=rhomax
+                    plot_snapshot_fluid(imp.data[j],x,y,z,modz,X,Y,Z,zi,ax,cmap,ptype=type,axlim=axlim,scf=scf,zcut=zcut,potmin=potmin,tcut=tcut,vcut=vcut)
                     ax.tick_params(colors='w',which='both',labelcolor='k')
                     ax.spines['top'].set_color('w')
                     ax.spines['bottom'].set_color('w')
@@ -433,26 +437,27 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                     ax.spines['right'].set_color('k')
 
                 elif type in ['entropy','ent','S']:        
-                    if imp.data[j].header.time<tcut: #100 #500
-                        vcut = 0.5*imp.data[0].vel.min() #-5.e5 #8
-                        vit = scipy.interpolate.griddata((x[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx>vcut)*(modz<zlim)]/scf),imp.data[j].S[(imp.data[j].vx>vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
-                        rhoit = scipy.interpolate.griddata((x[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx>vcut)*(modz<zlim)]/scf),imp.data[j].rho[(imp.data[j].vx>vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                    vi = scipy.interpolate.griddata((x[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx<vcut)*(modz<zlim)]/scf),imp.data[j].S[(imp.data[j].vx<vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
-                    rhoi = scipy.interpolate.griddata((x[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx<vcut)*(modz<zlim)]/scf),imp.data[j].rho[(imp.data[j].vx<vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                    if imp.data[j].header.time<tcut: #100 #500
-                        vi = npy.where(vi>vit,vi,vit)
-                        rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
-                    if imp.data[j].header.time != 0 and potmin:
-                        coz = (z[imp.data[j].pot==imp.data[j].pot.min()])[0]/scf #s.z[modz<zcut]
-                    else:
-                        coz = 0 #(z[imp.data[j].pot==imp.data[j].pot.min()])[0] #s.z[modz<zcut]
-                    nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
-                    alphas=matplotlib.colors.LogNorm(vmin=0.05*rhomin,vmax=rhomax,clip=True)(rhoi[:,:,nn].T)
-                    cols = matplotlib.colors.Normalize(vmin=cmin,vmax=cmax,clip=True)(vi[:,:,nn].T)
-                    cols=cmap(cols)
-                    cols[..., -1] = alphas    
+                    #if imp.data[j].header.time<tcut: #100 #500
+                    #    vcut = 0.5*imp.data[0].vel.min() #-5.e5 #8
+                    #    vit = scipy.interpolate.griddata((x[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx>vcut)*(modz<zlim)]/scf),imp.data[j].S[(imp.data[j].vx>vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
+                    #    rhoit = scipy.interpolate.griddata((x[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx>vcut)*(modz<zlim)]/scf),imp.data[j].rho[(imp.data[j].vx>vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
+                    #vi = scipy.interpolate.griddata((x[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx<vcut)*(modz<zlim)]/scf),imp.data[j].S[(imp.data[j].vx<vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
+                    #rhoi = scipy.interpolate.griddata((x[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx<vcut)*(modz<zlim)]/scf),imp.data[j].rho[(imp.data[j].vx<vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
+                    #if imp.data[j].header.time<tcut: #100 #500
+                    #    vi = npy.where(vi>vit,vi,vit)
+                    #    rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
+                    #if imp.data[j].header.time != 0 and potmin:
+                    #    coz = (z[imp.data[j].pot==imp.data[j].pot.min()])[0]/scf #s.z[modz<zcut]
+                    #else:
+                    #    coz = 0 #(z[imp.data[j].pot==imp.data[j].pot.min()])[0] #s.z[modz<zcut]
+                    #nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
+                    #alphas=matplotlib.colors.LogNorm(vmin=0.05*rhomin,vmax=rhomax,clip=True)(rhoi[:,:,nn].T)
+                    #cols = matplotlib.colors.Normalize(vmin=cmin,vmax=cmax,clip=True)(vi[:,:,nn].T)
+                    #cols=cmap(cols)
+                    #cols[..., -1] = alphas    
                     ax = plt.gca()
-                    im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],vmin=cmin,vmax=cmax,cmap=cmap)
+                    plot_snapshot_fluid(imp.data[j],x,y,z,modz,X,Y,Z,zi,ax,cmap,ptype=type,axlim=axlim,scf=scf,zcut=zcut,potmin=potmin,tcut=tcut,vcut=vcut)
+                    #im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],vmin=cmin,vmax=cmax,cmap=cmap)
                 elif type=='phase':
                     select = (modz<zcut)*(x<=axlim*scf)*(x>=-axlim*scf)*(y<=axlim*scf)*(y>=-axlim*scf)
                     imp.data[j].calc_phase()
@@ -571,3 +576,53 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
     #print(colpos.x0,colpos.y0,colpos.x1,colpos.y1)
     #plt.show()
     return fig
+
+
+def plot_snapshot_fluid(snap,x,y,z,modz,X,Y,Z,zi,ax,cmap,ptype='rho',axlim=1.,scf=1.,zcut=0.,potmin=True,tcut=0.,vcut=None):
+    # density limits
+    rhomin=1e-5
+    rhomax=10.
+    # entropy limits
+    Smin=1.5
+    Smax=10.
+    # pressure limits
+    Pmin=1.e-9
+    Pmax=1000.
+    vi = vit = None
+    if snap.header.time<tcut and vcut:
+        if ptype in ['P','pressure']:
+            vit = scipy.interpolate.griddata((x[(snap.vx>vcut)*(modz<zcut)]/scf,y[(snap.vx>vcut)*(modz<zcut)]/scf,z[(snap.vx>vcut)*(modz<zcut)]/scf),snap.P[(sna.vx>vcut)*(modz<zcut)]/1e9,(X,Y,Z),method='linear',fill_value=1.e-18)
+        elif ptype in ['ent','S','entropy']:
+            vit = scipy.interpolate.griddata((x[(snap.vx>vcut)*(modz<zcut)]/scf,y[(snap.vx>vcut)*(modz<zcut)]/scf,z[(snap.vx>vcut)*(modz<zcut)]/scf),snap.S[(sna.vx>vcut)*(modz<zcut)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
+        rhoit = scipy.interpolate.griddata((x[(snap.vx>vcut)*(modz<zcut)]/scf,y[(snap.vx>vcut)*(modz<zcut)]/scf,z[(snap.vx>vcut)*(modz<zcut)]/scf),snap.rho[(snap.vx>vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=1.e-18)
+    else:
+        vcut = 2*snap.vel.max()
+    norm = matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False)
+    if ptype in ['P','pressure']:
+        norm = matplotlib.colors.matplotlib.colors.LogNorm(vmin=Pmin,vmax=Pmax,clip=False)
+        vi = scipy.interpolate.griddata((x[(snap.vx<vcut)*(modz<zcut)]/scf,y[(snap.vx<vcut)*(modz<zcut)]/scf,z[(snap.vx<vcut)*(modz<zcut)]/scf),snap.S[(snap.vx<vcut)*(modz<zcut)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
+    elif ptype in ['ent','S','entropy']:
+        norm = matplotlib.colors.Normalize(vmin=Smin,vmax=Smax,clip=False)
+        vi = scipy.interpolate.griddata((x[(snap.vx<vcut)*(modz<zcut)]/scf,y[(snap.vx<vcut)*(modz<zcut)]/scf,z[(snap.vx<vcut)*(modz<zcut)]/scf),snap.P[(snap.vx<vcut)*(modz<zcut)]/1e9,(X,Y,Z),method='linear',fill_value=1.e-18)
+    rhoi = scipy.interpolate.griddata((x[(snap.vx<vcut)*(modz<zcut)]/scf,y[(snap.vx<vcut)*(modz<zcut)]/scf,z[(snap.vx<vcut)*(modz<zcut)]/scf),snap.rho[(snap.vx<vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=1.e-18)
+    if snap.header.time<tcut:
+        if vi:
+            vi = npy.where(vi>vit,vi,vit)
+        rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
+    if snap.header.time != 0 and potmin:
+        coz = (z[snap.pot==snap.pot.min()])[0] #s.z[modz<zcut]
+    else:
+        coz = 0
+    nn = (npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
+    if vi:
+        alphas = matplotlib.colors.LogNorm(vmin=0.05*rhomin,vmax=rhomax,clip=True)(rhoi[:,:,nn].T)
+        cols = matplotlib.colors.Normalize(vmin=cmin,vmax=cmax,clip=True)(vi[:,:,nn].T)
+        cols=cmap(cols)
+        cols[..., -1] = alphas
+    else:
+        cols = rhoi[:,:,nn].T
+
+    im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],cmap=cmap,norm=norm)
+    
+    return im
+           
