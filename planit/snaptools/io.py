@@ -367,6 +367,8 @@ def encode_tipsy_header(N, Ngas, Ndark, Nstar):
         Encode full 64-bit particle counts into:
         32-bit low parts (stored individually)
         8-bit high parts packed into pad
+        
+        Written by Thomas Meier
     """
     # low 32-bit parts
     N_low = N & 0xffffffff
@@ -406,7 +408,7 @@ def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=
    
     with open(fname,'rb') as tipsy:
         tipsyheader = npy.fromfile(tipsy, dtype=tipsy_header_type, count=1)
-        N, nGas, nDark, nStar = decode_tipsy_header(tipsyheader)
+        N, nGas, nDark, nStar = decode_tipsy_header(tipsyheader[0])
         if not headonly:
             if nDark>0:
                 dark = npy.fromfile(tipsy, dtype=dark_type, count=nDark)
