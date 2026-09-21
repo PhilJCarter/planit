@@ -23,7 +23,7 @@ def load_snapshot(snap, fname, headonly=False, thermo=False, compress=False, mat
     if not (h5py.is_hdf5(fname) or str(fname).count('.hdf5') > 0):
         with open(fname, 'rb') as f:
             i = struct.unpack('i', f.read(4))
-        if i[0] == 256:
+        if i[0] == 256: # this could break if the first 4 bytes of time in a tipsy file give thes same int
             load_G2_1(snap, fname, headonly=headonly, thermo=thermo, mats=mats, loadprops=loadprops)
         else:
             load_tipsy(snap, fname, headonly=headonly, thermo=thermo, loadprops=loadprops)
@@ -344,7 +344,10 @@ def load_hdf5(snap, fname, headonly=False, recenter=True, thermo=False, debug=Fa
 
 
 def decode_tipsy_header(header):
-    """Thomas Meier"""
+    """
+       Decode TIPSY file header particle numbering.
+       Written by Thomas Meier
+    """
     pad  = int(header['pad'])
     N    = int(header['N'])     + ((pad&0x000000ff)<<32)
     nGas = int(header['Ngas'])  + ((pad&0x0000ff00)<<24)
@@ -360,7 +363,20 @@ def decode_tipsy_header(header):
 
 
 def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=False, loadprops=['all',]):
-
+    """
+       Load a TIPSY format snapshot.
+       Adapted from code provided by Thomas Meier
+    """
+ 
+    # UNITS
+    # G=1, kpc in code units, solar mass in code units. Length unit is 1 RE, v is 1 km/s, G = 1
+    # M = 1/62.5476 M_Earth
+    # RHO = 0.368411779571 g/cm^3
+    # T = 1 R_Earth / 1 km/s = 6378 s = 1.772 h
+    Lfactor = Rearth
+    Mfactor = 1/62.5476 * Mearth
+    Tfactor = Rearth/1.e5 # (Rearth/(1 km/s))
+   
     with open(fname,'rb') as tipsy:
         tipsyheader = npy.fromfile(tipsy, dtype=tipsy_header_type, count=1)
         N, nGas, nDark, nStar = decode_tipsy_header(tipsyheader)
@@ -371,7 +387,7 @@ def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=
 
     snap.header.npart = npy.array([tipsyheader['N'][0], 0, 0, 0, 0, 0])
     snap.header.mass = npy.array([0., 0., 0., 0., 0., 0.])
-    snap.header.time = tipsyheader['time']
+    snap.header.time = tipsyheader['time'] * Tfactor
     snap.header.redshift = 0.
     snap.header.flag_sfr = snap.header.flag_feedbacktp = snap.header.flag_cooling = 0
     snap.header.npartTotal = snap.header.npart
@@ -391,26 +407,33 @@ def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=
     if headonly:
         return
     
+    
     #PARTICLE DATA
-    snap.x = gas['x']
-    snap.y = gas['y']
-    snap.z = gas['z']
+    snap.x = gas['x'] * Lfactor
+    snap.y = gas['y'] * Lfactor
+    snap.z = gas['z'] * Lfactor
     snap.pos = npy.array((snap.x, snap.y, snap.z))
     snap.pos = snap.pos.T
     
-    snap.vx = gas['vx']
-    snap.vy = gas['vy']
-    snap.vz = gas['vz']
+    snap.vx = gas['vx'] * Lfactor/Tfactor
+    snap.vy = gas['vy'] * Lfactor/Tfactor
+    snap.vz = gas['vz'] * Lfactor/Tfactor
     snap.vel = npy.array((snap.vx, snap.vy, snap.vz))
     snap.vel = snap.vel.T
     
-    extraIDoff = [len(gas['metals'][gas['metals'] == x]) for x in npy.unique(gas['metals'])]
-    extraIDoff = npy.array(extraIDoff)
-    materialint = npy.unique(gas['metals'], return_inverse=True)[1]
-    snap.id = npy.arange(len(gas['metals'])) + materialint * (GADGET_EOS_OFFSET) - extraIDoff[materialint]
+    # set up particle IDs to be consistent with Gadget numbering (if possible)
+    # particle order is consistent so could switch proj id when material changes back
+    if snap.N < GADGET_EOS_OFFSET:
+        extraIDoff = [len(gas['metals'][gas['metals'] == x]) for x in npy.unique(gas['metals'])]
+        extraIDoff = npy.array(extraIDoff)
+        materialint = npy.unique(gas['metals'], return_inverse=True)[1]
+        snap.id = npy.arange(len(gas['metals'])) + materialint * (GADGET_EOS_OFFSET) - extraIDoff[materialint]
+    else:
+        snap.id = npy.arange(len(gas['metals']))
+        print('Warning: particle count exceeds Gadget2 particle ID limit')
 
-    snap.m = gas['mass'].astype(float)
-    snap.rho = gas['rho'].astype(float)
+    snap.m = gas['mass'].astype(float) * Mfactor
+    snap.rho = gas['rho'].astype(float) * Mfactor/(Lfactor**3)
     snap.T = gas['temp'].astype(float)
     snap.materialIDs = eos.pkdgrav3towoma(gas['metals'])
     
@@ -421,9 +444,10 @@ def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=
     if any(x in ['all','U'] for x in loadprops):
         snap.U = eos.calcprop('U', 'rho', 'T', snap.rho, snap.T, snap.materialIDs)
     
-    snap.hsml = gas['hsmooth']
-    snap.pot = gas['phi']
+    snap.hsml = gas['hsmooth'] * Lfactor
+    snap.pot = gas['phi'] * Lfactor**2/(Tfactor**2)
     
+    # load remnant data if it exists
     if os.path.exists(str(snap.file)+'_rem.txt') and any(x in ['all','rem','bnd'] for x in loadprops):
         ids, rems = npy.loadtxt(str(snap.file)+'_rem.txt', unpack=True)
         if npy.array_equal(ids, snap.id):
