@@ -54,6 +54,7 @@ def test_snasphot_hdf5_write(reference_snapshot, tmp_path):
 def test_snasphot_G2_write(reference_snapshot, tmp_path):
     s0 = Snapshot()
     s0.load(reference_snapshot)
+    s0.header.flag_entr_ics = 1
     s0.write(tmp_path / "test")
     s1 = Snapshot()
     s1.load(tmp_path / "test")
@@ -65,6 +66,7 @@ def test_snasphot_G2_write(reference_snapshot, tmp_path):
 def test_snasphot_G2_write_thermo(reference_snapshot, tmp_path):
     s0 = Snapshot()
     s0.load(reference_snapshot, thermo=True)
+    s0.header.flag_entr_ics = 1
     s0.write(tmp_path / "test")
     s1 = Snapshot()
     s1.load(tmp_path / "test", thermo=True)

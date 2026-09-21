@@ -39,6 +39,7 @@ def test_particle_removal(reference_snapshot):
 def test_particle_removal_G2(reference_snapshot,tmp_path):
     s0 = Snapshot()
     s0.load(reference_snapshot)
+    s0.header.flag_entr_ics = 1
     s0.write(tmp_path / "test")
     s1 = Snapshot()
     s1.load(tmp_path / "test")

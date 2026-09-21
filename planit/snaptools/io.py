@@ -362,6 +362,33 @@ def decode_tipsy_header(header):
     return N, nGas, nDark, nStar
 
 
+def encode_tipsy_header(N, Ngas, Ndark, Nstar):
+    """
+        Encode full 64-bit particle counts into:
+        32-bit low parts (stored individually)
+        8-bit high parts packed into pad
+    """
+    # low 32-bit parts
+    N_low = N & 0xffffffff
+    Ngas_low = Ngas & 0xffffffff
+    Ndark_low = Ndark & 0xffffffff
+    Nstar_low = Nstar & 0xffffffff
+    # high 8-bit parts (bits 32–39 of each value)
+    N_high = (N >> 32) & 0xff
+    Ngas_high = (Ngas >> 32) & 0xff
+    Ndark_high = (Ndark >> 32) & 0xff
+    Nstar_high = (Nstar >> 32) & 0xff
+    # pack into 32-bit pad
+    pad = (
+    (N_high << 0) |
+    (Ngas_high << 8) |
+    (Ndark_high << 16) |
+    (Nstar_high << 24)
+    )
+    
+    return N_low, Ngas_low, Ndark_low, Nstar_low, pad
+
+
 def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=False, loadprops=['all',]):
     """
        Load a TIPSY format snapshot.
@@ -509,7 +536,11 @@ def write_snapshot(snap, fname):
     Write snapshot to file
     """
     if not (h5py.is_hdf5(fname) or str(fname).count('.hdf5') > 0):
-        write_G2_1(snap, fname)
+        # if flagged as having entropy ICs assume is Gadget2 format, otherwise tipsy
+        if snap.header.flag_entr_ics != 1 or str(fname).count('.std') > 0:
+            write_tipsy(snap, fname)
+        else:
+            write_G2_1(snap,fname)
     else:
         write_hdf5(snap, fname)
 
@@ -669,6 +700,66 @@ def write_hdf5(snap, outname, units='cgs', mats=[401, 400], shift2center=True):
         if snap.rem:
             part.create_dataset('RemnantIDs', data=snap.rem, compression='gzip')
 
+
+def write_tipsy(snap, outname, units='default', mats=[401, 400]):
+    """
+       Write a TIPSY format snapshot.
+       Adapted from code provided by Thomas Meier
+       Conversion from Gadget2 not yet implemented.
+    """
+ 
+    # UNITS
+    # G=1, kpc in code units, solar mass in code units. Length unit is 1 RE, v is 1 km/s, G = 1
+    # M = 1/62.5476 M_Earth
+    # RHO = 0.368411779571 g/cm^3
+    # T = 1 R_Earth / 1 km/s = 6378 s = 1.772 h
+    Lfactor = 1./(Rearth)
+    Mfactor = 1./(1/62.5476 * Mearth)
+    Tfactor = 1./(Rearth/1.e5) # ((1 km/s)/Rearth)
+
+
+    N_low, Ngas_low, Ndark_low, Nstar_low, pad = encode_tipsy_header(snap.header.npart[0],snap.header.npart[0],0,0)
+
+    header = npy.zeros(1,dtype=tipsy_header_type)
+    header['time'] = snap.header.time * Tfactor
+    header['N'] = N_low
+    header['Dims'] = 3
+    header['Ngas'] = Ngas_low
+    header['Ndark'] = Ndark_low
+    header['Nstar'] = Nstar_low
+    header['pad'] = pad
+
+    gas = npy.zeros((snap.header.npart[0],), dtype=gas_type)
+    #dark = npy.zeros((N_dark,), dtype=dark_type)
+    
+    if str(outname)[-4:] != '.std':
+        outname = str(outname) + '.std'
+
+    # sort. particle order is consistent so could switch proj id when material changes back
+    
+    #PARTICLE DATA
+    gas['x'] = snap.x * Lfactor
+    gas['y'] = snap.y * Lfactor
+    gas['z'] = snap.z * Lfactor
+    
+    gas['vx'] = snap.vx * Lfactor/Tfactor
+    gas['vy'] = snap.vy * Lfactor/Tfactor
+    gas['vz'] = snap.vz * Lfactor/Tfactor
+    
+    gas['mass'] = snap.m * Mfactor
+    gas['rho'] = snap.rho * Mfactor/(Lfactor**3)
+    gas['temp'] = snap.T
+    gas['metals'] = eos.womatopkdgrav3(snap.materialIDs)
+        
+    gas['hsmooth'] = snap.hsml * Lfactor
+    gas['phi'] = snap.pot * Lfactor**2/(Tfactor**2)
+
+        
+    with open(outname,'wb') as newfile:
+        newfile.write(npy.array(header,dtype=tipsy_header_type).tobytes())
+        newfile.write(npy.array(gas,dtype=gas_type).tobytes())
+        #newfile.write(npy.array(dark,dtype=dark_type).tobytes())
+               
 
 def save_remnant_ids(snap):
     if h5py.is_hdf5(snap.file):

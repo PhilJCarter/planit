@@ -263,6 +263,16 @@ def pkdgrav3towoma(pkdmats):
     return swiftmats
 
 
+def womatopkdgrav3(swiftmats):
+    """Translate swift/woma IDs to pkdgrav3/EOSLib material numbers"""
+    pkdmats = swiftmats.copy()
+    pkdmats[swiftmats==401] = 63 # iron
+    pkdmats[swiftmats==400] = 62 # forsterite
+    pkdmats[swiftmats==402] = 64 # FeSi alloy
+    
+    return pkdmats
+
+
 def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
     """Calculate thermodynamic property
        
