@@ -40,8 +40,9 @@ class Impact:
         Nf2 = Nf = 0
         increment1 = increment2 = 1
         flist2 = []
+        files2 = npy.empty(0)
         if flist:
-            files = flist
+            files = files1 = flist
         else:
             if code=='swift':
                 flist = sorted(glob.glob(loc+prefix+sep+'[0-9]*.hdf5'))
@@ -70,9 +71,9 @@ class Impact:
             self.nsnaps = len(flist)+len(flist2)
             if self.nsnaps>2:
                 if Nf2>0:
-                    files = npy.append(npy.arange(0,Nf+increment1,inter*increment1),npy.arange(0,Nf2+increment2,inter*increment2))
-                else:
-                    files = npy.arange(0,Nf+increment1,inter*increment1)
+                    files2 = npy.arange(0,Nf2+increment2,inter*increment2)
+                files1 = npy.arange(0,Nf+increment1,inter*increment1)
+                files = npy.append(files1,files2)
             elif self.nsnaps>0:
                 files = npy.array([0,Nf])
             else:
@@ -85,12 +86,12 @@ class Impact:
                 honly = False
             self.data[i] = ImpSnapshot()
             if code=='swift' or code=='Swift':
-                if i<Nf:
+                if i<len(files1):
                     self.data[i].load(loc+prefix+sep+'{:>0{width}}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
                 else:
                     self.data[i].load(loc+prefix2+sep+'{:>0{width}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
             else:
-                if i<Nf:
+                if i<len(files1):
                     self.data[i].load(loc+prefix+sep+'{:>0{width}d}'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
                 else:
                     self.data[i].load(loc+prefix2+sep+'{:>0{width}d}'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)

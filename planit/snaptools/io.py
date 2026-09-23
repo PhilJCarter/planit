@@ -454,7 +454,7 @@ def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=
     # particle order is consistent so could switch proj id when material changes back
     if snap.N < GADGET_EOS_OFFSET:
         extraIDoff = [len(gas['metals'][gas['metals'] == x]) for x in npy.unique(gas['metals'])]
-        extraIDoff = npy.array(extraIDoff)
+        extraIDoff = npy.append(npy.array(0),npy.array(extraIDoff))
         materialint = npy.unique(gas['metals'], return_inverse=True)[1]
         snap.id = npy.arange(len(gas['metals'])) + materialint * (GADGET_EOS_OFFSET) - extraIDoff[materialint]
     else:
