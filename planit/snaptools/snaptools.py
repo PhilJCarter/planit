@@ -168,7 +168,7 @@ class Snapshot:
         Assign snapshot particle data by combining two other Snapshots
         """
         #HEADER
-        self.header.npart = body1.header.npart+body2.header.npart
+        self.header.npart = body1.header.npart + body2.header.npart
         self.header.mass = npy.array([0., 0., 0., 0., 0., 0.])
         self.header.time = 0.
         self.header.redshift= 0.
@@ -192,33 +192,35 @@ class Snapshot:
         self.N = self.header.npart[0]
         
         if self.N/2.2 > bidoffset:
-            print('WARNING: low body ID offset, N =', self.N,' body ID offset =', bidoffset)
+            print('WARNING: low body ID offset, N =', self.N, ' body ID offset =', bidoffset)
 
         #PARTICLE DATA
-        self.x = npy.append(body1.x,body2.x)
-        self.y = npy.append(body1.y,body2.y)
-        self.z = npy.append(body1.z,body2.z)
+        self.x = npy.append(body1.x, body2.x)
+        self.y = npy.append(body1.y, body2.y)
+        self.z = npy.append(body1.z, body2.z)
         self.pos = npy.array((self.x, self.y, self.z))
         self.pos = self.pos.T
         
-        self.vx = npy.append(body1.vx,body2.vx)
-        self.vy = npy.append(body1.vy,body2.vy)
-        self.vz = npy.append(body1.vz,body2.vz)
+        self.vx = npy.append(body1.vx, body2.vx)
+        self.vy = npy.append(body1.vy, body2.vy)
+        self.vz = npy.append(body1.vz, body2.vz)
         self.vel = npy.array((self.vx, self.vy, self.vz))
         self.vel = self.vel.T
 
-        self.id = npy.append(body1.id,body2.id+bidoffset)
-        self.m = npy.append(body1.m,body2.m)
-        self.S = npy.append(body1.S,body2.S)
-        self.rho = npy.append(body1.rho,body2.rho)
-        self.pot = npy.append(body1.pot,body2.pot)
-        self.hsml = npy.append(body1.hsml,body2.hsml)
+        self.id = npy.append(body1.id, body2.id+bidoffset)
+        self.m = npy.append(body1.m, body2.m)
+        self.S = npy.append(body1.S, body2.S)
+        self.rho = npy.append(body1.rho, body2.rho)
+        self.pot = npy.append(body1.pot, body2.pot)
+        self.hsml = npy.append(body1.hsml, body2.hsml)
         if npy.ndim(body1.materialIDs) > 0 and npy.ndim(body2.materialIDs) > 0:
-            self.materialIDs = npy.append(body1.materialIDs,body2.materialIDs)
+            self.materialIDs = npy.append(body1.materialIDs, body2.materialIDs)
         if len(body1.U)>0 and len(body2.U)>0:
-            self.U = npy.append(body1.U,body2.U)
+            self.U = npy.append(body1.U, body2.U)
+        if len(body1.T)>0 and len(body2.T)>0:
+            self.T = npy.append(body1.T, body2.T)
         if len(body1.P)>0 and len(body2.P)>0:
-            self.P = npy.append(body1.P,body2.P)
+            self.P = npy.append(body1.P, body2.P)
         
 
     def remove(self, pid):
@@ -314,13 +316,16 @@ class Snapshot:
             print('File:', self.file)
 
 
-    def eq_test(self, threshold=0.01):
+    def eq_test(self, threshold=0.01, verbose=False):
         """
         Test for succesful equilibration
         """
         r = npy.sqrt( (self.x-npy.average(self.x,weights=self.m))**2 + (self.y-npy.average(self.y,weights=self.m))**2 + (self.z-npy.average(self.z,weights=self.m))**2 )
         vesc = npy.sqrt( 2*G*self.m.sum()/r.max() )        
         vrms = ( npy.sqrt( ( (self.vx-npy.average(self.vx,weights=self.m))**2 + (self.vy-npy.average(self.vy,weights=self.m))**2 + (self.vz-npy.average(self.vz,weights=self.m))**2 ).mean() ) )
+        if verbose:
+            print('rms velocity:', vrms/1e5, 'km/s')
+            print('escape velocity:', vesc/1e5, 'km/s')
         if vrms <= threshold*vesc:
             return True
         else:

@@ -38,36 +38,41 @@ class Impact:
         
     def load(self,loc,thermo=False,inter=1,compress=True,code='swift',ndigits=4,prefix='snapshot',sep='_',prefix2=None,flist=None):
         Nf2 = Nf = 0
+        increment1 = increment2 = 1
         flist2 = []
         if flist:
             files = flist
         else:
             if code=='swift':
-                flist = sorted(glob.glob(loc+prefix+sep+'*.hdf5'))
+                flist = sorted(glob.glob(loc+prefix+sep+'[0-9]*.hdf5'))
                 if prefix2:
-                    flist2 = sorted(glob.glob(loc+prefix2+sep+'*.hdf5'))
+                    flist2 = sorted(glob.glob(loc+prefix2+sep+'[0-9]*.hdf5'))
             else:
-                flist = sorted(glob.glob(loc+prefix+sep+'*'))
+                flist = sorted(glob.glob(loc+prefix+sep+'[0-9]*'))
                 if prefix2:
-                    flist2 = sorted(glob.glob(loc+prefix2+sep+'*'))
+                    flist2 = sorted(glob.glob(loc+prefix2+sep+'[0-9]*'))
             Nf1 = [(flist[x].split('/')[-1]).split(sep)[1].split('.')[0] for x in range(len(flist))]
             if prefix2:
                 Nf2 = [(flist2[x].split('/')[-1]).split(sep)[1].split('.')[0] for x in range(len(flist2))]
             if len(Nf1)>0:
-                Nf = int(sorted(npy.array(Nf1).astype(int))[-1])
+                Nf1 = sorted(npy.array(Nf1).astype(int))
+                increment1 = int(Nf1[1] - Nf1[0])
+                Nf = int(Nf1[-1])
             else:
                 Nf = 0
             if prefix2 and len(Nf2)>0:
-                Nf2 = int(sorted(npy.array(Nf2).astype(int))[-1])
+                Nf2 = sorted(npy.array(Nf2).astype(int))
+                increment2 = int(Nf2[1]-Nf2[0])
+                Nf2 = int(Nf2[-1])
             else:
                 Nf2 = 0
-            print(Nf+Nf2)
+            print('Loading', int(Nf/increment1 + Nf2/increment2), 'files...')
             self.nsnaps = len(flist)+len(flist2)
             if self.nsnaps>2:
                 if Nf2>0:
-                    files = npy.append(npy.arange(0,Nf2+1,inter),npy.arange(0,Nf+1,inter))
+                    files = npy.append(npy.arange(0,Nf+increment1,inter*increment1),npy.arange(0,Nf2+increment2,inter*increment2))
                 else:
-                    files = npy.arange(0,Nf+1,inter)
+                    files = npy.arange(0,Nf+increment1,inter*increment1)
             elif self.nsnaps>0:
                 files = npy.array([0,Nf])
             else:
@@ -80,12 +85,15 @@ class Impact:
                 honly = False
             self.data[i] = ImpSnapshot()
             if code=='swift' or code=='Swift':
-                if i<Nf2:
-                    self.data[i].load(loc+prefix2+sep+'{:>0{width}}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
+                if i<Nf:
+                    self.data[i].load(loc+prefix+sep+'{:>0{width}}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
                 else:
-                    self.data[i].load(loc+prefix+sep+'{:>0{width}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
+                    self.data[i].load(loc+prefix2+sep+'{:>0{width}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
             else:
-                self.data[i].load(loc+prefix+sep+'{:>0{width}d}'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
+                if i<Nf:
+                    self.data[i].load(loc+prefix+sep+'{:>0{width}d}'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
+                else:
+                    self.data[i].load(loc+prefix2+sep+'{:>0{width}d}'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
 
 
     def plotseq(self, n=4, type='materials', seq=None, times=None, scale='Mm', potmin=True, tcut = 3600., zoom=1.):
@@ -259,7 +267,8 @@ class Impact:
                         cbar_ax.xaxis.set_label_text(r'Phase')
                     cbar_ax.xaxis.set_label_position('top')
         plt.subplots_adjust(wspace=0, hspace=0)
-        plt.show()
+        plt.show(block=False)
+        return fig
 
 
 
