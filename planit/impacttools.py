@@ -272,6 +272,254 @@ class Impact:
         return fig
 
 
+    def attrmov(self, n=40, ptype='materials', seq=None, times=None, scale='Mm', focus='potmin', fps=12, zoom=1., cmap = None):
+        if not (seq or times):
+            if self.nsnaps>n:
+                seq = npy.logspace(0,npy.log10(len(self.data)-1),n).astype(int)
+            else:
+                seq = npy.arange(self.nsnaps-1)
+        elif seq:
+            n = len(seq)
+        
+        if ptype=='materials' or ptype=='mat':
+                plottype = 'mat'
+        elif ptype=='density' or ptype=='rho':
+                plottype = 'rho'
+        elif ptype=='entropy' or ptype=='ent' or ptype=='S':
+                plottype='ent'
+        elif ptype=='velocity' or ptype=='vel' or ptype=='v':
+                plottype='vel'
+        elif ptype=='phase':
+                plottype='phase'
+        else:
+            raise ValueError('Unknown plot type:',ptype)
+        
+        if scale=='Mm':
+            scf = 1e8
+        elif scale=='km':
+            scf = 1e5
+        elif scale=='earth' or scale=='Earth':
+            scf = 6.371e8
+        else:
+            scf = scale
+        axlim = 1.5*int(npy.ceil((self.data[0].x.max()-self.data[0].x.min())/scf/8.))/zoom #4*
+        zcut = axlim/200.*scf
+    
+        tcut = 3600.   #time cut for pre-contact treatment
+        
+        # number of cells for grid
+        Ng = 801j
+        Ngz = 21j
+        #Ng=1281j
+        #Ngz=101j
+    
+        # region to grid/plot
+        zmin=-axlim/10.
+        zmax=axlim/10.
+        
+        zlim = zmax/5.*scf
+    
+        zi=npy.linspace(zmin,zmax,int(Ngz.imag))
+        X,Y,Z = npy.mgrid[-axlim:axlim:(Ng),-axlim:axlim:(Ng),zmin:zmax:(Ngz)]
+    
+        # density limits
+        rhomin=1e-5
+        rhomax=10.
+        # entropy limits
+        cmin=1.5
+        cmax=10.
+        #phase flag limits
+        phmin=2.5
+        phmax=8.5
+    
+        if not cmap:
+            if plottype == 'mat':
+                cmap = plt.get_cmap('cmr.bubblegum')
+            elif plottype == 'rho':
+                cmap = plt.get_cmap('cmr.eclipse')
+            elif plottype == 'ent':
+                cmap = plt.get_cmap('magma')
+            elif plottype == 'phase':
+                cmap = plt.get_cmap('plasma', 6)
+            else:
+                cmap = plt.get_cmap('plasma') #.copy()
+        if plottype == 'phase':
+            cmap = matplotlib.colors.ListedColormap(cmap.colors[[0,1,2,3,4,5],:])
+        if plottype=='rho':        
+            cmap.set_under('k')
+        else:
+            cmap.set_under('w')
+        
+        ##ncol=3
+    
+        
+        j = 0
+        def attrmovfunc(j):
+            ti = ( self.data[j].header.time )/3600.
+            if npy.ndim(ti)>0:
+                ti=ti[0]
+            #print(ti)
+            
+            if self.data[j].header.time > tcut and focus=='potmin':
+                x = self.data[j].x - (self.data[j].x[self.data[j].pot==self.data[j].pot.min()])[0]
+                y = self.data[j].y - (self.data[j].y[self.data[j].pot==self.data[j].pot.min()])[0]
+                z = self.data[j].z - (self.data[j].z[self.data[j].pot==self.data[j].pot.min()])[0]
+            elif focus=='targcore':
+                x = self.data[j].x - npy.median(self.data[j].x[self.data[j].id<planit.BODYOFF])
+                y = self.data[j].y - npy.median(self.data[j].y[self.data[j].id<planit.BODYOFF])
+                z = self.data[j].z - npy.median(self.data[j].z[self.data[j].id<planit.BODYOFF])
+            else:
+                x = self.data[j].x
+                y = self.data[j].y
+                z = self.data[j].z
+            
+            modz = npy.abs(z)
+            vcut = 2*self.data[j].vel.max()
+    
+            plt.clf()
+            plt.minorticks_on()    
+    
+            if plottype=='mat':
+                plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=-(self.data[j].id/BODYOFF).astype(int)[modz<zcut],vmin=-(self.data[0].id/BODYOFF).astype(int).max(),vmax=0,cmap=cmap)
+                #plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=(self.data[j].vx)[modz<zcut],alpha=1.)
+            elif plottype=='phase' :
+                self.data[j].calc_phase()
+                phase = npy.where(self.data[j].phase<=6,self.data[j].phase-1,self.data[j].phase)
+                phase = npy.where(phase<2,6,phase)
+                im = plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=phase[modz<zcut],cmap=cmap,norm=matplotlib.colors.Normalize(vmin=phmin,vmax=phmax,clip=False))
+            elif plottype=='rho':        
+                if self.data[j].header.time<tcut:
+                    vcut = 0.5*self.data[0].vel.min() #8
+                    rhoit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zlim)]/scf,y[(self.data[j].vx>vcut)*(modz<zlim)]/scf,z[(self.data[j].vx>vcut)*(modz<zlim)]/scf),self.data[j].rho[(self.data[j].vx>vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
+                rhoi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zlim)]/scf,y[(self.data[j].vx<vcut)*(modz<zlim)]/scf,z[(self.data[j].vx<vcut)*(modz<zlim)]/scf),self.data[j].rho[(self.data[j].vx<vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
+                if self.data[j].header.time<tcut:
+                    rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
+                if self.data[j].header.time > tcut and focus=='potmin':
+                    coz = (z[self.data[j].pot==self.data[j].pot.min()])[0]/scf #s.z[modz<zcut]
+                elif focus=='targcore':
+                    coz = npy.median(z[self.data[j].id<planit.BODYOFF])/scf #s.z[modz<zcut]
+                else:
+                    coz = 0 #(z[self.data[j].pot==self.data[j].pot.min()])[0] #s.z[modz<zcut]
+                nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
+                cols = rhoi[:,:,nn].T
+                #cols=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False)(rhoi[:,:,nn].T)
+                #cols=cmap(cols)
+                ax = plt.gca()
+                im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],cmap=cmap,norm=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=True))#vmin=rhomin,vmax=rhomax
+                ax=plt.gca()
+                ax.tick_params(colors='w',which='both',labelcolor='k')
+                ax.spines['top'].set_color('w')
+                ax.spines['bottom'].set_color('w')
+                ax.spines['left'].set_color('w')
+                ax.spines['right'].set_color('w')
+        
+            elif plottype=='ent':        
+                if self.data[j].header.time<tcut: #100 #500
+                    vcut = 0.5*self.data[0].vel.min() #-5.e5 #8
+                    vit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zlim)]/scf,y[(self.data[j].vx>vcut)*(modz<zlim)]/scf,z[(self.data[j].vx>vcut)*(modz<zlim)]/scf),self.data[j].S[(self.data[j].vx>vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
+                    rhoit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zlim)]/scf,y[(self.data[j].vx>vcut)*(modz<zlim)]/scf,z[(self.data[j].vx>vcut)*(modz<zlim)]/scf),self.data[j].rho[(self.data[j].vx>vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
+                vi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zlim)]/scf,y[(self.data[j].vx<vcut)*(modz<zlim)]/scf,z[(self.data[j].vx<vcut)*(modz<zlim)]/scf),self.data[j].S[(self.data[j].vx<vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
+                rhoi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zlim)]/scf,y[(self.data[j].vx<vcut)*(modz<zlim)]/scf,z[(self.data[j].vx<vcut)*(modz<zlim)]/scf),self.data[j].rho[(self.data[j].vx<vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
+                if self.data[j].header.time<tcut: #100 #500
+                    vi = npy.where(vi>vit,vi,vit)
+                    rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
+                if self.data[j].header.time > tcut and focus=='potmin':
+                    coz = (z[self.data[j].pot==self.data[j].pot.min()])[0]/scf #s.z[modz<zcut]
+                elif focus=='targcore':
+                    coz = npy.median(z[self.data[j].id<planit.BODYOFF])/scf #s.z[modz<zcut]
+                else:
+                    coz = 0 #(z[self.data[j].pot==self.data[j].pot.min()])[0] #s.z[modz<zcut]
+                #print(j,npy.median(self.data[j].z[self.data[j].id<planit.BODYOFF]),coz)
+                nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
+                alphas=matplotlib.colors.LogNorm(vmin=0.05*rhomin,vmax=rhomax,clip=True)(rhoi[:,:,nn].T)
+                cols = matplotlib.colors.Normalize(vmin=cmin,vmax=cmax,clip=True)(vi[:,:,nn].T)
+                cols = cmap(cols)
+                cols[..., -1] = alphas    
+                ax = plt.gca()
+                im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],vmin=cmin,vmax=cmax,cmap=cmap)
+            
+            if scale=='Mm':
+                plt.ylabel(r'$y$ (Mm)')
+            elif scale=='km':
+                plt.ylabel(r'$y$ (km)')
+            elif scale=='earth' or scale=='Earth':
+                plt.ylabel(r'$y$ (R$_\oplus$)')
+            else:
+                plt.ylabel(r'$y$')
+            plt.xlim(-axlim,axlim)
+            plt.ylim(-axlim,axlim)
+            plt.gca().set_aspect('equal')
+            if plottype=='rho':
+                plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,color='w',transform=plt.gca().transAxes)
+            else:
+                plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,color='k',transform=plt.gca().transAxes)
+            if scale=='Mm':
+                plt.xlabel(r'$x$ (Mm)')
+            elif scale=='km':
+                plt.xlabel(r'$x$ (km)')
+            elif scale=='earth' or scale=='Earth':
+                plt.xlabel(r'$x$ (R$_\oplus$)')
+            else:
+                plt.xlabel(r'$x$')
+        
+            #ax=plt.gca()
+            #ax.xaxis.set_major_locator(ticker.MultipleLocator(10.00))
+            #ax.xaxis.set_minor_locator(ticker.MultipleLocator(2.00))
+            #ax.yaxis.set_major_locator(ticker.MultipleLocator(10.00))
+            #ax.yaxis.set_minor_locator(ticker.MultipleLocator(2.00))
+    
+            if plottype!='mat':
+                pbox=plt.gca().get_position()
+                cbar_ax = fig.add_axes([pbox.x1*1.02, pbox.y0, 0.035, 1.0*(pbox.y1-pbox.y0)])
+                cbar = fig.colorbar(im,cax=cbar_ax,orientation='vertical')
+                if plottype=='rho':
+                    cbar_ax.yaxis.set_label_text(r'$\rho$ (g$\,$cm$^{-3}$)')
+                elif plottype=='ent':
+                    cbar_ax.yaxis.set_label_text(r'$S$ (kJ$\,$K$^{-1}\,$kg$^{-1}$)')
+                elif plottype=='phase':
+                    ##cbar = fig.colorbar(im1, cax=cax, ticks = np.arange(13)/12, orientation='vertical')
+                    #cbar.ax.set_xticklabels(['','s','s+l','l','l+v'])  #  colorbar ['s','s+l','l','l+v']
+                    cbar.ax.set_yticklabels(['','s',' s+l',' l',' l+v',' v',' scf'])  #  colorbar ['s','s+l','l','l+v']
+                    cbar_ax.yaxis.set_label_text(r'Phase')
+                cbar_ax.yaxis.set_label_position('right')
+                
+    
+            if n>50 and j!=0 and j!=len(self.data)-1:
+                self.data[j].freedata()
+    
+    
+        fig=plt.figure(figsize=(3.5,2.8))
+        
+        if len(seq)==1:
+            attrmovfunc(seq[0])
+            plt.subplots_adjust(top=0.98,bottom=0.11,left=0.158,right=0.79)
+            plt.show(block=False)
+            return plt.gcf()
+        else:
+            if plottype=='mat':
+                movfile = self.data[0].file.strip(self.data[0].file.split('/')[-1])+'materials.mp4'
+            elif plottype=='rho':
+                movfile = self.data[0].file.strip(self.data[0].file.split('/')[-1])+'density.mp4'
+            elif plottype=='ent':
+                movfile = self.data[0].file.strip(self.data[0].file.split('/')[-1])+'entropy.mp4'
+            elif plottype=='phase':
+                movfile = self.data[0].file.strip(self.data[0].file.split('/')[-1])+'phase.mp4'
+            else:
+                movfile = self.data[0].file.strip(self.data[0].file.split('/')[-1])+'attrmov.mp4'
+            anim=matplotlib.animation.FuncAnimation(fig,attrmovfunc,seq)
+            plt.subplots_adjust(top=0.98,bottom=0.11,left=0.158,right=0.79)
+            ##plt.subplots_adjust(top=0.98,bottom=0.1,left=0.135,right=0.795)
+            ##anim.save(movfile,dpi=200,writer=matplotlib.animation.PillowWriter(fps=fps,bitrate=1000)) #writer='ffmpeg' # 800 # 9000 fps=fps,bitrate=1000
+            anim.save(movfile,dpi=300,fps=fps,bitrate=4000) #writer='ffmpeg' # 800 # 9000 fps=fps,bitrate=1000
+            plt.show()
+            plt.close()
+            
+            html=display.Video(movfile,embed=True,width=500)
+            return html
+        
+
+
+
 
 def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm', potmin=True, zoom=1.,uppercaselab=False):
     if (not isinstance(imps,list)) and (not isinstance(types,list)):
