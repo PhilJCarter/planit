@@ -453,10 +453,22 @@ def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=
     # set up particle IDs to be consistent with Gadget numbering (if possible)
     # particle order is consistent so could switch proj id when material changes back
     if snap.N < GADGET_EOS_OFFSET:
-        extraIDoff = [len(gas['metals'][gas['metals'] == x]) for x in npy.unique(gas['metals'])]
-        extraIDoff = npy.append(npy.array(0),npy.array(extraIDoff))
-        materialint = npy.unique(gas['metals'], return_inverse=True)[1]
-        snap.id = npy.arange(len(gas['metals'])) + materialint * (GADGET_EOS_OFFSET) - extraIDoff[materialint]
+        #extraIDoff = [len(gas['metals'][gas['metals'] == x]) for x in npy.unique(gas['metals'])]
+        #extraIDoff = npy.append(npy.array(0),npy.array(extraIDoff))
+        v,ind,materialint = npy.unique(gas['metals'], return_index=True, return_inverse=True)
+        mapper = npy.empty_like(ind)
+        mapper[npy.argsort(ind)] = npy.arange(len(ind))
+        materialint = mapper[materialint]
+        snap.id = npy.arange(len(gas['metals'])) + materialint * (GADGET_EOS_OFFSET)# - extraIDoff[materialint]
+        bodyindex = npy.where(materialint==materialint[0])[0]
+        #print(bodyindex)
+        bodyindex = bodyindex[bodyindex>npy.arange(len(bodyindex))]
+        #print(bodyindex)
+        if len(bodyindex)>0:
+            bodyindex = bodyindex[0]
+            if bodyindex < PROJ_ID_OFFSET:
+                snap.id[bodyindex:] += PROJ_ID_OFFSET
+        #print(snap.N,materialint,bodyindex)
     else:
         snap.id = npy.arange(len(gas['metals']))
         print('Warning: particle count exceeds Gadget2 particle ID limit')
@@ -464,7 +476,7 @@ def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=
     snap.m = gas['mass'].astype(float) * Mfactor
     snap.rho = gas['rho'].astype(float) * Mfactor/(Lfactor**3)
     snap.T = gas['temp'].astype(float)
-    snap.materialIDs = eos.pkdgrav3towoma(gas['metals'])
+    snap.materialIDs = eos.pkdgrav3towoma(gas['metals']).astype(int)
     
     if any(x in ['all','S'] for x in loadprops):
         snap.S = eos.calcprop('S', 'rho', 'T', snap.rho, snap.T, snap.materialIDs)

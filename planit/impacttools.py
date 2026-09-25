@@ -14,6 +14,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 import cmasher
 
+# for movie:
+from IPython import display
+import matplotlib.animation
+
 
 class ImpSnapshot(Snapshot):
     pass
@@ -273,7 +277,7 @@ class Impact:
 
 
     def attrmov(self, n=40, ptype='materials', seq=None, times=None, scale='Mm', focus='potmin', fps=12, zoom=1., cmap = None):
-        if not (seq or times):
+        if not (seq or times): # change to allow numpy array
             if self.nsnaps>n:
                 seq = npy.logspace(0,npy.log10(len(self.data)-1),n).astype(int)
             else:
@@ -489,6 +493,8 @@ class Impact:
     
     
         fig=plt.figure(figsize=(3.5,2.8))
+        
+        
         
         if len(seq)==1:
             attrmovfunc(seq[0])
