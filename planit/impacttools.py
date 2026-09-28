@@ -4,11 +4,9 @@
 
 from .globaldefs import *
 from .snaptools import Snapshot
-#from . import utils
 
 import numpy as npy
 import scipy
-#import h5py
 import glob
 import matplotlib
 import matplotlib.pyplot as plt
@@ -272,7 +270,7 @@ class Impact:
                         cbar_ax.xaxis.set_label_text(r'Phase')
                     cbar_ax.xaxis.set_label_position('top')
         plt.subplots_adjust(wspace=0, hspace=0)
-        plt.show(block=False)
+        #plt.show(block=False)
         return fig
 
 

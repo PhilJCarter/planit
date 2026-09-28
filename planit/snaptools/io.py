@@ -730,6 +730,7 @@ def write_tipsy(snap, outname, units='default', mats=[401, 400]):
     Mfactor = 1./(1/62.5476 * Mearth)
     Tfactor = 1./(Rearth/1.e5) # ((1 km/s)/Rearth)
 
+    snap.inclthermo = True # ensure T will be available if loaded from a non-tipsy file
 
     N_low, Ngas_low, Ndark_low, Nstar_low, pad = encode_tipsy_header(snap.header.npart[0],snap.header.npart[0],0,0)
 

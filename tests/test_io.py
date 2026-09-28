@@ -88,3 +88,15 @@ def test_load_seagen():
     
     assert s.N == len(particles.m)
     npy.testing.assert_array_equal(s.P, particles.P)
+
+
+def test_snasphot_tipsy_write(reference_snapshot, tmp_path):
+    s0 = Snapshot()
+    s0.load(reference_snapshot)
+    s0.write(tmp_path / "test")
+    s1 = Snapshot()
+    s1.load(tmp_path / "test.std")
+    
+    assert s0.N == s1.N
+    assert (s0.materialIDs == s1.materialIDs).all()
+    npy.testing.assert_allclose(s0.pot, s1.pot, rtol=1e-5)
