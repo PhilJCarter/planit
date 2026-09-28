@@ -21,7 +21,8 @@ def test_phase_calculation(reference_snapshot):
     assert (s.meltfrac*s.m).sum()/s.m.sum() == pytest.approx(0.3,rel=1e-4)
     assert s.phase[20341] == pytest.approx(6.0,rel=1e-10)
 
-def test_equilibration_check(reference_snapshot):
+
+def test_equilibration_check(reference_snapshot, verbose=True):
     s = Snapshot()
     s.load(reference_snapshot)
     assert s.eq_test(threshold=0.001)
@@ -39,6 +40,7 @@ def test_particle_removal(reference_snapshot):
 def test_particle_removal_G2(reference_snapshot,tmp_path):
     s0 = Snapshot()
     s0.load(reference_snapshot)
+    s0.header.flag_entr_ics = 1
     s0.write(tmp_path / "test")
     s1 = Snapshot()
     s1.load(tmp_path / "test")

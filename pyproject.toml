@@ -1,6 +1,6 @@
 [project]
 name = "planit"
-version = "1.0.3"
+version = "1.1.0"
 authors = [
     {name = "Philip Carter", email = "p.carter@bristol.ac.uk"},
 ]
@@ -9,7 +9,7 @@ readme = "README.md"
 license = "GPL-3.0-or-later"
 license-files = ["LICEN[CS]E*"]
 requires-python = ">=3.10"
-dependencies = ["numpy","scipy","matplotlib","numba","h5py","seagen","cmasher"]
+dependencies = ["numpy","scipy","matplotlib","numba","h5py","seagen","cmasher","IPython"]
 [project.urls]
 Homepage = "https://github.com/PhilJCarter/planit"
 
