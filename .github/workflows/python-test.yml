@@ -62,7 +62,7 @@ jobs:
 
         git stash
         git checkout gh-pages
-        git checkout stash -- coverage.svg cov_html/*
+        git checkout stash -- coverage.svg 'cov_html/*'
         
         git add coverage.svg
         git add -f cov_html/*
