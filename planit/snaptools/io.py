@@ -9,8 +9,8 @@ import struct
 
 # tipsy data types
 tipsy_header_type = npy.dtype([('time', '>f8'), ('N', '>u4'), ('Dims', '>u4'), ('Ngas', '>u4'), ('Ndark', '>u4'), ('Nstar', '>u4'), ('pad', '>u4')])
-dark_type = npy.dtype([('mass','>f4'), ('x', '>f4'), ('y', '>f4'), ('z', '>f4'), ('vx', '>f4'), ('vy', '>f4'), ('vz', '>f4'), ('eps','>f4'), ('phi','>f4')])
-gas_type  = npy.dtype([('mass','>f4'), ('x', '>f4'), ('y', '>f4'), ('z', '>f4'), ('vx', '>f4'), ('vy', '>f4'), ('vz', '>f4'), ('rho','>f4'), ('temp','>f4'), ('hsmooth','>f4'), ('metals','>f4'), ('phi','>f4')])
+tipsy_dark_type = npy.dtype([('mass','>f4'), ('x', '>f4'), ('y', '>f4'), ('z', '>f4'), ('vx', '>f4'), ('vy', '>f4'), ('vz', '>f4'), ('eps','>f4'), ('phi','>f4')])
+tipsy_gas_type  = npy.dtype([('mass','>f4'), ('x', '>f4'), ('y', '>f4'), ('z', '>f4'), ('vx', '>f4'), ('vy', '>f4'), ('vz', '>f4'), ('rho','>f4'), ('temp','>f4'), ('hsmooth','>f4'), ('metals','>f4'), ('phi','>f4')])
 
 
 def load_snapshot(snap, fname, headonly=False, thermo=False, compress=False, mats=[402, 400], loadprops=['all',]):
@@ -23,7 +23,7 @@ def load_snapshot(snap, fname, headonly=False, thermo=False, compress=False, mat
     if not (h5py.is_hdf5(fname) or str(fname).count('.hdf5') > 0):
         with open(fname, 'rb') as f:
             i = struct.unpack('i', f.read(4))
-        if i[0] == 256: # this could break if the first 4 bytes of time in a tipsy file give thes same int
+        if i[0] == 256: # this could break if the first 4 bytes of time in a tipsy file give the same int
             load_G2_1(snap, fname, headonly=headonly, thermo=thermo, mats=mats, loadprops=loadprops)
         else:
             load_tipsy(snap, fname, headonly=headonly, thermo=thermo, loadprops=loadprops)
@@ -411,8 +411,8 @@ def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=
         N, nGas, nDark, nStar = decode_tipsy_header(tipsyheader[0])
         if not headonly:
             if nDark>0:
-                dark = npy.fromfile(tipsy, dtype=dark_type, count=nDark)
-            gas  = npy.fromfile(tipsy, dtype=gas_type, count=nGas)
+                dark = npy.fromfile(tipsy, dtype=tipsy_dark_type, count=nDark)
+            gas  = npy.fromfile(tipsy, dtype=tipsy_gas_type, count=nGas)
 
     snap.header.npart = npy.array([tipsyheader['N'][0], 0, 0, 0, 0, 0])
     snap.header.mass = npy.array([0., 0., 0., 0., 0., 0.])
@@ -451,7 +451,7 @@ def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=
     snap.vel = snap.vel.T
     
     # set up particle IDs to be consistent with Gadget numbering (if possible)
-    # particle order is consistent so could switch proj id when material changes back
+    # particle order is consistent so switch proj id when material changes back to earlier mat
     if snap.N < GADGET_EOS_OFFSET:
         #extraIDoff = [len(gas['metals'][gas['metals'] == x]) for x in npy.unique(gas['metals'])]
         #extraIDoff = npy.append(npy.array(0),npy.array(extraIDoff))
@@ -459,11 +459,10 @@ def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=
         mapper = npy.empty_like(ind)
         mapper[npy.argsort(ind)] = npy.arange(len(ind))
         materialint = mapper[materialint]
-        snap.id = npy.arange(len(gas['metals'])) + materialint * (GADGET_EOS_OFFSET)# - extraIDoff[materialint]
+        snap.id = npy.arange(len(gas['metals'])) + materialint * (GADGET_EOS_OFFSET) #- extraIDoff[materialint]
         bodyindex = npy.where(materialint==materialint[0])[0]
         #print(bodyindex)
         bodyindex = bodyindex[bodyindex>npy.arange(len(bodyindex))]
-        #print(bodyindex)
         if len(bodyindex)>0:
             bodyindex = bodyindex[0]
             if bodyindex < PROJ_ID_OFFSET:
@@ -743,13 +742,11 @@ def write_tipsy(snap, outname, units='default', mats=[401, 400]):
     header['Nstar'] = Nstar_low
     header['pad'] = pad
 
-    gas = npy.zeros((snap.header.npart[0],), dtype=gas_type)
-    #dark = npy.zeros((N_dark,), dtype=dark_type)
+    gas = npy.zeros((snap.header.npart[0],), dtype=tipsy_gas_type)
+    #dark = npy.zeros((N_dark,), dtype=tipsy_dark_type)
     
     if str(outname)[-4:] != '.std':
         outname = str(outname) + '.std'
-
-    # sort. particle order is consistent so could switch proj id when material changes back
     
     #PARTICLE DATA
     gas['x'] = snap.x * Lfactor
@@ -771,8 +768,8 @@ def write_tipsy(snap, outname, units='default', mats=[401, 400]):
         
     with open(outname,'wb') as newfile:
         newfile.write(npy.array(header,dtype=tipsy_header_type).tobytes())
-        newfile.write(npy.array(gas,dtype=gas_type).tobytes())
-        #newfile.write(npy.array(dark,dtype=dark_type).tobytes())
+        newfile.write(npy.array(gas,dtype=tipsy_gas_type).tobytes())
+        #newfile.write(npy.array(dark,dtype=tipsy_dark_type).tobytes())
                
 
 def save_remnant_ids(snap):
