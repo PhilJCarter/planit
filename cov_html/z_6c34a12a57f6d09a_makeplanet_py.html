@@ -5,7 +5,7 @@
     <title>Coverage for planit/makeplanet.py: 43%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
     <link rel="stylesheet" href="style_cb_4667309f.css" type="text/css">
-    <script src="coverage_html_cb_dd2e7eb5.js" defer></script>
+    <script src="coverage_html_cb_15cffcd0.js" defer></script>
 </head>
 <body class="pyfile">
 <header>
@@ -54,8 +54,8 @@
             </div>
         </aside>
         <h2>
-            <span class="text">871 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">374<span class="text"> run</span></button>
+            <span class="text">872 statements &nbsp;</span>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">375<span class="text"> run</span></button>
             <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">497<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
@@ -64,8 +64,8 @@
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a id="nextFileLink" class="nav" href="z_981f15eadd57b98b___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
-            created at 2026-08-25 11:06 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.16.2">coverage.py v7.16.2</a>,
+            created at 2026-09-28 13:36 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -776,7 +776,7 @@
     <p class="pln"><span class="n"><a id="t694" href="#t694">694</a></span><span class="t">    <span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t695" href="#t695">695</a></span><span class="t">        <span class="key">if</span> <span class="nam">len</span><span class="op">(</span><span class="nam">layers</span><span class="op">)</span> <span class="op">!=</span> <span class="nam">len</span><span class="op">(</span><span class="nam">S</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t696" href="#t696">696</a></span><span class="t">            <span class="key">raise</span> <span class="nam">ValueError</span><span class="op">(</span><span class="str">&#x27;Number of layers must match number of entropies:&#x27;</span><span class="op">,</span> <span class="nam">len</span><span class="op">(</span><span class="nam">layers</span><span class="op">)</span><span class="op">,</span> <span class="nam">len</span><span class="op">(</span><span class="nam">S</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t697" href="#t697">697</a></span><span class="t">        <span class="key">if</span> <span class="key">not</span> <span class="nam">layers</span><span class="op">:</span> <span class="com"># or len(layers) == 2:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t697" href="#t697">697</a></span><span class="t">        <span class="key">if</span> <span class="key">not</span> <span class="nam">layers</span> <span class="key">or</span> <span class="nam">len</span><span class="op">(</span><span class="nam">layers</span><span class="op">)</span> <span class="op">==</span> <span class="num">2</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t698" href="#t698">698</a></span><span class="t">            <span class="com">#layer1 = layers[0]</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t699" href="#t699">699</a></span><span class="t">            <span class="com">#layer2 = layers[1]</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t700" href="#t700">700</a></span><span class="t">            <span class="com">#Score = S[0]</span>&nbsp;</span><span class="r"></span></p>
@@ -785,7 +785,7 @@
     <p class="pln"><span class="n"><a id="t703" href="#t703">703</a></span><span class="t">            <span class="com">#corefraction = mass[0]/totmass</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t704" href="#t704">704</a></span><span class="t">            <span class="com">#mass = totmass</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t705" href="#t705">705</a></span><span class="t">            <span class="nam">planet</span><span class="op">,</span><span class="nam">core</span><span class="op">,</span><span class="nam">mantle</span> <span class="op">=</span> <span class="nam">make_1D_planet</span><span class="op">(</span><span class="nam">plot</span><span class="op">=</span><span class="nam">plot</span><span class="op">,</span> <span class="nam">mantlepotT</span><span class="op">=</span><span class="nam">mantlepotT</span><span class="op">,</span> <span class="nam">layer1</span><span class="op">=</span><span class="nam">layer1</span><span class="op">,</span> <span class="nam">layer2</span><span class="op">=</span><span class="nam">layer2</span><span class="op">,</span> <span class="nam">mass</span><span class="op">=</span><span class="nam">mass</span><span class="op">,</span> <span class="nam">corefraction</span><span class="op">=</span><span class="nam">corefraction</span><span class="op">,</span> <span class="nam">Pmin</span><span class="op">=</span><span class="nam">Pmin</span><span class="op">,</span> <span class="nam">Score</span><span class="op">=</span><span class="nam">Score</span><span class="op">,</span> <span class="nam">Smantle</span><span class="op">=</span><span class="nam">Smantle</span><span class="op">,</span> <span class="nam">mtolerance</span><span class="op">=</span><span class="nam">mtolerance</span><span class="op">,</span> <span class="nam">fixcoreT</span><span class="op">=</span><span class="nam">fixcoreT</span><span class="op">,</span> <span class="nam">verbose</span><span class="op">=</span><span class="nam">verbose</span><span class="op">,</span> <span class="nam">layers</span><span class="op">=</span><span class="nam">layers</span><span class="op">,</span> <span class="nam">S</span><span class="op">=</span><span class="nam">S</span><span class="op">,</span> <span class="nam">rhocent</span><span class="op">=</span><span class="nam">rhocent</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t706" href="#t706">706</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t706" href="#t706">706</a></span><span class="t">            <span class="nam">isentropes</span> <span class="op">=</span> <span class="op">[</span><span class="nam">core</span><span class="op">,</span> <span class="nam">mantle</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t707" href="#t707">707</a></span><span class="t">        <span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t708" href="#t708">708</a></span><span class="t">            <span class="nam">planet</span><span class="op">,</span><span class="nam">isentropes</span> <span class="op">=</span> <span class="nam">make_1D_planet</span><span class="op">(</span><span class="nam">plot</span><span class="op">=</span><span class="nam">plot</span><span class="op">,</span> <span class="nam">mantlepotT</span><span class="op">=</span><span class="nam">mantlepotT</span><span class="op">,</span> <span class="nam">layer1</span><span class="op">=</span><span class="nam">layer1</span><span class="op">,</span> <span class="nam">layer2</span><span class="op">=</span><span class="nam">layer2</span><span class="op">,</span> <span class="nam">mass</span><span class="op">=</span><span class="nam">mass</span><span class="op">,</span> <span class="nam">corefraction</span><span class="op">=</span><span class="nam">corefraction</span><span class="op">,</span> <span class="nam">Pmin</span><span class="op">=</span><span class="nam">Pmin</span><span class="op">,</span> <span class="nam">Score</span><span class="op">=</span><span class="nam">Score</span><span class="op">,</span> <span class="nam">Smantle</span><span class="op">=</span><span class="nam">Smantle</span><span class="op">,</span> <span class="nam">mtolerance</span><span class="op">=</span><span class="nam">mtolerance</span><span class="op">,</span> <span class="nam">fixcoreT</span><span class="op">=</span><span class="nam">fixcoreT</span><span class="op">,</span> <span class="nam">verbose</span><span class="op">=</span><span class="nam">verbose</span><span class="op">,</span> <span class="nam">layers</span><span class="op">=</span><span class="nam">layers</span><span class="op">,</span> <span class="nam">S</span><span class="op">=</span><span class="nam">S</span><span class="op">,</span> <span class="nam">rhocent</span><span class="op">=</span><span class="nam">rhocent</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t709" href="#t709">709</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -1457,8 +1457,8 @@
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a class="nav" href="z_981f15eadd57b98b___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
-            created at 2026-08-25 11:06 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.16.2">coverage.py v7.16.2</a>,
+            created at 2026-09-28 13:36 +0000
         </p>
     </div>
 </footer>
