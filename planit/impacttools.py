@@ -10,6 +10,7 @@ import scipy
 import glob
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import cmasher
 
 # for movie:
@@ -99,7 +100,7 @@ class Impact:
                     self.data[i].load(loc+prefix2+sep+'{:>0{width}d}'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
 
 
-    def plotseq(self, n=4, type='materials', seq=None, times=None, scale='Mm', potmin=True, tcut = 3600., zoom=1.):
+    def plotseq(self, n=4, type='materials', seq=None, times=None, scale='Mm', potmin=False, tcut = 3600., zoom=1., focus='potmin'):
         """
         tcut -- time cut for pre-contact treatment
         """
@@ -129,22 +130,14 @@ class Impact:
         axlim /= zoom
     
         # number of cells for grid
-        Ng = 601j
+        Ng = 801j
         Ngz = 21j
-
 
         zi=npy.linspace(zmin,zmax,int(Ngz.imag))
         X,Y,Z = npy.mgrid[-axlim:axlim:(Ng),-axlim:axlim:(Ng),zmin:zmax:(Ngz)]
 
-        # density limits
-        rhomin=5e-6
-        rhomax=10.
-        # entropy limits
-        cmin=1.5
-        cmax=10.    
-        #phase flag limits
-        phmin=2.5
-        phmax=8.5
+        if potmin:          # for backwards compatability
+            focus='potmin'
 
         cmap=plt.get_cmap('plasma')#.copy()
         cmapphase = plt.get_cmap('plasma', 6)#.copy()
@@ -160,100 +153,28 @@ class Impact:
         for i in range(len(seq)):
             j = seq[i]
             plt.subplot(1,n,i+1,aspect='equal')
-            ti = ( self.data[j].header.time )/3600.
-            if npy.ndim(ti)>0:
-                ti=ti[0]
-            if potmin:  #self.data[j].header.time >tcut and
-                x = self.data[j].x - (self.data[j].x[self.data[j].pot==self.data[j].pot.min()])[0]
-                y = self.data[j].y - (self.data[j].y[self.data[j].pot==self.data[j].pot.min()])[0]
-                z = self.data[j].z - (self.data[j].z[self.data[j].pot==self.data[j].pot.min()])[0]
-            else:
-                x = self.data[j].x
-                y = self.data[j].y
-                z = self.data[j].z
-            modz = npy.abs(z)
-            vcut=2*self.data[j].vel.max()
 
-            if type=='materials' or type=='mat':
-                im = plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=-(self.data[j].id/PROJ_ID_OFFSET).astype(int)[modz<zcut],alpha=1.)
-            elif type=='density' or type=='rho':        
-                if self.data[j].header.time<tcut:
-                    vcut=0.5*self.data[0].vel.min() #-5.e5 #8
-                    rhoit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zcut)]/scf,y[(self.data[j].vx>vcut)*(modz<zcut)]/scf,z[(self.data[j].vx>vcut)*(modz<zcut)]/scf),self.data[j].rho[(self.data[j].vx>vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=rhomin/1000.)
-                rhoi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zcut)]/scf,y[(self.data[j].vx<vcut)*(modz<zcut)]/scf,z[(self.data[j].vx<vcut)*(modz<zcut)]/scf),self.data[j].rho[(self.data[j].vx<vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=rhomin/1000.)
-                if self.data[j].header.time<tcut:
-                    rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
-                if self.data[j].header.time != 0 and potmin:
-                    coz = (z[self.data[j].pot==self.data[j].pot.min()])[0] #s.z[modz<zcut]
-                else:
-                    coz = 0 #(z[self.data[j].pot==self.data[j].pot.min()])[0] #s.z[modz<zcut]
-                nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
-                #cols=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False)(rhoi[:,:,nn].T)
-                #cols=cmap(cols)
-                ax = plt.gca()
-                im = ax.imshow(rhoi[:,:,nn].T,origin='lower',extent=[-axlim,axlim,-axlim,axlim],cmap=cmap,norm=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False))
-                ax=plt.gca()
-                ax.tick_params(colors='w',which='both',labelcolor='k')
-                ax.spines['top'].set_color('w')
-                ax.spines['bottom'].set_color('w')
-                ax.spines['left'].set_color('w')
-                ax.spines['right'].set_color('w')
-    
+            if type in ['materials','mat','mats','material']:
+                im = plot_snapshot_scatter(self.data[j],cmap=cmap,plotQ=-(self.data[j].id/PROJ_ID_OFFSET).astype(int),ptype='mat',axlim=axlim,scf=scf,scale=scale,zcut=zcut,tcut=tcut,focus=focus)
+            elif type=='density' or type=='rho':
+                im = plot_snapshot_fluid(self.data[j],X,Y,Z,zi,ax=plt.gca(),cmap=cmap,ptype=type,axlim=axlim,scf=scf,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.data[0].vel.min(),focus=focus)
             elif type in ['entropy','ent','S']:        
-                if self.data[j].header.time<tcut:
-                    vcut=0.5*self.data[0].vel.min() #-5.e5
-                    vit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zcut)]/scf,y[(self.data[j].vx>vcut)*(modz<zcut)]/scf,z[(self.data[j].vx>vcut)*(modz<zcut)]/scf),self.data[j].S[(self.data[j].vx>vcut)*(modz<zcut)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
-                    rhoit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zcut)]/scf,y[(self.data[j].vx>vcut)*(modz<zcut)]/scf,z[(self.data[j].vx>vcut)*(modz<zcut)]/scf),self.data[j].rho[(self.data[j].vx>vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                vi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zcut)]/scf,y[(self.data[j].vx<vcut)*(modz<zcut)]/scf,z[(self.data[j].vx<vcut)*(modz<zcut)]/scf),self.data[j].S[(self.data[j].vx<vcut)*(modz<zcut)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
-                rhoi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zcut)]/scf,y[(self.data[j].vx<vcut)*(modz<zcut)]/scf,z[(self.data[j].vx<vcut)*(modz<zcut)]/scf),self.data[j].rho[(self.data[j].vx<vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                if self.data[j].header.time<tcut:
-                    vi = npy.where(vi>vit,vi,vit)
-                    rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
-                if self.data[j].header.time != 0 and potmin:
-                    coz = (z[self.data[j].pot==self.data[j].pot.min()])[0] #s.z[modz<zcut]
-                else:
-                    coz = 0 #(z[self.data[j].pot==self.data[j].pot.min()])[0] #s.z[modz<zcut]
-                nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
-                alphas=matplotlib.colors.LogNorm(vmin=0.05*rhomin,vmax=rhomax,clip=True)(rhoi[:,:,nn].T)
-                cols = matplotlib.colors.Normalize(vmin=cmin,vmax=cmax,clip=True)(vi[:,:,nn].T)
-                cols=cmap(cols)
-                cols[..., -1] = alphas    
-                ax = plt.gca()
-                im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],vmin=cmin,vmax=cmax,cmap=cmap)
+                im = plot_snapshot_fluid(self.data[j],X,Y,Z,zi,plotQ=self.data[j].S/1e7,ax=plt.gca(),cmap=cmap,ptype=type,axlim=axlim,scf=scf,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.data[0].vel.min(),focus=focus)        
+            elif type in ['temperature','T','temp']:        
+                im = plot_snapshot_fluid(self.data[j],X,Y,Z,zi,plotQ=self.data[j].T,ax=plt.gca(),cmap=cmap,ptype=type,axlim=axlim,scf=scf,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.data[0].vel.min(),focus=focus)        
+            elif type in ['pressure','P']:        
+                im = plot_snapshot_fluid(self.data[j],X,Y,Z,zi,plotQ=self.data[j].P/1e9,ax=plt.gca(),cmap=cmap,ptype=type,axlim=axlim,scf=scf,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.data[0].vel.min(),focus=focus)        
             elif type=='phase':
-                self.data[j].calc_phase()
-                # reorder phases for plotting
-                phase = npy.where(self.data[j].phase<=6,self.data[j].phase-1,self.data[j].phase)
-                phase = npy.where(phase<2,6,phase)
-                im = plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=phase[modz<zcut],alpha=1.,cmap=cmapphase,norm=matplotlib.colors.Normalize(vmin=phmin,vmax=phmax,clip=False),rasterized=True) #s=0.8
+                im = plot_snapshot_scatter(self.data[j],cmap=cmapphase,plotQ=self.data[j].phase,ptype='phase',axlim=axlim,scf=scf,scale=scale,zcut=zcut,tcut=tcut,focus=focus)
 
             if i>0:
                 plt.gca().set_yticklabels([])
-            else:
-                if scale=='Mm':
-                    plt.ylabel('y (Mm)')
-                elif scale=='km':
-                    plt.ylabel('y (km)')
-                elif scale=='earth' or scale=='Earth':
-                    plt.ylabel(r'y (R$_\oplus$)')
-                else:
-                    plt.ylabel('y')
-            plt.xlim(-axlim,axlim)
-            plt.ylim(-axlim,axlim)
-            plt.minorticks_on()    
-            if type=='density' or type=='rho':
-                plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,color='w',transform=plt.gca().transAxes)
-            else:
-                plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,color='k',transform=plt.gca().transAxes)
-            if scale=='Mm':
-                plt.xlabel('x (Mm)')
-            elif scale=='km':
-                plt.xlabel('x (km)')
-            elif scale=='earth' or scale=='Earth':
-                plt.xlabel(r'x (R$_\oplus$)')
-            else:
-                plt.xlabel('x')
-    
+                plt.gca().set_ylabel('')
+            
+            if i == len(seq)-1:
+                tlab = plt.gca().texts[0]
+                tlab.set_text(tlab.get_text()+' hrs')
+   
             if type!='materials' and type!='mat':
                 if i == len(seq)-1:
                     pbox=plt.gca().get_position()
@@ -264,7 +185,18 @@ class Impact:
                         cbar_ax.xaxis.set_label_text(r'$\rho$ (g$\,$cm$^{-3}$)')
                     elif type in ['entropy','ent','S']:
                         cbar_ax.xaxis.set_label_text(r'$S$ (kJ$\,$K$^{-1}\,$kg$^{-1}$)')
+                    elif type in ['pressure','P']:
+                        cbar_ax.xaxis.set_label_text(r'$P$ (GPa)')
+                    elif type in ['temperature','T','temp']:
+                        #locs = ticker.LogLocator(base=10.0, subs=[1.0, 5.0])
+                        #cbar.ax.xaxis.set_major_locator(locs)
+                        locs = [100,300,1000,3000,10000,30000]
+                        cbar.set_ticks(locs)
+                        cbar.ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f'{x:g}'))
+                        #cbar.ax.xaxis.set_major_formatter(ticker.LogFormatter(base=10.0, labelOnlyBase=False))#10, labelOnlyBase=False)
+                        cbar_ax.xaxis.set_label_text(r'$T$ (K)')
                     elif type=='phase':
+                        cbar.set_ticks([3.,4.,5.,6.,7.,8.])
                         #cbar.ax.set_xticklabels(['','s','s+l','l','l+v','v','scf'])  #  colorbar ['s','s+l','l','l+v']
                         cbar.ax.set_xticklabels(['s','s+l','l','l+v','v','scf'])  #  colorbar ['s','s+l','l','l+v']
                         cbar_ax.xaxis.set_label_text(r'Phase')
@@ -274,7 +206,7 @@ class Impact:
         return fig
 
 
-    def attrmov(self, n=40, ptype='materials', seq=None, times=None, scale='Mm', focus='potmin', fps=12, zoom=1., cmap = None):
+    def attrmov(self, n=40, ptype='materials', seq=None, times=None, scale='Mm', focus='potmin', fps=12, zoom=1., cmap = None, dpi=400, bitrate=5000):
         if not (seq or times): # change to allow numpy array
             if self.nsnaps>n:
                 seq = npy.logspace(0,npy.log10(len(self.data)-1),n).astype(int)
@@ -283,17 +215,7 @@ class Impact:
         elif seq:
             n = len(seq)
         
-        if ptype=='materials' or ptype=='mat':
-                plottype = 'mat'
-        elif ptype=='density' or ptype=='rho':
-                plottype = 'rho'
-        elif ptype=='entropy' or ptype=='ent' or ptype=='S':
-                plottype='ent'
-        elif ptype=='velocity' or ptype=='vel' or ptype=='v':
-                plottype='vel'
-        elif ptype=='phase':
-                plottype='phase'
-        else:
+        if ptype not in ['mat','materials','mats','material','density','rho','S','ent','entropy','phase','pressure','P']:
             raise ValueError('Unknown plot type:',ptype)
         
         if scale=='Mm':
@@ -323,146 +245,69 @@ class Impact:
     
         zi=npy.linspace(zmin,zmax,int(Ngz.imag))
         X,Y,Z = npy.mgrid[-axlim:axlim:(Ng),-axlim:axlim:(Ng),zmin:zmax:(Ngz)]
-    
-        # density limits
-        rhomin=1e-5
-        rhomax=10.
-        # entropy limits
-        cmin=1.5
-        cmax=10.
-        #phase flag limits
-        phmin=2.5
-        phmax=8.5
-    
+        
         if not cmap:
-            if plottype == 'mat':
+            if ptype in ['mat', 'materials','mats','material']:
                 cmap = plt.get_cmap('cmr.bubblegum')
-            elif plottype == 'rho':
+            elif ptype == ['rho','density']:
                 cmap = plt.get_cmap('cmr.eclipse')
-            elif plottype == 'ent':
+            elif ptype == ['S','entropy','ent']:
                 cmap = plt.get_cmap('magma')
-            elif plottype == 'phase':
+            elif ptype in ['phase',]:
                 cmap = plt.get_cmap('plasma', 6)
             else:
                 cmap = plt.get_cmap('plasma') #.copy()
-        if plottype == 'phase':
+        if ptype in ['phase',]:
             cmap = matplotlib.colors.ListedColormap(cmap.colors[[0,1,2,3,4,5],:])
-        if plottype=='rho':        
+        if ptype in ['rho', 'density']:        
             cmap.set_under('k')
         else:
             cmap.set_under('w')
-        
-        ##ncol=3
-    
-        
+                
         j = 0
         def attrmovfunc(j):
-            ti = ( self.data[j].header.time )/3600.
-            if npy.ndim(ti)>0:
-                ti=ti[0]
-            #print(ti)
-            
-            if self.data[j].header.time > tcut and focus=='potmin':
-                x = self.data[j].x - (self.data[j].x[self.data[j].pot==self.data[j].pot.min()])[0]
-                y = self.data[j].y - (self.data[j].y[self.data[j].pot==self.data[j].pot.min()])[0]
-                z = self.data[j].z - (self.data[j].z[self.data[j].pot==self.data[j].pot.min()])[0]
-            elif focus=='targcore':
-                x = self.data[j].x - npy.median(self.data[j].x[self.data[j].id<planit.BODYOFF])
-                y = self.data[j].y - npy.median(self.data[j].y[self.data[j].id<planit.BODYOFF])
-                z = self.data[j].z - npy.median(self.data[j].z[self.data[j].id<planit.BODYOFF])
-            else:
-                x = self.data[j].x
-                y = self.data[j].y
-                z = self.data[j].z
-            
-            modz = npy.abs(z)
-            vcut = 2*self.data[j].vel.max()
-    
             plt.clf()
             plt.minorticks_on()    
     
-            if plottype=='mat':
-                plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=-(self.data[j].id/BODYOFF).astype(int)[modz<zcut],vmin=-(self.data[0].id/BODYOFF).astype(int).max(),vmax=0,cmap=cmap)
+            if ptype in ['mat','materials','mats','material']:
+                #plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=-(self.data[j].id/BODYOFF).astype(int)[modz<zcut],vmin=-(self.data[0].id/BODYOFF).astype(int).max(),vmax=0,cmap=cmap)
                 #plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=(self.data[j].vx)[modz<zcut],alpha=1.)
-            elif plottype=='phase' :
-                self.data[j].calc_phase()
-                phase = npy.where(self.data[j].phase<=6,self.data[j].phase-1,self.data[j].phase)
-                phase = npy.where(phase<2,6,phase)
-                im = plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=phase[modz<zcut],cmap=cmap,norm=matplotlib.colors.Normalize(vmin=phmin,vmax=phmax,clip=False))
-            elif plottype=='rho':        
-                if self.data[j].header.time<tcut:
-                    vcut = 0.5*self.data[0].vel.min() #8
-                    rhoit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zlim)]/scf,y[(self.data[j].vx>vcut)*(modz<zlim)]/scf,z[(self.data[j].vx>vcut)*(modz<zlim)]/scf),self.data[j].rho[(self.data[j].vx>vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                rhoi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zlim)]/scf,y[(self.data[j].vx<vcut)*(modz<zlim)]/scf,z[(self.data[j].vx<vcut)*(modz<zlim)]/scf),self.data[j].rho[(self.data[j].vx<vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                if self.data[j].header.time<tcut:
-                    rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
-                if self.data[j].header.time > tcut and focus=='potmin':
-                    coz = (z[self.data[j].pot==self.data[j].pot.min()])[0]/scf #s.z[modz<zcut]
-                elif focus=='targcore':
-                    coz = npy.median(z[self.data[j].id<planit.BODYOFF])/scf #s.z[modz<zcut]
-                else:
-                    coz = 0 #(z[self.data[j].pot==self.data[j].pot.min()])[0] #s.z[modz<zcut]
-                nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
-                cols = rhoi[:,:,nn].T
-                #cols=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False)(rhoi[:,:,nn].T)
-                #cols=cmap(cols)
-                ax = plt.gca()
-                im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],cmap=cmap,norm=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=True))#vmin=rhomin,vmax=rhomax
-                ax=plt.gca()
-                ax.tick_params(colors='w',which='both',labelcolor='k')
-                ax.spines['top'].set_color('w')
-                ax.spines['bottom'].set_color('w')
-                ax.spines['left'].set_color('w')
-                ax.spines['right'].set_color('w')
-        
-            elif plottype=='ent':        
-                if self.data[j].header.time<tcut: #100 #500
-                    vcut = 0.5*self.data[0].vel.min() #-5.e5 #8
-                    vit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zlim)]/scf,y[(self.data[j].vx>vcut)*(modz<zlim)]/scf,z[(self.data[j].vx>vcut)*(modz<zlim)]/scf),self.data[j].S[(self.data[j].vx>vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
-                    rhoit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zlim)]/scf,y[(self.data[j].vx>vcut)*(modz<zlim)]/scf,z[(self.data[j].vx>vcut)*(modz<zlim)]/scf),self.data[j].rho[(self.data[j].vx>vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                vi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zlim)]/scf,y[(self.data[j].vx<vcut)*(modz<zlim)]/scf,z[(self.data[j].vx<vcut)*(modz<zlim)]/scf),self.data[j].S[(self.data[j].vx<vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
-                rhoi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zlim)]/scf,y[(self.data[j].vx<vcut)*(modz<zlim)]/scf,z[(self.data[j].vx<vcut)*(modz<zlim)]/scf),self.data[j].rho[(self.data[j].vx<vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                if self.data[j].header.time<tcut: #100 #500
-                    vi = npy.where(vi>vit,vi,vit)
-                    rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
-                if self.data[j].header.time > tcut and focus=='potmin':
-                    coz = (z[self.data[j].pot==self.data[j].pot.min()])[0]/scf #s.z[modz<zcut]
-                elif focus=='targcore':
-                    coz = npy.median(z[self.data[j].id<planit.BODYOFF])/scf #s.z[modz<zcut]
-                else:
-                    coz = 0 #(z[self.data[j].pot==self.data[j].pot.min()])[0] #s.z[modz<zcut]
-                #print(j,npy.median(self.data[j].z[self.data[j].id<planit.BODYOFF]),coz)
-                nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
-                alphas=matplotlib.colors.LogNorm(vmin=0.05*rhomin,vmax=rhomax,clip=True)(rhoi[:,:,nn].T)
-                cols = matplotlib.colors.Normalize(vmin=cmin,vmax=cmax,clip=True)(vi[:,:,nn].T)
-                cols = cmap(cols)
-                cols[..., -1] = alphas    
-                ax = plt.gca()
-                im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],vmin=cmin,vmax=cmax,cmap=cmap)
-            
-            if scale=='Mm':
-                plt.ylabel(r'$y$ (Mm)')
-            elif scale=='km':
-                plt.ylabel(r'$y$ (km)')
-            elif scale=='earth' or scale=='Earth':
-                plt.ylabel(r'$y$ (R$_\oplus$)')
-            else:
-                plt.ylabel(r'$y$')
-            plt.xlim(-axlim,axlim)
-            plt.ylim(-axlim,axlim)
-            plt.gca().set_aspect('equal')
-            if plottype=='rho':
-                plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,color='w',transform=plt.gca().transAxes)
-            else:
-                plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,color='k',transform=plt.gca().transAxes)
-            if scale=='Mm':
-                plt.xlabel(r'$x$ (Mm)')
-            elif scale=='km':
-                plt.xlabel(r'$x$ (km)')
-            elif scale=='earth' or scale=='Earth':
-                plt.xlabel(r'$x$ (R$_\oplus$)')
-            else:
-                plt.xlabel(r'$x$')
+                im = plot_snapshot_scatter(self.data[j],cmap=cmap,plotQ=-(self.data[j].id/PROJ_ID_OFFSET).astype(int),ax=plt.gca(),ptype=ptype,axlim=axlim,scf=scf,scale=scale,zcut=zcut,tcut=tcut,focus=focus)
+            elif ptype in ['phase',] :
+                #self.data[j].calc_phase()
+                #phase = npy.where(self.data[j].phase<=6,self.data[j].phase-1,self.data[j].phase)
+                #phase = npy.where(phase<2,6,phase)
+                #im = plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=phase[modz<zcut],cmap=cmap,norm=matplotlib.colors.Normalize(vmin=phmin,vmax=phmax,clip=False))
+                im = plot_snapshot_scatter(self.data[j],cmap=cmap,plotQ=self.data[j].phase,ax=plt.gca(),ptype=ptype,axlim=axlim,scf=scf,scale=scale,zcut=zcut,tcut=tcut,focus=focus)
+            elif ptype in ['rho','density']:        
+                im = plot_snapshot_fluid(self.data[j],X,Y,Z,zi,plotQ=self.data[j].rho,ax=plt.gca(),cmap=cmap,ptype=ptype,axlim=axlim,scf=scf,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.data[0].vel.min(),focus=focus)            
+            elif ptype in ['ent','S','entropy']:        
+                # if self.data[j].header.time<tcut: #100 #500
+#                     vcut = 0.5*self.data[0].vel.min() #-5.e5 #8
+#                     vit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zlim)]/scf,y[(self.data[j].vx>vcut)*(modz<zlim)]/scf,z[(self.data[j].vx>vcut)*(modz<zlim)]/scf),self.data[j].S[(self.data[j].vx>vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
+#                     rhoit = scipy.interpolate.griddata((x[(self.data[j].vx>vcut)*(modz<zlim)]/scf,y[(self.data[j].vx>vcut)*(modz<zlim)]/scf,z[(self.data[j].vx>vcut)*(modz<zlim)]/scf),self.data[j].rho[(self.data[j].vx>vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
+#                 vi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zlim)]/scf,y[(self.data[j].vx<vcut)*(modz<zlim)]/scf,z[(self.data[j].vx<vcut)*(modz<zlim)]/scf),self.data[j].S[(self.data[j].vx<vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
+#                 rhoi = scipy.interpolate.griddata((x[(self.data[j].vx<vcut)*(modz<zlim)]/scf,y[(self.data[j].vx<vcut)*(modz<zlim)]/scf,z[(self.data[j].vx<vcut)*(modz<zlim)]/scf),self.data[j].rho[(self.data[j].vx<vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
+#                 if self.data[j].header.time<tcut: #100 #500
+#                     vi = npy.where(vi>vit,vi,vit)
+#                     rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
+#                 if self.data[j].header.time > tcut and focus=='potmin':
+#                     coz = (z[self.data[j].pot==self.data[j].pot.min()])[0]/scf #s.z[modz<zcut]
+#                 elif focus=='targcore':
+#                     coz = npy.median(z[self.data[j].id<planit.BODYOFF])/scf #s.z[modz<zcut]
+#                 else:
+#                     coz = 0 #(z[self.data[j].pot==self.data[j].pot.min()])[0] #s.z[modz<zcut]
+#                 #print(j,npy.median(self.data[j].z[self.data[j].id<planit.BODYOFF]),coz)
+#                 nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
+#                 alphas=matplotlib.colors.LogNorm(vmin=0.05*rhomin,vmax=rhomax,clip=True)(rhoi[:,:,nn].T)
+#                 cols = matplotlib.colors.Normalize(vmin=cmin,vmax=cmax,clip=True)(vi[:,:,nn].T)
+#                 cols = cmap(cols)
+#                 cols[..., -1] = alphas    
+#                 ax = plt.gca()
+#                 im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],vmin=cmin,vmax=cmax,cmap=cmap)
+                im = plot_snapshot_fluid(self.data[j],X,Y,Z,zi,plotQ=self.data[j].S/1e7,ax=plt.gca(),cmap=cmap,ptype=ptype,axlim=axlim,scf=scf,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.data[0].vel.min(),focus=focus)            
+            elif ptype in ['pressure','P']:        
+                im = plot_snapshot_fluid(self.data[j],X,Y,Z,zi,plotQ=self.data[j].P/1e9,ax=plt.gca(),cmap=cmap,ptype=ptype,axlim=axlim,scf=scf,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.data[0].vel.min(),focus=focus)            
         
             #ax=plt.gca()
             #ax.xaxis.set_major_locator(ticker.MultipleLocator(10.00))
@@ -470,18 +315,21 @@ class Impact:
             #ax.yaxis.set_major_locator(ticker.MultipleLocator(10.00))
             #ax.yaxis.set_minor_locator(ticker.MultipleLocator(2.00))
     
-            if plottype!='mat':
+            if ptype not in ['mat', 'materials','mats','material']:
                 pbox=plt.gca().get_position()
                 cbar_ax = fig.add_axes([pbox.x1*1.02, pbox.y0, 0.035, 1.0*(pbox.y1-pbox.y0)])
                 cbar = fig.colorbar(im,cax=cbar_ax,orientation='vertical')
-                if plottype=='rho':
+                if ptype in ['rho','density']:
                     cbar_ax.yaxis.set_label_text(r'$\rho$ (g$\,$cm$^{-3}$)')
-                elif plottype=='ent':
+                elif ptype in ['ent', 'entropy', 'S']:
                     cbar_ax.yaxis.set_label_text(r'$S$ (kJ$\,$K$^{-1}\,$kg$^{-1}$)')
-                elif plottype=='phase':
+                elif ptype in ['P','pressure']:
+                    cbar_ax.yaxis.set_label_text(r'$P$ (GPa)')
+                elif ptype in ['phase',]:
                     ##cbar = fig.colorbar(im1, cax=cax, ticks = np.arange(13)/12, orientation='vertical')
                     #cbar.ax.set_xticklabels(['','s','s+l','l','l+v'])  #  colorbar ['s','s+l','l','l+v']
-                    cbar.ax.set_yticklabels(['','s',' s+l',' l',' l+v',' v',' scf'])  #  colorbar ['s','s+l','l','l+v']
+                    cbar.set_ticks([3.,4.,5.,6.,7.,8.])
+                    cbar.ax.set_yticklabels(['s',' s+l',' l',' l+v',' v',' scf'])  #  colorbar ['s','s+l','l','l+v']
                     cbar_ax.yaxis.set_label_text(r'Phase')
                 cbar_ax.yaxis.set_label_position('right')
                 
@@ -491,30 +339,30 @@ class Impact:
     
     
         fig=plt.figure(figsize=(3.5,2.8))
-        
-        
-        
+    
         if len(seq)==1:
             attrmovfunc(seq[0])
-            plt.subplots_adjust(top=0.98,bottom=0.11,left=0.158,right=0.79)
+            plt.subplots_adjust(top=0.98,bottom=0.11,left=0.165,right=0.796)
             plt.show(block=False)
-            return plt.gcf()
+            return fig
         else:
-            if plottype=='mat':
+            if ptype in ['mat', 'materials']:
                 movfile = self.data[0].file.strip(self.data[0].file.split('/')[-1])+'materials.mp4'
-            elif plottype=='rho':
+            elif ptype in ['rho','density']:
                 movfile = self.data[0].file.strip(self.data[0].file.split('/')[-1])+'density.mp4'
-            elif plottype=='ent':
+            elif ptype in ['ent', 'entropy', 'S']:
                 movfile = self.data[0].file.strip(self.data[0].file.split('/')[-1])+'entropy.mp4'
-            elif plottype=='phase':
+            elif ptype in ['phase',]:
                 movfile = self.data[0].file.strip(self.data[0].file.split('/')[-1])+'phase.mp4'
+            elif ptype in ['pressure','P']:
+                movfile = self.data[0].file.strip(self.data[0].file.split('/')[-1])+'pressure.mp4'
             else:
                 movfile = self.data[0].file.strip(self.data[0].file.split('/')[-1])+'attrmov.mp4'
             anim=matplotlib.animation.FuncAnimation(fig,attrmovfunc,seq)
-            plt.subplots_adjust(top=0.98,bottom=0.11,left=0.158,right=0.79)
+            plt.subplots_adjust(top=0.975,bottom=0.105,left=0.166,right=0.796)
             ##plt.subplots_adjust(top=0.98,bottom=0.1,left=0.135,right=0.795)
             ##anim.save(movfile,dpi=200,writer=matplotlib.animation.PillowWriter(fps=fps,bitrate=1000)) #writer='ffmpeg' # 800 # 9000 fps=fps,bitrate=1000
-            anim.save(movfile,dpi=300,fps=fps,bitrate=4000) #writer='ffmpeg' # 800 # 9000 fps=fps,bitrate=1000
+            anim.save(movfile,dpi=dpi,fps=fps,bitrate=bitrate) #writer='ffmpeg' # 800 # 9000 fps=fps,bitrate=1000
             plt.show()
             plt.close()
             
@@ -524,8 +372,7 @@ class Impact:
 
 
 
-
-def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm', potmin=True, zoom=1.,uppercaselab=False):
+def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm', potmin=False, zoom=1.,uppercaselab=False,focus='potmin'):
     if (not isinstance(imps,list)) and (not isinstance(types,list)):
         return imps.plotseq(n=n,type=types,seq=seqs,times=times,scale=scale,potmin=potmin,zoom=zoom)
     elif not isinstance(imps,list):
@@ -564,6 +411,10 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
     Ngz = 15j
 
     scsize = 1.5
+
+    if potmin:
+        focus='potmin'
+
 
     # density limits
     rhomin=1e-5
@@ -631,9 +482,9 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                 j = seq[i]
                 #plt.subplot(len(imps),n,(m-1)*n + i+1,aspect='equal')
                 fig.add_subplot(gs[m-1,i],aspect='equal')
-                ti = ( imp.data[j].header.time )/3600.
-                if npy.ndim(ti)>0:
-                    ti=ti[0]
+                #ti = ( imp.data[j].header.time )/3600.
+                #if npy.ndim(ti)>0:
+                #    ti=ti[0]
                 if imp.data[j].header.time > tcut and potmin:
                     x = imp.data[j].x - (imp.data[j].x[imp.data[j].pot==imp.data[j].pot.min()])[0]
                     y = imp.data[j].y - (imp.data[j].y[imp.data[j].pot==imp.data[j].pot.min()])[0]
@@ -648,7 +499,7 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                 if imp.data[j].header.time < tcut:
                     vcut = 0.5*imp.data[0].vel.min()
 
-                if type=='materials' or type=='mat':
+                if type in ['materials','mat','mats','material']:
                     select = (modz<zcut)*(x<=axlim*scf)*(x>=-axlim*scf)*(y<=axlim*scf)*(y>=-axlim*scf)
                     plt.scatter(x[select]/scf,y[select]/scf,s=scsize,c=(imp.data[j].id/BODYOFF).astype(int)[select],alpha=1.,cmap=cmap.reversed(),vmax=(imp.data[0].id/BODYOFF).astype(int).max(),vmin=0,ec=None,rasterized=True)
                     #print(npy.unique(-(imp.data[j].id/BODYOFF).astype(int)[modz<zcut]))
@@ -669,12 +520,12 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                     ##cols=cmap(cols)
                     ax = plt.gca()
                     #im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],cmap=cmap,rasterized=True,norm=matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False))#vmin=rhomin,vmax=rhomax
-                    plot_snapshot_fluid(imp.data[j],x,y,z,modz,X,Y,Z,zi,ax,cmap,ptype=type,axlim=axlim,scf=scf,zcut=zcut,potmin=potmin,tcut=tcut,vcut=vcut)
-                    ax.tick_params(colors='w',which='both',labelcolor='k')
-                    ax.spines['top'].set_color('w')
-                    ax.spines['bottom'].set_color('w')
-                    ax.spines['left'].set_color('w')
-                    ax.spines['right'].set_color('w')
+                    im = plot_snapshot_fluid(imp.data[j],X,Y,Z,zi,ax=ax,cmap=cmap,ptype=type,axlim=axlim,scf=scf,scale=scale,zcut=zcut,tcut=tcut,vcut=vcut,focus=focus)
+                    #ax.tick_params(colors='w',which='both',labelcolor='k')
+                    #ax.spines['top'].set_color('w')
+                    #ax.spines['bottom'].set_color('w')
+                    #ax.spines['left'].set_color('w')
+                    #ax.spines['right'].set_color('w')
 
                 elif type=='pressure' or type=='P':        
                     if imp.data[j].header.time<tcut:
@@ -699,26 +550,26 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                     ax.spines['right'].set_color('k')
 
                 elif type in ['entropy','ent','S']:        
-                    #if imp.data[j].header.time<tcut: #100 #500
-                    #    vcut = 0.5*imp.data[0].vel.min() #-5.e5 #8
-                    #    vit = scipy.interpolate.griddata((x[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx>vcut)*(modz<zlim)]/scf),imp.data[j].S[(imp.data[j].vx>vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
-                    #    rhoit = scipy.interpolate.griddata((x[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx>vcut)*(modz<zlim)]/scf),imp.data[j].rho[(imp.data[j].vx>vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                    #vi = scipy.interpolate.griddata((x[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx<vcut)*(modz<zlim)]/scf),imp.data[j].S[(imp.data[j].vx<vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
-                    #rhoi = scipy.interpolate.griddata((x[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx<vcut)*(modz<zlim)]/scf),imp.data[j].rho[(imp.data[j].vx<vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
-                    #if imp.data[j].header.time<tcut: #100 #500
-                    #    vi = npy.where(vi>vit,vi,vit)
-                    #    rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
-                    #if imp.data[j].header.time != 0 and potmin:
-                    #    coz = (z[imp.data[j].pot==imp.data[j].pot.min()])[0]/scf #s.z[modz<zcut]
-                    #else:
-                    #    coz = 0 #(z[imp.data[j].pot==imp.data[j].pot.min()])[0] #s.z[modz<zcut]
-                    #nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
-                    #alphas=matplotlib.colors.LogNorm(vmin=0.05*rhomin,vmax=rhomax,clip=True)(rhoi[:,:,nn].T)
-                    #cols = matplotlib.colors.Normalize(vmin=cmin,vmax=cmax,clip=True)(vi[:,:,nn].T)
-                    #cols=cmap(cols)
-                    #cols[..., -1] = alphas    
-                    ax = plt.gca()
-                    plot_snapshot_fluid(imp.data[j],x,y,z,modz,X,Y,Z,zi,ax,cmap,ptype=type,axlim=axlim,scf=scf,zcut=zcut,potmin=potmin,tcut=tcut,vcut=vcut)
+                    if imp.data[j].header.time<tcut: #100 #500
+                       vcut = 0.5*imp.data[0].vel.min() #-5.e5 #8
+                       vit = scipy.interpolate.griddata((x[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx>vcut)*(modz<zlim)]/scf),imp.data[j].S[(imp.data[j].vx>vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
+                       rhoit = scipy.interpolate.griddata((x[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx>vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx>vcut)*(modz<zlim)]/scf),imp.data[j].rho[(imp.data[j].vx>vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
+                    vi = scipy.interpolate.griddata((x[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx<vcut)*(modz<zlim)]/scf),imp.data[j].S[(imp.data[j].vx<vcut)*(modz<zlim)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
+                    rhoi = scipy.interpolate.griddata((x[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,y[(imp.data[j].vx<vcut)*(modz<zlim)]/scf,z[(imp.data[j].vx<vcut)*(modz<zlim)]/scf),imp.data[j].rho[(imp.data[j].vx<vcut)*(modz<zlim)],(X,Y,Z),method='linear',fill_value=1.e-18)
+                    if imp.data[j].header.time<tcut: #100 #500
+                       vi = npy.where(vi>vit,vi,vit)
+                       rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
+                    if imp.data[j].header.time != 0 and potmin:
+                       coz = (z[imp.data[j].pot==imp.data[j].pot.min()])[0]/scf #s.z[modz<zcut]
+                    else:
+                       coz = 0 #(z[imp.data[j].pot==imp.data[j].pot.min()])[0] #s.z[modz<zcut]
+                    nn=(npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
+                    alphas=matplotlib.colors.LogNorm(vmin=0.05*rhomin,vmax=rhomax,clip=True)(rhoi[:,:,nn].T)
+                    cols = matplotlib.colors.Normalize(vmin=cmin,vmax=cmax,clip=True)(vi[:,:,nn].T)
+                    cols=cmap(cols)
+                    cols[..., -1] = alphas    
+                    #ax = plt.gca()
+                    im = plot_snapshot_fluid(imp.data[j],X,Y,Z,zi,ax=plt.gca(),cmap=cmap,ptype=type,plotQ=imp.data[j].S/1e7,axlim=axlim,scf=scf,zcut=zcut,focus='potmin',tcut=tcut,vcut=vcut)
                     #im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],vmin=cmin,vmax=cmax,cmap=cmap)
                 elif type=='phase':
                     select = (modz<zcut)*(x<=axlim*scf)*(x>=-axlim*scf)*(y<=axlim*scf)*(y>=-axlim*scf)
@@ -749,9 +600,9 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                         plt.xlabel(r'x (R$_\oplus$)')
                     else:
                         plt.xlabel('x')
-                plt.xlim(-axlim,axlim)
-                plt.ylim(-axlim,axlim)
-                plt.minorticks_on()
+                #plt.xlim(-axlim,axlim)
+                #plt.ylim(-axlim,axlim)
+                #plt.minorticks_on()
                 if i==0:
                     if type=='density' or type=='rho':
                         if uppercaselab:
@@ -763,20 +614,20 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                             plt.text(0.05,0.95,chr(64+m),ha='left',va='top',fontsize=9,fontweight='bold',color='k',transform=plt.gca().transAxes)
                         else:
                             plt.text(0.05,0.95,chr(96+m),ha='left',va='top',fontsize=9,fontweight='bold',color='k',transform=plt.gca().transAxes)
-                if type=='density' or type=='rho':
-                    if ti<1.1:
-                        plt.text(0.96,0.96,'{:.2f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='w',transform=plt.gca().transAxes)
-                    elif ti>23.8:
-                        plt.text(0.96,0.96,'{:.0f} hrs'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='w',transform=plt.gca().transAxes)
-                    else:
-                        plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='w',transform=plt.gca().transAxes)
-                else:
-                    if ti<1.1:
-                        plt.text(0.96,0.96,'{:.2f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='k',transform=plt.gca().transAxes)
-                    elif ti>23.8:
-                        plt.text(0.96,0.96,'{:.0f} hrs'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='k',transform=plt.gca().transAxes)
-                    else:
-                        plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='k',transform=plt.gca().transAxes)
+                #if type=='density' or type=='rho':
+                #    if ti<1.1:
+                #        plt.text(0.96,0.96,'{:.2f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='w',transform=plt.gca().transAxes)
+                #    elif ti>23.8:
+                #        plt.text(0.96,0.96,'{:.0f} hrs'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='w',transform=plt.gca().transAxes)
+                #    else:
+                #        plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='w',transform=plt.gca().transAxes)
+                #else:
+                #    if ti<1.1:
+                #        plt.text(0.96,0.96,'{:.2f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='k',transform=plt.gca().transAxes)
+                #    elif ti>23.8:
+                #        plt.text(0.96,0.96,'{:.0f} hrs'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='k',transform=plt.gca().transAxes)
+                #    else:
+                #        plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color='k',transform=plt.gca().transAxes)
 
                 ax = plt.gca()
                 if i>0:
@@ -800,7 +651,7 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                 if m==1 and i==0:
                     firstplot = plt.gca()
                 
-                if type!='materials' and type!='mat':
+                if type not in ['materials','mat','mats','material']:
                     if i == len(seq)-1 and (m==1 or m==len(imps)*len(types)):
                         pbox = ax.get_position()
                         xw = 0.33
@@ -840,51 +691,198 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
     return fig
 
 
-def plot_snapshot_fluid(snap,x,y,z,modz,X,Y,Z,zi,ax,cmap,ptype='rho',axlim=1.,scf=1.,zcut=0.,potmin=True,tcut=0.,vcut=None):
+def plot_snapshot_scatter(snap,ax=plt.gca(),cmap=plt.get_cmap('plasma'),plotQ=None,ptype='mat',axlim=1.,scf=1.,scale='Earth',zcut=0.,tcut=0.,focus='potmin',rhomin=1e-5):
+    #phase flag limits
+    phmin=2.5
+    phmax=8.5
+
+    ti = (snap.header.time)/3600.
+    if npy.ndim(ti)>0:
+        ti=ti[0]
+
+    if focus=='potmin' and snap.header.time >= tcut:
+        x = snap.x - (snap.x[snap.pot==snap.pot.min()])[0]
+        y = snap.y - (snap.y[snap.pot==snap.pot.min()])[0]
+        z = snap.z - (snap.z[snap.pot==snap.pot.min()])[0]
+    elif focus=='targcore':
+        x = snap.x - npy.median(snap.x[snap.id<PROJ_ID_OFFSET])
+        y = snap.y - npy.median(snap.y[snap.id<PROJ_ID_OFFSET])
+        z = snap.z - npy.median(snap.z[snap.id<PROJ_ID_OFFSET])
+    else:
+        x = snap.x
+        y = snap.y
+        z = snap.z
+    modz = npy.abs(z)
+
+    # reorder phases for plotting
+    if ptype in ['phase',]:
+        plotQ = npy.where(plotQ<=6,plotQ-1,plotQ)
+        plotQ = npy.where(plotQ<2,6,plotQ)
+        cmin = phmin
+        cmax = phmax
+        norm = matplotlib.colors.Normalize(vmin=cmin,vmax=cmax,clip=False)
+    elif ptype in ['mat','materials','mats','material']:
+        #cmin = 0
+        #cmax = 1
+        norm = None
+    im = plt.scatter(x[modz<zcut]/scf,y[modz<zcut]/scf,s=0.1,c=plotQ[modz<zcut],alpha=1.,cmap=cmap,norm=norm,rasterized=True) #s=0.8
+
+    labcolor='k'
+    if ti<1.1:
+        plt.text(0.96,0.96,'{:.2f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color=labcolor,transform=plt.gca().transAxes)
+    elif ti>23.8:
+        plt.text(0.96,0.96,'{:.0f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color=labcolor,transform=plt.gca().transAxes)
+    else:
+        plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color=labcolor,transform=plt.gca().transAxes)
+
+    plt.xlim(-axlim,axlim)
+    plt.ylim(-axlim,axlim)
+    ax.set_aspect('equal')
+    plt.minorticks_on()        
+
+    if scale=='Mm':
+        plt.ylabel('y (Mm)')
+    elif scale=='km':
+        plt.ylabel('y (km)')
+    elif scale in ['earth','Earth']:
+        plt.ylabel(r'y (R$_\oplus$)')
+    else:
+        plt.ylabel('y')
+    if scale=='Mm':
+        plt.xlabel('x (Mm)')
+    elif scale=='km':
+        plt.xlabel('x (km)')
+    elif scale in ['earth','Earth']:
+        plt.xlabel(r'x (R$_\oplus$)')
+    else:
+        plt.xlabel('x')
+
+    return im
+
+
+def plot_snapshot_fluid(snap,X=npy.empty([]),Y=npy.empty([]),Z=npy.empty([]),zi=npy.empty([]),ax=plt.gca(),cmap=plt.get_cmap('plasma'),plotQ=None,ptype='rho',axlim=1.,scf=1.,scale='Earth',zcut=0.,tcut=0.,vcut=None,rhomin=1e-5,focus='potmin'):
     # density limits
-    rhomin=1e-5
+    # rhomin=1e-5
     rhomax=10.
     # entropy limits
     Smin=1.5
     Smax=10.
+    # temperature limits
+    Tmin=100.
+    Tmax=30000.
     # pressure limits
     Pmin=1.e-9
     Pmax=1000.
     vi = vit = None
+
+    # number of cells for grid
+    Ng = 801j
+    Ngz = 21j
+    if zi.ndim ==0:
+        zi=npy.linspace(zmin,zmax,int(Ngz.imag))
+    if X.ndim==0 or Y.ndim==0 or Z.ndim==0:
+        X,Y,Z = npy.mgrid[-axlim:axlim:(Ng),-axlim:axlim:(Ng),zmin:zmax:(Ngz)]
+
+    ti = (snap.header.time)/3600.
+    if npy.ndim(ti)>0:
+        ti=ti[0]
+
+    if focus=='potmin' and snap.header.time >= tcut:
+        x = snap.x - (snap.x[snap.pot==snap.pot.min()])[0]
+        y = snap.y - (snap.y[snap.pot==snap.pot.min()])[0]
+        z = snap.z - (snap.z[snap.pot==snap.pot.min()])[0]
+    elif focus=='targcore':
+        x = snap.x - npy.median(snap.x[snap.id<PROJ_ID_OFFSET])
+        y = snap.y - npy.median(snap.y[snap.id<PROJ_ID_OFFSET])
+        z = snap.z - npy.median(snap.z[snap.id<PROJ_ID_OFFSET])
+    else:
+        x = snap.x
+        y = snap.y
+        z = snap.z
+    modz = npy.abs(z)
+
     if snap.header.time<tcut and vcut:
-        if ptype in ['P','pressure']:
-            vit = scipy.interpolate.griddata((x[(snap.vx>vcut)*(modz<zcut)]/scf,y[(snap.vx>vcut)*(modz<zcut)]/scf,z[(snap.vx>vcut)*(modz<zcut)]/scf),snap.P[(sna.vx>vcut)*(modz<zcut)]/1e9,(X,Y,Z),method='linear',fill_value=1.e-18)
-        elif ptype in ['ent','S','entropy']:
-            vit = scipy.interpolate.griddata((x[(snap.vx>vcut)*(modz<zcut)]/scf,y[(snap.vx>vcut)*(modz<zcut)]/scf,z[(snap.vx>vcut)*(modz<zcut)]/scf),snap.S[(sna.vx>vcut)*(modz<zcut)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
+        if ptype not in ['rho', 'density']:
+            vit = scipy.interpolate.griddata((x[(snap.vx>vcut)*(modz<zcut)]/scf,y[(snap.vx>vcut)*(modz<zcut)]/scf,z[(snap.vx>vcut)*(modz<zcut)]/scf),plotQ[(snap.vx>vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=1.e-18)
         rhoit = scipy.interpolate.griddata((x[(snap.vx>vcut)*(modz<zcut)]/scf,y[(snap.vx>vcut)*(modz<zcut)]/scf,z[(snap.vx>vcut)*(modz<zcut)]/scf),snap.rho[(snap.vx>vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=1.e-18)
     else:
         vcut = 2*snap.vel.max()
-    norm = matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False)
-    if ptype in ['P','pressure']:
-        norm = matplotlib.colors.matplotlib.colors.LogNorm(vmin=Pmin,vmax=Pmax,clip=False)
-        vi = scipy.interpolate.griddata((x[(snap.vx<vcut)*(modz<zcut)]/scf,y[(snap.vx<vcut)*(modz<zcut)]/scf,z[(snap.vx<vcut)*(modz<zcut)]/scf),snap.S[(snap.vx<vcut)*(modz<zcut)]/1e7,(X,Y,Z),method='linear',fill_value=1.e-18)
-    elif ptype in ['ent','S','entropy']:
-        norm = matplotlib.colors.Normalize(vmin=Smin,vmax=Smax,clip=False)
-        vi = scipy.interpolate.griddata((x[(snap.vx<vcut)*(modz<zcut)]/scf,y[(snap.vx<vcut)*(modz<zcut)]/scf,z[(snap.vx<vcut)*(modz<zcut)]/scf),snap.P[(snap.vx<vcut)*(modz<zcut)]/1e9,(X,Y,Z),method='linear',fill_value=1.e-18)
+    if ptype not in ['rho', 'density']:
+        vi = scipy.interpolate.griddata((x[(snap.vx<vcut)*(modz<zcut)]/scf,y[(snap.vx<vcut)*(modz<zcut)]/scf,z[(snap.vx<vcut)*(modz<zcut)]/scf),plotQ[(snap.vx<vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=1.e-18)
     rhoi = scipy.interpolate.griddata((x[(snap.vx<vcut)*(modz<zcut)]/scf,y[(snap.vx<vcut)*(modz<zcut)]/scf,z[(snap.vx<vcut)*(modz<zcut)]/scf),snap.rho[(snap.vx<vcut)*(modz<zcut)],(X,Y,Z),method='linear',fill_value=1.e-18)
     if snap.header.time<tcut:
-        if vi:
+        if vi is not None:
             vi = npy.where(vi>vit,vi,vit)
         rhoi = npy.where(rhoi>rhoit,rhoi,rhoit)
-    if snap.header.time != 0 and potmin:
+    if snap.header.time >= tcut and focus=='potmin':
         coz = (z[snap.pot==snap.pot.min()])[0] #s.z[modz<zcut]
     else:
         coz = 0
     nn = (npy.nonzero(zi==(zi[zi<=coz])[-1])[0])[0]
-    if vi:
-        alphas = matplotlib.colors.LogNorm(vmin=0.05*rhomin,vmax=rhomax,clip=True)(rhoi[:,:,nn].T)
-        cols = matplotlib.colors.Normalize(vmin=cmin,vmax=cmax,clip=True)(vi[:,:,nn].T)
-        cols=cmap(cols)
-        cols[..., -1] = alphas
+    norm = matplotlib.colors.LogNorm(vmin=rhomin,vmax=rhomax,clip=False)
+    if vi is not None:
+        if ptype in ['P','pressure']:
+            cmin = Pmin
+            cmax = Pmax
+            norm = matplotlib.colors.LogNorm(vmin=cmin,vmax=cmax,clip=False)
+            cols = vi[:,:,nn].T #matplotlib.colors.LogNorm(vmin=cmin,vmax=cmax,clip=True)(vi[:,:,nn].T)
+        elif ptype in ['ent','S','entropy']:
+            cmin = Smin
+            cmax = Smax
+            norm = matplotlib.colors.Normalize(vmin=cmin,vmax=cmax,clip=False)
+            cols = matplotlib.colors.Normalize(vmin=cmin,vmax=cmax,clip=True)(vi[:,:,nn].T)
+            alphas = matplotlib.colors.LogNorm(vmin=0.05*rhomin,vmax=rhomax,clip=True)(rhoi[:,:,nn].T)
+            cols=cmap(cols)
+            cols[..., -1] = alphas
+        elif ptype in ['temperature','T','temp']:
+            cmin = Tmin
+            cmax = Tmax
+            norm = matplotlib.colors.LogNorm(vmin=cmin,vmax=cmax,clip=False)
+            cols = vi[:,:,nn].T #matplotlib.colors.LogNorm(vmin=cmin,vmax=cmax,clip=True)(vi[:,:,nn].T)
     else:
         cols = rhoi[:,:,nn].T
 
     im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],cmap=cmap,norm=norm)
-    
+
+    if ptype in ['rho', 'density']:
+        ax.tick_params(colors='w',which='both',labelcolor='k')
+        ax.spines['top'].set_color('w')
+        ax.spines['bottom'].set_color('w')
+        ax.spines['left'].set_color('w')
+        ax.spines['right'].set_color('w')
+
+    if ptype in ['rho', 'density']:
+        labcolor = 'w'
+    else:
+        labcolor='k'
+    if ti<1.1:
+        plt.text(0.96,0.96,'{:.2f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color=labcolor,transform=plt.gca().transAxes)
+    elif ti>23.8:
+        plt.text(0.96,0.96,'{:.0f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color=labcolor,transform=plt.gca().transAxes)
+    else:
+        plt.text(0.96,0.96,'{:.1f}'.format(ti),ha='right',va='top',fontsize=9,fontweight='bold',color=labcolor,transform=plt.gca().transAxes)
+
+    plt.xlim(-axlim,axlim)
+    plt.ylim(-axlim,axlim)
+    ax.set_aspect('equal')
+    plt.minorticks_on()
+      
+    if scale=='Mm':
+        plt.ylabel('y (Mm)')
+    elif scale=='km':
+        plt.ylabel('y (km)')
+    elif scale in ['earth','Earth']:
+        plt.ylabel(r'y (R$_\oplus$)')
+    else:
+        plt.ylabel('y')
+    if scale=='Mm':
+        plt.xlabel('x (Mm)')
+    elif scale=='km':
+        plt.xlabel('x (km)')
+    elif scale in ['earth','Earth']:
+        plt.xlabel(r'x (R$_\oplus$)')
+    else:
+        plt.xlabel('x')
+
     return im
            
