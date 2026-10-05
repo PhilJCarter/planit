@@ -43,9 +43,13 @@ class Impact:
         Nf2 = Nf = 0
         increment1 = increment2 = 1
         flist2 = []
+        loc = str(loc)
+        if loc[-1] != '/':
+            loc = loc + '/'
         files2 = npy.empty(0)
         if flist:
             files = files1 = flist
+            self.nsnaps = len(flist)
         else:
             if code=='swift':
                 flist = sorted(glob.glob(loc+prefix+sep+'[0-9]*.hdf5'))
@@ -81,6 +85,7 @@ class Impact:
                 files = npy.array([0,Nf])
             else:
                 files = []
+        
         self.data = npy.ndarray((len(files),),dtype=object)
 
         for i in range(len(self.data)):
@@ -90,7 +95,7 @@ class Impact:
             self.data[i] = ImpSnapshot()
             if code=='swift' or code=='Swift':
                 if i<len(files1):
-                    self.data[i].load(loc+prefix+sep+'{:>0{width}}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
+                    self.data[i].load(loc+prefix+sep+'{:>0{width}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
                 else:
                     self.data[i].load(loc+prefix2+sep+'{:>0{width}d}.hdf5'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
             else:
@@ -98,6 +103,8 @@ class Impact:
                     self.data[i].load(loc+prefix+sep+'{:>0{width}d}'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
                 else:
                     self.data[i].load(loc+prefix2+sep+'{:>0{width}d}'.format(int(files[i]),width=ndigits),headonly=honly,thermo=thermo,compress=compress)
+
+        self.snap = self.data
 
 
     def plotseq(self, n=4, type='materials', seq=None, times=None, scale='Mm', potmin=False, tcut = 3600., zoom=1., focus='potmin'):

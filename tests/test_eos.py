@@ -179,7 +179,7 @@ def test_interp_ANEOS_P(execcount):
     i = npy.random.randint(2, high=len(EOS.T)-2)
     print(EOS.MODELNAME, j, i)
     EOSpasser = EOS.make_passer_class()
-    Pinterp = eos.calcprop('P', 'rho', 'T', EOS.rho[j]*(1.+1e-14), EOS.T[i]*(1.+1e-14), npy.array([mat]))
+    Pinterp = eos.calcprop('P', 'rho', 'T', EOS.rho[j]*(1.+1e-15), EOS.T[i]*(1.+1e-15), npy.array([mat]))
     assert Pinterp * eos.uconversion_P == pytest.approx(EOS.P[i,j], rel=1e-3)
 
 
