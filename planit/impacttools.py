@@ -349,7 +349,7 @@ class Impact:
     
         if len(seq)==1:
             attrmovfunc(seq[0])
-            plt.subplots_adjust(top=0.98,bottom=0.11,left=0.165,right=0.796)
+            plt.subplots_adjust(top=0.98,bottom=0.11,left=0.167,right=0.797)
             plt.show(block=False)
             return fig
         else:
@@ -366,7 +366,7 @@ class Impact:
             else:
                 movfile = self.data[0].file.strip(self.data[0].file.split('/')[-1])+'attrmov.mp4'
             anim=matplotlib.animation.FuncAnimation(fig,attrmovfunc,seq)
-            plt.subplots_adjust(top=0.975,bottom=0.105,left=0.166,right=0.796)
+            plt.subplots_adjust(top=0.975,bottom=0.105,left=0.167,right=0.797)
             ##plt.subplots_adjust(top=0.98,bottom=0.1,left=0.135,right=0.795)
             ##anim.save(movfile,dpi=200,writer=matplotlib.animation.PillowWriter(fps=fps,bitrate=1000)) #writer='ffmpeg' # 800 # 9000 fps=fps,bitrate=1000
             anim.save(movfile,dpi=dpi,fps=fps,bitrate=bitrate) #writer='ffmpeg' # 800 # 9000 fps=fps,bitrate=1000

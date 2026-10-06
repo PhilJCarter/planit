@@ -115,6 +115,9 @@ class Snapshot:
         if attr in ['x','y','z','vx','vy','vz','pos','vel','id','m','S','rho','hsml','pot','P','T','U','cs'] and self.file:
             if len(super().__getattribute__(attr))==0 and self.file:
                 self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo, loadprops=[attr,])
+        elif attr in ['materialIDs',]:
+            if super().__getattribute__(attr) is None and self.file:
+                self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo, loadprops=[attr,])
         elif attr in ['rem', 'bnd']:
             if super().__getattribute__(attr) is None and self.file:
                 if h5py.is_hdf5(self.file):

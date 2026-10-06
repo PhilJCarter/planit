@@ -32,7 +32,7 @@ def load_snapshot(snap, fname, headonly=False, thermo=False, compress=False, mat
 
     if not headonly:
         # REARRANGE
-        if any(x in ['all','x','y','z'] for x in loadprops):
+        if any(x in ['all','x','y','z','pos'] for x in loadprops):
             snap.pos = npy.array(snap.pos).reshape((snap.N, 3))
         if any(x in ['all','x'] for x in loadprops):
             snap.x = snap.pos.T[0]
@@ -41,7 +41,7 @@ def load_snapshot(snap, fname, headonly=False, thermo=False, compress=False, mat
         if any(x in ['all','z'] for x in loadprops):
             snap.z = snap.pos.T[2]
     
-        if any(x in ['all','vx','vy','vz'] for x in loadprops):
+        if any(x in ['all','vx','vy','vz','vel'] for x in loadprops):
             snap.vel = npy.array(snap.vel).reshape((snap.N, 3))
         if any(x in ['all','vx'] for x in loadprops):
             snap.vx = snap.vel.T[0]
@@ -55,9 +55,9 @@ def load_snapshot(snap, fname, headonly=False, thermo=False, compress=False, mat
         if compress:
             if any(x in ['all','m'] for x in loadprops):
                 snap.m = snap.m.astype('float32', copy=False)
-            if any(x in ['all','x','y','z'] for x in loadprops):
+            if any(x in ['all','x','y','z','pos'] for x in loadprops):
                 snap.pos = npy.array(snap.pos).astype('float32', copy=False)
-            if any(x in ['all','vx','vy','vz'] for x in loadprops):
+            if any(x in ['all','vx','vy','vz','vel'] for x in loadprops):
                 snap.vel = npy.array(snap.vel).astype('float32', copy=False)
             if any(x in ['all','S'] for x in loadprops) and len(snap.S) > 0:
                 snap.S = snap.S.astype('float32', copy=False)
@@ -125,13 +125,13 @@ def load_G2_1(snap, fname, headonly=False, thermo=False, mats=[402, 400], loadpr
     #PARTICLE DATA
     struct.unpack('i', f.read(4))  #SKIP
     buffer = f.read(3*snap.N*4)
-    if any(x in ['all','x','y','z'] for x in loadprops):
+    if any(x in ['all','x','y','z','pos'] for x in loadprops):
         snap.pos = struct.unpack(count3 + 'f', buffer)
     struct.unpack('i', f.read(4))  #SKIP
 
     struct.unpack('i', f.read(4))  #SKIP
     buffer = f.read(3*snap.N*4)
-    if any(x in ['all','vx','vy','vz'] for x in loadprops):
+    if any(x in ['all','vx','vy','vz','vel'] for x in loadprops):
         snap.vel = struct.unpack(count3 + 'f', buffer)
     struct.unpack('i', f.read(4))  #SKIP
 
@@ -297,11 +297,11 @@ def load_hdf5(snap, fname, headonly=False, recenter=True, thermo=False, debug=Fa
             f.close()
             return
     
-        if any(x in ['all','x','y','z'] for x in loadprops):
+        if any(x in ['all','x','y','z','pos'] for x in loadprops):
             snap.pos = part['Coordinates'][:].reshape((snap.header.npart[0], 3)) * Lfactor
             if recenter:
                 snap.pos -= snap.header.BoxSize/2.
-        if any(x in ['all','vx','vy','vz'] for x in loadprops):
+        if any(x in ['all','vx','vy','vz','vel'] for x in loadprops):
             snap.vel = part['Velocities'][:].reshape((snap.header.npart[0], 3)) * Lfactor/Tfactor
         if 'MaterialIDs' in part.keys() and any(x in ['all','materialIDs'] for x in loadprops):
             snap.materialIDs = part['MaterialIDs'][:]
@@ -527,7 +527,8 @@ def load_seagen(snap, partplanet, thermo=False, init_h=100e5):
     snap.vx = npy.zeros(snap.N)
     snap.vy = npy.zeros(snap.N)
     snap.vz = npy.zeros(snap.N)
-    snap.vel = npy.zeros((snap.N, 3))
+    snap.vel = npy.array((snap.vx, snap.vy, snap.vz))
+    snap.vel = snap.vel.T
 
     extraIDoff = [len(partplanet.mat[partplanet.mat < x]) for x in npy.unique(partplanet.mat)]
     extraIDoff = npy.array(extraIDoff)
