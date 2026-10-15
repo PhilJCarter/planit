@@ -99,6 +99,7 @@ class Snapshot:
         self.cs = npy.empty(0)   # sound speed
         # extras
         self.materialIDs = None  # particle material ID
+        self.r = None            # radial distance from center
         self.rem = None          # ID of remnant particle belongs to
         self.vapfrac = None      # vapour fraction
         self.meltfrac = None     # particle melt fraction
@@ -136,6 +137,9 @@ class Snapshot:
         elif attr in ['vapfrac','meltfrac','phase']:
             if super().__getattribute__(attr) is None and len(self.S) > 0:
                 self.calc_phase()
+        elif attr in ['r']:
+            if super().__getattribute__(attr) is None:
+                self.calc_rad()
         return super().__getattribute__(attr)
 
     
@@ -319,12 +323,20 @@ class Snapshot:
             print('File:', self.file)
 
 
+    def calc_rad(self):
+        """
+        Calculate radial distances from com
+        """
+        cx, cy, cz = utils.com(self.m, self.x, self.y, self.z)
+        self.r = utils.rad(self.x-cx, self.y-cy, self.z-cz)
+
+
     def eq_test(self, threshold=0.01, verbose=False):
         """
         Test for succesful equilibration
         """
-        r = npy.sqrt( (self.x-npy.average(self.x,weights=self.m))**2 + (self.y-npy.average(self.y,weights=self.m))**2 + (self.z-npy.average(self.z,weights=self.m))**2 )
-        vesc = npy.sqrt( 2*G*self.m.sum()/r.max() )        
+        #r = npy.sqrt( (self.x-npy.average(self.x,weights=self.m))**2 + (self.y-npy.average(self.y,weights=self.m))**2 + (self.z-npy.average(self.z,weights=self.m))**2 )
+        vesc = npy.sqrt( 2*G*self.m.sum()/self.r.max() )        
         vrms = ( npy.sqrt( ( (self.vx-npy.average(self.vx,weights=self.m))**2 + (self.vy-npy.average(self.vy,weights=self.m))**2 + (self.vz-npy.average(self.vz,weights=self.m))**2 ).mean() ) )
         if verbose:
             print('rms velocity:', vrms/1e5, 'km/s')
@@ -469,3 +481,30 @@ class Snapshot:
 
     def calc_vap_frac(self, plot=False):
         self.calc_phase(plot=False)
+
+
+    def correct_entropy(self,reference):
+        """
+        Correct entropy (and T, U) to expected values either from 
+        reference snapshot (e.g. ICs) or dict of materials and isentrope entropies 
+        (one per material in J/kg/K).
+        """
+        if isinstance(reference, Snapshot):
+            entropy = reference.S
+        elif isinstance(reference, dict):
+            #mats,idx,choice = npy.unique(self.materialIDs,return_index=True,return_inverse=True)
+            mats = npy.unique(self.materialIDs)
+            if len(mats) != len(reference):
+                raise ValueError('list of entropies must match number of materials')
+            #choice = choice[npy.argsort(idx)]
+            #entropy = npy.array(reference)[npy.argsort(idx)][choice] * 1e7
+            entropy = npy.zeros_like(self.materialIDs)
+            for key, val in reference.items():
+                entropy = npy.where(self.materialIDs == eos.select(key).womaID, val, entropy)
+            entropy = entropy * 1e7
+        else:
+            raise TypeError('entropy reference must be a Snapshot or dictionary')
+        self.T = eos.calcprop('T', 'rho', 'S', self.rho, entropy, self.materialIDs)
+        self.U = eos.calcprop('U', 'rho', 'S', self.rho, entropy, self.materialIDs)
+        self.S = entropy
+
