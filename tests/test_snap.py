@@ -95,3 +95,34 @@ def test_combine_incompatible(reference_snapshot):
     s2.header.flag_entr_ics = 1
     with pytest.raises(ValueError):
         s1.combine(s1,s2)
+
+
+def test_correct_entropy_dict(reference_snapshot):
+    s = Snapshot()
+    s.load(reference_snapshot, thermo=True)
+    S0 = s.S.copy()
+    s.correct_entropy({402:1.81, 'forsterite':3.03})
+    npy.testing.assert_allclose(s.S, S0, rtol=5e-2)
+
+
+def test_correct_entropy_snap(reference_snapshot):
+    s = Snapshot()
+    s.load(reference_snapshot, thermo=True)
+    S0 = s.S.copy()
+    s.correct_entropy(s)
+    npy.testing.assert_allclose(s.S, S0, rtol=1e-3)
+
+
+def test_correct_entropy_type(reference_snapshot):
+    s = Snapshot()
+    s.load(reference_snapshot, thermo=True)
+    with pytest.raises(TypeError):
+        s.correct_entropy([1.81, 3.03])
+
+
+def test_correct_entropy_dict_len(reference_snapshot):
+    s = Snapshot()
+    s.load(reference_snapshot, thermo=True)
+    with pytest.raises(ValueError):
+        s.correct_entropy({1:1.81, 2:3.03, 3:5.3})
+
