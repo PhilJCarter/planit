@@ -31,7 +31,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest pytest-cov
-        python -m pip install numpy scipy matplotlib seagen==1.5 numba h5py cmasher
+        python -m pip install numpy scipy matplotlib seagen==1.5 numba h5py cmasher IPython
         # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Install planit
       run: |
@@ -50,7 +50,7 @@ jobs:
     - if: ${{ (matrix.python-version == '3.12') && (matrix.os == 'ubuntu-latest') }}
       name: Test with pytest and make badge
       run: |
-        pip install coverage-badge
+        pip install coverage-badge setuptools
         # Tell git who is making the commit
         git config --local user.name "github-actions[bot]"
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
