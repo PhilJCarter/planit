@@ -12,7 +12,7 @@ Philip J. Carter (p.carter@bristol.ac.uk)
 
 Sarah T. Stewart (sstewa56@asu.edu)
 
-v1.0
+v1.2
 
 """
 
