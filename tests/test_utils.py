@@ -56,3 +56,10 @@ def test_calc_pot_direct_overlap():
     m = npy.array([1., 1.])
     x = y = z = npy.array([0., 0.])
     assert utils._calc_potential_direct(m, x, y, z) == pytest.approx(npy.array([0., 0.]), rel=1e-4)
+
+
+def test_rad_calc():
+    x = npy.array([1, 0., 0., 0., npy.sqrt(3.)])
+    y = npy.array([0., -1., -2., 0., npy.sqrt(3.)])
+    z = npy.array([0., 0., 0., 0., npy.sqrt(3.)])
+    assert utils.rad(x, y, z) == pytest.approx(npy.array([1., 1., 2., 0., 3.]), rel=1e-5)

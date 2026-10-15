@@ -18,6 +18,13 @@ def calc_hmax(rho_lim, part_mass):
     return h/Rearth * 1.206
 
 
+def rad(x, y, z):
+    """
+    Calculate radial distance from center
+    """
+    return npy.sqrt(x**2 + y**2 + z**2)
+    
+
 def com(m,x,y,z):
     """
         Calculate centre-of-mass

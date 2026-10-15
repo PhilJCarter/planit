@@ -23,6 +23,7 @@ def empty_user_eos_slots(monkeypatch):
         ('Fe', 401),
         ('FeSi', 402),
         ('Fo', 400),
+        (62, 400),
         ('ANEOSPyrolite', 403),
         ('5PhaseWater', 303),
         ('AQUA', 304),
@@ -33,6 +34,7 @@ def test_eos_loading(EOS, womaID):
     table = eos.select(EOS)
     assert table is not None
     assert table.womaID == womaID
+
 
 def test_unknown_eos_loading():
     with pytest.raises(ValueError):

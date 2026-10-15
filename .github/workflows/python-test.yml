@@ -16,11 +16,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.14"]
         os: [ubuntu-latest, macOS-latest]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
     - name: Set up Python ${{ matrix.python-version }} on ${{matrix.os}}
       uses: actions/setup-python@v3
       with:
@@ -40,24 +42,31 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
+    - if: ${{ !(matrix.python-version == '3.12') || !(matrix.os == 'ubuntu-latest') }}
+      name: Test with pytest
       run: |
-        pytest --cov=planit --cov-report html:cov_html
+        pytest
         
-    - if: ${{ (matrix.python-version == '3.10') && (matrix.os == 'ubuntu-latest') }}
-      name: badge
+    - if: ${{ (matrix.python-version == '3.12') && (matrix.os == 'ubuntu-latest') }}
+      name: Test with pytest and make badge
       run: |
         pip install coverage-badge
-        coverage-badge -o coverage.svg -f
         # Tell git who is making the commit
         git config --local user.name "github-actions[bot]"
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        
-        git checkout -B gh-pages
-        
-        # Add the SVG and commit it
+
+        NUMBA_DISABLE_JIT=1 pytest --cov=planit --cov-report html:cov_html
+        coverage-badge -o coverage.svg -f
         git add coverage.svg
         git add -f cov_html/*
+
+        git stash
+        git checkout gh-pages
+        git checkout stash -- coverage.svg 'cov_html/*'
+        
+        git add coverage.svg
+        git add -f cov_html/*
+
         git commit -m "Update coverage badge" || echo "No changes to commit"
         
         # Push the branch forcefully

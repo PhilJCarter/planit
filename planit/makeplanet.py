@@ -694,7 +694,7 @@ def make_SPH_planet(mass=Mearth, corefraction=0.3, Pmin=1.e6, Score=1.81, Smantl
     else:
         if len(layers) != len(S):
             raise ValueError('Number of layers must match number of entropies:', len(layers), len(S))
-        if not layers: # or len(layers) == 2:
+        if not layers or len(layers) == 2:
             #layer1 = layers[0]
             #layer2 = layers[1]
             #Score = S[0]
@@ -703,7 +703,7 @@ def make_SPH_planet(mass=Mearth, corefraction=0.3, Pmin=1.e6, Score=1.81, Smantl
             #corefraction = mass[0]/totmass
             #mass = totmass
             planet,core,mantle = make_1D_planet(plot=plot, mantlepotT=mantlepotT, layer1=layer1, layer2=layer2, mass=mass, corefraction=corefraction, Pmin=Pmin, Score=Score, Smantle=Smantle, mtolerance=mtolerance, fixcoreT=fixcoreT, verbose=verbose, layers=layers, S=S, rhocent=rhocent)
-            
+            isentropes = [core, mantle]
         else:
             planet,isentropes = make_1D_planet(plot=plot, mantlepotT=mantlepotT, layer1=layer1, layer2=layer2, mass=mass, corefraction=corefraction, Pmin=Pmin, Score=Score, Smantle=Smantle, mtolerance=mtolerance, fixcoreT=fixcoreT, verbose=verbose, layers=layers, S=S, rhocent=rhocent)
             

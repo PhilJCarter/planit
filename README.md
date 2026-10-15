@@ -14,7 +14,7 @@ Sarah T. Stewart (sstewa56@asu.edu)
 
 ## Overview
 
-**planit** currently supports the SPH codes [Gadget2-planetary](https://github.com/PlanetSim/gadget2-planetary) and [SWIFT](http://www.swiftsim.com/).
+**planit** currently supports the SPH codes [Gadget2-planetary](https://github.com/PlanetSim/gadget2-planetary), [pkdgrav3](https://bitbucket.org/dpotter/pkdgrav3/src/master/), and [SWIFT](http://www.swiftsim.com/).
 
 `makeplanet` provides functions for generating adiabatic 1D planet structures and 
 converting these into (unequilibrated) SPH planets.\

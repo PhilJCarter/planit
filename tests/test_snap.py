@@ -21,7 +21,8 @@ def test_phase_calculation(reference_snapshot):
     assert (s.meltfrac*s.m).sum()/s.m.sum() == pytest.approx(0.3,rel=1e-4)
     assert s.phase[20341] == pytest.approx(6.0,rel=1e-10)
 
-def test_equilibration_check(reference_snapshot):
+
+def test_equilibration_check(reference_snapshot, verbose=True):
     s = Snapshot()
     s.load(reference_snapshot)
     assert s.eq_test(threshold=0.001)
@@ -39,6 +40,7 @@ def test_particle_removal(reference_snapshot):
 def test_particle_removal_G2(reference_snapshot,tmp_path):
     s0 = Snapshot()
     s0.load(reference_snapshot)
+    s0.header.flag_entr_ics = 1
     s0.write(tmp_path / "test")
     s1 = Snapshot()
     s1.load(tmp_path / "test")
@@ -93,3 +95,34 @@ def test_combine_incompatible(reference_snapshot):
     s2.header.flag_entr_ics = 1
     with pytest.raises(ValueError):
         s1.combine(s1,s2)
+
+
+def test_correct_entropy_dict(reference_snapshot):
+    s = Snapshot()
+    s.load(reference_snapshot, thermo=True)
+    S0 = s.S.copy()
+    s.correct_entropy({402:1.81, 'forsterite':3.03})
+    npy.testing.assert_allclose(s.S, S0, rtol=5e-2)
+
+
+def test_correct_entropy_snap(reference_snapshot):
+    s = Snapshot()
+    s.load(reference_snapshot, thermo=True)
+    S0 = s.S.copy()
+    s.correct_entropy(s)
+    npy.testing.assert_allclose(s.S, S0, rtol=1e-3)
+
+
+def test_correct_entropy_type(reference_snapshot):
+    s = Snapshot()
+    s.load(reference_snapshot, thermo=True)
+    with pytest.raises(TypeError):
+        s.correct_entropy([1.81, 3.03])
+
+
+def test_correct_entropy_dict_len(reference_snapshot):
+    s = Snapshot()
+    s.load(reference_snapshot, thermo=True)
+    with pytest.raises(ValueError):
+        s.correct_entropy({1:1.81, 2:3.03, 3:5.3})
+
