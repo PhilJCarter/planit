@@ -466,3 +466,30 @@ class Snapshot:
 
     def calc_vap_frac(self, plot=False):
         self.calc_phase(plot=False)
+
+
+    def correct_entropy(self,reference):
+        """
+        Correct entropy (and T, U) to expected values either from 
+        reference snapshot (e.g. ICs) or dict of materials and isentrope entropies 
+        (one per material in J/kg/K).
+        """
+        if isinstance(reference, Snapshot):
+            entropy = reference.S
+        elif isinstance(reference, dict):
+            #mats,idx,choice = npy.unique(self.materialIDs,return_index=True,return_inverse=True)
+            mats = npy.unique(self.materialIDs)
+            if len(mats) != len(reference):
+                raise ValueError('list of entropies must match number of materials')
+            #choice = choice[npy.argsort(idx)]
+            #entropy = npy.array(reference)[npy.argsort(idx)][choice] * 1e7
+            entropy = npy.zeros_like(self.materialIDs)
+            for key, val in reference.items():
+                entropy = npy.where(self.materialIDs == eos.select(key).womaID, val, entropy)
+            entropy = entropy * 1e7
+        else:
+            raise TypeError('entropy reference must be a Snapshot or dictionary')
+        self.T = eos.calcprop('T', 'rho', 'S', self.rho, entropy, self.materialIDs)
+        self.U = eos.calcprop('U', 'rho', 'S', self.rho, entropy, self.materialIDs)
+        self.S = entropy
+
