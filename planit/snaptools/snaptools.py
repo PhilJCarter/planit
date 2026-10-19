@@ -100,7 +100,7 @@ class Snapshot:
         # extras
         self.materialIDs = None  # particle material ID
         self.r = None            # radial distance from center
-        self.rem = None          # ID of remnant particle belongs to
+        self.rem = self.bnd = None          # ID of remnant particle belongs to
         self.vapfrac = None      # vapour fraction
         self.meltfrac = None     # particle melt fraction
         self.phase = None        # particle phase number
