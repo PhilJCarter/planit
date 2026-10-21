@@ -385,6 +385,8 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                     im = plotting.plot_snapshot_fluid(imp.data[j],X,Y,Z,ax=plt.gca(),cmap=cmap,ptype=ptype,plotQ=imp.data[j].P/1e9,axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,vcut=vcut,focus=focus)              
                 elif ptype in plotting.entropy_type:        
                     im = plotting.plot_snapshot_fluid(imp.data[j],X,Y,Z,ax=plt.gca(),cmap=cmap,ptype=ptype,plotQ=imp.data[j].S/1e7,axlim=axlim,scale=scale,zcut=zcut,focus=focus,tcut=tcut,vcut=vcut)
+                elif ptype in plotting.temperature_type:        
+                    im = plotting.plot_snapshot_fluid(imp.data[j],X,Y,Z,ax=plt.gca(),cmap=cmap,ptype=ptype,plotQ=imp.data[j].T,axlim=axlim,scale=scale,zcut=zcut,focus=focus,tcut=tcut,vcut=vcut)
                 elif ptype in plotting.phase_type:
                     im = plotting.plot_snapshot_scatter(imp.data[j],cmap=cmap,plotQ=imp.data[j].phase,ptype=ptype,ax=plt.gca(),axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,focus=focus)
 
@@ -395,7 +397,7 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
                     plt.gca().set_xticklabels([])
                     plt.gca().set_xlabel('')
                 if i==0:
-                    if ptype in plotting.density_type:
+                    if ptype in [*plotting.density_type,*plotting.temperature_type]:
                         if uppercaselab:
                             plt.text(0.05,0.95,chr(64+m),ha='left',va='top',fontsize=9,fontweight='bold',color='w',transform=plt.gca().transAxes)
                         else:

@@ -267,7 +267,7 @@ def plot_snapshot_fluid(snap,X=npy.empty([]),Y=npy.empty([]),Z=npy.empty([]),ax=
 
     im = ax.imshow(cols,origin='lower',extent=[-axlim,axlim,-axlim,axlim],cmap=cmap,norm=norm)
 
-    if ptype in density_type:
+    if ptype in [*density_type,*temperature_type]:
         ax.tick_params(colors='w',which='both',labelcolor='k')
         ax.spines['top'].set_color('w')
         ax.spines['bottom'].set_color('w')
