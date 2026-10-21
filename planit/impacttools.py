@@ -262,20 +262,24 @@ class Impact:
             plt.show(block=False)
             return fig
         else:
-            if ptype in plotting.materials_type:
-                movfile = os.path.dirname(self.data[0].file)+'/materials.mp4'
-            elif ptype in plotting.density_type:
-                movfile = os.path.dirname(self.data[0].file)+'/density.mp4'
-            elif ptype in plotting.entropy_type:
-                movfile = os.path.dirname(self.data[0].file)+'/entropy.mp4'
-            elif ptype in plotting.phase_type:
-                movfile = os.path.dirname(self.data[0].file)+'/phase.mp4'
-            elif ptype in plotting.pressure_type:
-                movfile = os.path.dirname(self.data[0].file)+'/pressure.mp4'
-            elif ptype in plotting.temperature_type:
-                movfile = os.path.dirname(self.data[0].file)+'/temperature.mp4'
+            if matplotlib.animation.FFMpegWriter.isAvailable():
+                filetype = '.mp4'
             else:
-                movfile = os.path.dirname(self.data[0].file)+'/attrmov.mp4'
+                filetype = '.gif'
+            if ptype in plotting.materials_type:
+                movfile = os.path.dirname(self.data[0].file)+'/materials'+filetype
+            elif ptype in plotting.density_type:
+                movfile = os.path.dirname(self.data[0].file)+'/density'+filetype
+            elif ptype in plotting.entropy_type:
+                movfile = os.path.dirname(self.data[0].file)+'/entropy'+filetype
+            elif ptype in plotting.phase_type:
+                movfile = os.path.dirname(self.data[0].file)+'/phase'+filetype
+            elif ptype in plotting.pressure_type:
+                movfile = os.path.dirname(self.data[0].file)+'/pressure'+filetype
+            elif ptype in plotting.temperature_type:
+                movfile = os.path.dirname(self.data[0].file)+'/temperature'+filetype
+            else:
+                movfile = os.path.dirname(self.data[0].file)+'/attrmov'+filetype
             anim=matplotlib.animation.FuncAnimation(fig,attrmovfunc,seq)
             plt.subplots_adjust(top=0.975,bottom=0.105,left=0.17,right=0.8)
             ##anim.save(movfile,dpi=200,writer=matplotlib.animation.PillowWriter(fps=fps,bitrate=1000)) #writer='ffmpeg' # 800 # 9000 fps=fps,bitrate=1000
