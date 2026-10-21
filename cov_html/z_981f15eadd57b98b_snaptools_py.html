@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Coverage for planit/snaptools/snaptools.py: 86%</title>
+    <title>Coverage for planit/snaptools/snaptools.py: 87%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
     <link rel="stylesheet" href="style_cb_4667309f.css" type="text/css">
     <script src="coverage_html_cb_15cffcd0.js" defer></script>
@@ -12,7 +12,7 @@
     <div class="content">
         <h1>
             <span class="text">Coverage for </span><b>planit<span class="sep">/</span>snaptools<span class="sep">/</span>snaptools.py</b>:
-            <span class="pc_cov">86%</span>
+            <span class="pc_cov">87%</span>
         </h1>
         <aside id="help_panel_wrapper">
             <input id="help_panel_state" type="checkbox">
@@ -55,8 +55,8 @@
         </aside>
         <h2>
             <span class="text">338 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">291<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">47<span class="text"> missing</span></button>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">293<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">45<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_6c34a12a57f6d09a_utils_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.2">coverage.py v7.16.2</a>,
-            created at 2026-10-21 20:04 +0000
+            created at 2026-10-21 22:02 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -425,8 +425,8 @@
     <p class="run"><span class="n"><a id="t343" href="#t343">343</a></span><span class="t">        <span class="nam">vesc</span> <span class="op">=</span> <span class="nam">npy</span><span class="op">.</span><span class="nam">sqrt</span><span class="op">(</span> <span class="num">2</span><span class="op">*</span><span class="nam">G</span><span class="op">*</span><span class="nam">self</span><span class="op">.</span><span class="nam">m</span><span class="op">.</span><span class="nam">sum</span><span class="op">(</span><span class="op">)</span><span class="op">/</span><span class="nam">self</span><span class="op">.</span><span class="nam">r</span><span class="op">.</span><span class="nam">max</span><span class="op">(</span><span class="op">)</span> <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t344" href="#t344">344</a></span><span class="t">        <span class="nam">vrms</span> <span class="op">=</span> <span class="op">(</span> <span class="nam">npy</span><span class="op">.</span><span class="nam">sqrt</span><span class="op">(</span> <span class="op">(</span> <span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">vx</span><span class="op">-</span><span class="nam">npy</span><span class="op">.</span><span class="nam">average</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">vx</span><span class="op">,</span><span class="nam">weights</span><span class="op">=</span><span class="nam">self</span><span class="op">.</span><span class="nam">m</span><span class="op">)</span><span class="op">)</span><span class="op">**</span><span class="num">2</span> <span class="op">+</span> <span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">vy</span><span class="op">-</span><span class="nam">npy</span><span class="op">.</span><span class="nam">average</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">vy</span><span class="op">,</span><span class="nam">weights</span><span class="op">=</span><span class="nam">self</span><span class="op">.</span><span class="nam">m</span><span class="op">)</span><span class="op">)</span><span class="op">**</span><span class="num">2</span> <span class="op">+</span> <span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">vz</span><span class="op">-</span><span class="nam">npy</span><span class="op">.</span><span class="nam">average</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">vz</span><span class="op">,</span><span class="nam">weights</span><span class="op">=</span><span class="nam">self</span><span class="op">.</span><span class="nam">m</span><span class="op">)</span><span class="op">)</span><span class="op">**</span><span class="num">2</span> <span class="op">)</span><span class="op">.</span><span class="nam">mean</span><span class="op">(</span><span class="op">)</span> <span class="op">)</span> <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t345" href="#t345">345</a></span><span class="t">        <span class="key">if</span> <span class="nam">verbose</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t346" href="#t346">346</a></span><span class="t">            <span class="nam">print</span><span class="op">(</span><span class="str">&#x27;rms velocity:&#x27;</span><span class="op">,</span> <span class="nam">vrms</span><span class="op">/</span><span class="num">1e5</span><span class="op">,</span> <span class="str">&#x27;km/s&#x27;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t347" href="#t347">347</a></span><span class="t">            <span class="nam">print</span><span class="op">(</span><span class="str">&#x27;escape velocity:&#x27;</span><span class="op">,</span> <span class="nam">vesc</span><span class="op">/</span><span class="num">1e5</span><span class="op">,</span> <span class="str">&#x27;km/s&#x27;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t346" href="#t346">346</a></span><span class="t">            <span class="nam">print</span><span class="op">(</span><span class="str">&#x27;rms velocity:&#x27;</span><span class="op">,</span> <span class="nam">vrms</span><span class="op">/</span><span class="num">1e5</span><span class="op">,</span> <span class="str">&#x27;km/s&#x27;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t347" href="#t347">347</a></span><span class="t">            <span class="nam">print</span><span class="op">(</span><span class="str">&#x27;escape velocity:&#x27;</span><span class="op">,</span> <span class="nam">vesc</span><span class="op">/</span><span class="num">1e5</span><span class="op">,</span> <span class="str">&#x27;km/s&#x27;</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t348" href="#t348">348</a></span><span class="t">        <span class="key">if</span> <span class="nam">vrms</span> <span class="op">&lt;=</span> <span class="nam">threshold</span><span class="op">*</span><span class="nam">vesc</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t349" href="#t349">349</a></span><span class="t">            <span class="key">return</span> <span class="key">True</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t350" href="#t350">350</a></span><span class="t">        <span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -644,7 +644,7 @@
             <a class="nav" href="z_6c34a12a57f6d09a_utils_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.16.2">coverage.py v7.16.2</a>,
-            created at 2026-10-21 20:04 +0000
+            created at 2026-10-21 22:02 +0000
         </p>
     </div>
 </footer>
