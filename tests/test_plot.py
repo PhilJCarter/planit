@@ -65,5 +65,8 @@ def test_impact_mov_temperature(impact_class_loaded):
     fig = impact_class_loaded.attrmov(n=3,ptype='temp',focus='targcore',zoom=1.8)
     assert isinstance(fig, IPython.display.Video)
 
-
+@pytest.mark.parametrize('ptype', ['mat','P','rho','phase'])
+def test_snapshot_plot(snasphot_class_loaded, ptype):
+    fig = snasphot_class_loaded.plot(ptype=ptype)
+    assert isinstance(fig, matplotlib.pyplot.Figure)
 

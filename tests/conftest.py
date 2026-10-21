@@ -44,6 +44,14 @@ def tmp_reference_impact_seq(tmp_path): #_factory
 
 
 @pytest.fixture
+def snasphot_class_loaded(reference_snapshot):
+    s = planit.Snapshot()
+    s.load(reference_snapshot, thermo=True)
+
+    yield s
+
+
+@pytest.fixture
 def impact_class_loaded(tmp_reference_impact_seq, scope='module'):
     imp = planit.Impact()
     imp.load(tmp_reference_impact_seq, prefix='snap', ndigits=3, thermo=True, compress=False)
