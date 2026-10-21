@@ -3,14 +3,16 @@
 """
 
 from ..globaldefs import *
-from .. import utils
-from .. import eos
+from .. import utils, eos, plotting
 from . import io
+
 
 import os
 import numpy as npy
 import scipy
 import h5py
+import matplotlib
+import matplotlib.pyplot as plt
 #import struct
 
 
@@ -60,6 +62,8 @@ class Snapshot:
     bound_mass() -- calculate remnant mass(es)
     calc_phase() -- calculate material phases
     calc_vap_frac() -- calculate vapour fractions of particles
+    correct_entropy() -- correct thermal profile of body to give correct entropies
+    plot() -- quick plot of the snapshot
     """
     
     def __init__(self):
@@ -100,7 +104,7 @@ class Snapshot:
         # extras
         self.materialIDs = None  # particle material ID
         self.r = None            # radial distance from center
-        self.rem = None          # ID of remnant particle belongs to
+        self.rem = self.bnd = None          # ID of remnant particle belongs to
         self.vapfrac = None      # vapour fraction
         self.meltfrac = None     # particle melt fraction
         self.phase = None        # particle phase number
@@ -115,6 +119,9 @@ class Snapshot:
         """
         if attr in ['x','y','z','vx','vy','vz','pos','vel','id','m','S','rho','hsml','pot','P','T','U','cs'] and self.file:
             if len(super().__getattribute__(attr))==0 and self.file:
+                self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo, loadprops=[attr,])
+        elif attr in ['materialIDs',]:
+            if super().__getattribute__(attr) is None and self.file:
                 self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo, loadprops=[attr,])
         elif attr in ['rem', 'bnd']:
             if super().__getattribute__(attr) is None and self.file:
@@ -504,4 +511,45 @@ class Snapshot:
         self.T = eos.calcprop('T', 'rho', 'S', self.rho, entropy, self.materialIDs)
         self.U = eos.calcprop('U', 'rho', 'S', self.rho, entropy, self.materialIDs)
         self.S = entropy
+
+
+    def plot(self, ptype='materials', scale='Mm', tcut = 3600., zoom=1., focus='potmin', cmap=None):
+        """
+        tcut -- time cut for pre-contact treatment
+        """
+        scf = plotting.get_scale_fac(scale)
+        axlim = 4*int(npy.ceil((self.x.max()-self.x.min())/scf/4.)) 
+        zcut = axlim/180.*scf
+        axlim /= zoom
+
+        if not cmap:
+            cmap = plotting.get_default_colormap(ptype)
+        if ptype in plotting.phase_type:
+            cmap = matplotlib.colors.ListedColormap(cmap.colors[[0,1,2,3,4,5],:])
+    
+        fig = plt.figure(figsize=(3.5,2.8))
+
+        if ptype in plotting.materials_type:
+            im = plotting.plot_snapshot_scatter(self,cmap=cmap,plotQ=-(self.id/PROJ_ID_OFFSET).astype(int),ptype=ptype,axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,focus=focus)
+        elif ptype in plotting.density_type:
+            im = plotting.plot_snapshot_fluid(self,ax=plt.gca(),cmap=cmap,ptype=ptype,axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.vel.min(),focus=focus)
+        elif ptype in plotting.entropy_type:        
+            im = plotting.plot_snapshot_fluid(self,plotQ=self.S/1e7,ax=plt.gca(),cmap=cmap,ptype=ptype,axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.vel.min(),focus=focus)        
+        elif ptype in plotting.temperature_type:        
+            im = plotting.plot_snapshot_fluid(self,plotQ=self.T,ax=plt.gca(),cmap=cmap,ptype=ptype,axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.vel.min(),focus=focus)        
+        elif ptype in plotting.pressure_type:        
+            im = plotting.plot_snapshot_fluid(self,plotQ=self.P/1e9,ax=plt.gca(),cmap=cmap,ptype=ptype,axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.vel.min(),focus=focus)        
+        elif ptype in plotting.phase_type:
+            im = plotting.plot_snapshot_scatter(self,cmap=cmap,plotQ=self.phase,ptype=ptype,axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,focus=focus)
+
+        tlab = plt.gca().texts[0]
+        tlab.set_text(tlab.get_text()+' hrs')
+
+        if ptype not in plotting.materials_type:
+            pbox=plt.gca().get_position()
+            cbar_ax = fig.add_axes([pbox.x1*1.02, pbox.y0, 0.035, 1.0*(pbox.y1-pbox.y0)])
+            cbar = fig.colorbar(im, cax=cbar_ax, orientation='vertical')
+            plotting.format_colorbar_axis(cbar, ptype, y=True)
+
+        return fig
 
