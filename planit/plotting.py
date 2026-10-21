@@ -1,3 +1,6 @@
+"""
+   planit plotting functions
+"""
 from .globaldefs import *
 
 import numpy as npy

@@ -5,7 +5,7 @@ planit  (PLANetary Impact Toolkit)
 Classes and functions for setting-up, accessing, manipulating, 
 and analysing SPH impact simulation data.
 
-Supported planetary impact codes: gadget-2-planetary, swift
+Supported planetary impact codes: gadget-2-planetary, swift, pkdgrav3
 
 
 Philip J. Carter (p.carter@bristol.ac.uk)
