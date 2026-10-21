@@ -16,8 +16,8 @@ Homepage = "https://github.com/PhilJCarter/planit"
 [tool.coverage.report]
 exclude_also = [
     'if debug:',
-    'def EOScurve',
-    'def EOSpoint',
+    'class EOScurve',
+    'class EOSpoint',
     'def querypt',
     'def writestdsesame',
     'def writeextsesame',

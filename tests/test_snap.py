@@ -20,8 +20,8 @@ def test_phase_calculation(snasphot_class_loaded):
     assert snasphot_class_loaded.phase[20341] == pytest.approx(6.0,rel=1e-10)
 
 
-def test_equilibration_check(snasphot_class_loaded, verbose=True):
-    assert snasphot_class_loaded.eq_test(threshold=0.001)
+def test_equilibration_check(snasphot_class_loaded):
+    assert snasphot_class_loaded.eq_test(threshold=0.001, verbose=True)
 
 
 def test_particle_removal(snasphot_class_loaded):
