@@ -5,54 +5,64 @@ matplotlib.use('Agg')
 import IPython
 from planit.globaldefs import *
 from planit import Impact
+from planit import plotting
+
+@pytest.mark.parametrize(
+    ('scale', 'fac'),
+    [
+        ('Mm', 1e8),
+        ('km', 1e5),
+        ('earth', Rearth),
+        (12.35, 12.35),
+    ],)
+def test_get_scale_fac(scale,fac):
+    assert plotting.get_scale_fac(scale) == fac
 
 
-def test_impact_plotseq_material(tmp_reference_impact_seq):
-    i = Impact()
-    i.load(tmp_reference_impact_seq, prefix='snap', ndigits=3)
-    fig = i.plotseq(n=4,type='mats',zoom=1.2)
+@pytest.mark.parametrize(
+    ('scale', 'u_str'),
+    [
+        ('Mm', ' (Mm)'),
+        ('km', ' (km)'),
+        ('Earth', r' (R$_\oplus$)'),
+        (3405.7, ''),
+    ],)
+def test_get_axis_units(scale,u_str):
+    assert plotting.get_axis_units(scale) == u_str
+
+
+def test_impact_plotseq_material(impact_class_loaded):
+    fig = impact_class_loaded.plotseq(n=4,type='mats',zoom=1.2)
     assert isinstance(fig, matplotlib.pyplot.Figure)
 
 
-def test_impact_plotseq_phase(tmp_reference_impact_seq):
-    i = Impact()
-    i.load(tmp_reference_impact_seq, prefix='snap', ndigits=3, thermo=True, compress=False)
-    fig = i.plotseq(n=3,ptype='phase')
+def test_impact_plotseq_phase(impact_class_loaded):
+    fig = impact_class_loaded.plotseq(n=3,ptype='phase')
     assert isinstance(fig, matplotlib.pyplot.Figure)
 
 
-def test_impact_plotseq_entropy(tmp_reference_impact_seq):
-    i = Impact()
-    i.load(tmp_reference_impact_seq, prefix='snap', ndigits=3, thermo=True,compress=False)
-    fig = i.plotseq(n=2,type='S',focus='targcore',scale='Earth',zoom=1.0)
+def test_impact_plotseq_entropy(impact_class_loaded):
+    fig = impact_class_loaded.plotseq(n=2,type='S',focus='targcore',scale='Earth',zoom=1.0)
     assert isinstance(fig, matplotlib.pyplot.Figure)
 
 
-def test_impact_plotseq_density(tmp_reference_impact_seq):
-    i = Impact()
-    i.load(tmp_reference_impact_seq, prefix='snap', ndigits=3)
-    fig = i.plotseq(n=2,ptype='rho',focus='potmin',scale='km',zoom=1.5)
+def test_impact_plotseq_density(impact_class_loaded):
+    fig = impact_class_loaded.plotseq(n=2,ptype='rho',focus='potmin',scale='km',zoom=1.5)
     assert isinstance(fig, matplotlib.pyplot.Figure)
 
 
-def test_impact_mov_material_single(tmp_reference_impact_seq):
-    i = Impact()
-    i.load(tmp_reference_impact_seq, prefix='snap', ndigits=3)
-    fig = i.attrmov(seq=[0,],ptype='mats',zoom=1.2)
+def test_impact_mov_material_single(impact_class_loaded):
+    fig = impact_class_loaded.attrmov(seq=[0,],ptype='mats',zoom=1.2)
     assert isinstance(fig, matplotlib.pyplot.Figure)
 
 
-def test_impact_mov_pressure(tmp_reference_impact_seq):
-    i = Impact()
-    i.load(tmp_reference_impact_seq, prefix='snap', ndigits=3, thermo=True)
-    fig = i.attrmov(seq=[0,2,6],ptype='P',zoom=1.8)
+def test_impact_mov_pressure(impact_class_loaded):
+    fig = impact_class_loaded.attrmov(seq=[0,2,6],ptype='P',zoom=1.8)
     assert isinstance(fig, IPython.display.Video)
 
 
-def test_impact_mov_temperature(tmp_reference_impact_seq):
-    i = Impact()
-    i.load(tmp_reference_impact_seq, prefix='snap', ndigits=3, thermo=True)
-    fig = i.attrmov(n=3,ptype='temp',focus='targcore',zoom=1.8)
+def test_impact_mov_temperature(impact_class_loaded):
+    fig = impact_class_loaded.attrmov(n=3,ptype='temp',focus='targcore',zoom=1.8)
     assert isinstance(fig, IPython.display.Video)
 
 

@@ -1,6 +1,7 @@
 import pytest
 import os
 import shutil
+import planit
 
 # __file__ is the absolute path to this current python script.
 # .parent gets the directory containing this script (the 'tests' folder).
@@ -13,7 +14,7 @@ def reference_snapshot():
     file_path = DATA_DIR + 'reference_snapshot_100000.hdf5'
     assert os.path.exists(file_path)
     
-    return file_path
+    yield file_path
 
 
 @pytest.fixture
@@ -40,3 +41,11 @@ def tmp_reference_impact_seq(tmp_path): #_factory
     assert os.path.exists(tmp_dir)
     
     yield tmp_dir
+
+
+@pytest.fixture
+def impact_class_loaded(tmp_reference_impact_seq, scope='module'):
+    imp = planit.Impact()
+    imp.load(tmp_reference_impact_seq, prefix='snap', ndigits=3, thermo=True, compress=False)
+    
+    yield imp
