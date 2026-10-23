@@ -5,6 +5,7 @@
 from ..main import *
 from .eos_table import *
 from .eostab_extension import *
+from .get_eos_data import get_eosdata_path
 import numpy as npy
 from pathlib import Path
 
@@ -113,7 +114,8 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False,
         # VERSION = 0.1      # ANEOS Parameters Version number
 
     elif eos == 'Pyrolite_ANEOS_SLVTv0.2':
-        eosdir = eospath + 'aneos-pyrolite-2022/'
+        #eosdir = eospath + 'aneos-pyrolite-2022/'
+        eosdir = get_eosdata_path("aneos-pyrolite-2022")
         womaID = 403
         # MODELNAME = 'Pyrolite_ANEOS_SLVTv0.2'
         # MATID   = 1.0      # MATID number
@@ -121,7 +123,8 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False,
         # VERSION = 0.1      # ANEOS Parameters Version number
 
     elif eos == '5PhaseEOSv8.3':
-        eosdir = eospath + '5-phase-water/'
+        #eosdir = eospath + '5-phase-water/'
+        eosdir = get_eosdata_path("5-phase-water")
         womaID = 303
         # MODELNAME='5PhaseEOSv8.3'
         # The following define the default initial state for material in the 201 table
