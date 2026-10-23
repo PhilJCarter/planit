@@ -12,7 +12,8 @@ VERSION_FILE = CACHE_DIR / "data_version.txt"
 REMOTE_DIRECTORIES = {
     "aneos-pyrolite-2022": "aneos-pyrolite-2022.zip",
     "aqua-water": "aqua-water.zip",
-    "5-phase-water": "5-phase-water.zip"
+    "5-phase-water": "5-phase-water.zip",
+    "aneos-Fe85Si15-2020-master": "aneos-Fe85Si15-2020-master.zip"
 }
 
 

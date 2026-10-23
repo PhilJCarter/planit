@@ -98,7 +98,8 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False,
         # VERSION = 0.2      # ANEOS Parameters Version number
 
     elif eos == 'Fe85Si15-ANEOS-SLVTv0.2G1':
-        eosdir = eospath + 'aneos-Fe85Si15-2020-master/'
+        #eosdir = eospath + 'aneos-Fe85Si15-2020-master/'
+        eosdir = get_eosdata_path("aneos-Fe85Si15-2020-master")
         womaID = 402
         # MODELNAME = 'Fe85Si15-ANEOS-SLVTv0.2G1'
         # MATID = 1.0        # MATID number

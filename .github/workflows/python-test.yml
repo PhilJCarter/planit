@@ -39,6 +39,8 @@ jobs:
     - if: runner.os != 'macOS'
       name: Set up FFmpeg
       uses: federicocarboni/setup-ffmpeg@v3
+      with:
+        ffmpeg-version: '6.0'
     - name: Install planit
       run: |
         pip install -e .
