@@ -13,6 +13,9 @@ dependencies = ["numpy","scipy","matplotlib","numba","h5py","seagen","cmasher","
 [project.urls]
 Homepage = "https://github.com/PhilJCarter/planit"
 
+[tool.setuptools.package-data]
+planit = ["data/*", "eos/data/**/*"]
+
 [tool.coverage.report]
 exclude_also = [
     'if debug:',
