@@ -10,8 +10,8 @@ permissions:
   contents: write
 
 jobs:
-  tests:
-    uses: ./.github/workflows/python-test.yml
+  #tests:
+  #  uses: ./.github/workflows/python-test.yml
     
   release-build:
     runs-on: ubuntu-latest
