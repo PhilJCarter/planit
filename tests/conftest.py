@@ -14,7 +14,7 @@ def reference_snapshot():
     file_path = DATA_DIR + 'reference_snapshot_100000.hdf5'
     assert os.path.exists(file_path)
     
-    yield file_path
+    return file_path
 
 
 @pytest.fixture
@@ -27,6 +27,9 @@ def tmp_reference_snapshot(tmp_path):
     assert os.path.exists(tmp_file)
     
     yield tmp_file
+
+    if os.path.exists(tmp_file):
+        os.remove(tmp_file)
 
 
 @pytest.fixture
@@ -42,6 +45,9 @@ def tmp_reference_impact_seq(tmp_path): #_factory
     
     yield tmp_dir
 
+    if os.path.exists(tmp_dir):
+        os.remove(tmp_dir)
+
 
 @pytest.fixture
 def snasphot_class_loaded(reference_snapshot):
@@ -49,6 +55,8 @@ def snasphot_class_loaded(reference_snapshot):
     s.load(reference_snapshot, thermo=True)
 
     yield s
+    
+    s = None
 
 
 @pytest.fixture
@@ -57,3 +65,5 @@ def impact_class_loaded(tmp_reference_impact_seq, scope='module'):
     imp.load(tmp_reference_impact_seq, prefix='snap', ndigits=3, thermo=True, compress=False)
     
     yield imp
+    
+    imp = None
