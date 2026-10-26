@@ -52,11 +52,15 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - if: ${{ !(matrix.python-version == '3.11') || !(matrix.os == 'ubuntu-latest') }}
       name: Test with pytest
+      env:
+        TMPDIR: ${{ github.workspace }}/tmp
       run: |
         pytest
         
     - if: ${{ (matrix.python-version == '3.11') && (matrix.os == 'ubuntu-latest') }}
       name: Test with pytest and make badge
+      env:
+        TMPDIR: ${{ github.workspace }}/tmp
       run: |
         pip install coverage-badge setuptools
         # Tell git who is making the commit
