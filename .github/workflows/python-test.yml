@@ -53,7 +53,7 @@ jobs:
     - if: ${{ !(matrix.python-version == '3.11') || !(matrix.os == 'ubuntu-latest') }}
       name: Test with pytest
       env:
-         TMPDIR: ${{ github.workspace }}/.tmp
+        TMPDIR: ${{ github.workspace }}/.tmp
         XDG_CACHE_HOME: ${{ github.workspace }}/.cache
         XDG_DATA_HOME: ${{ github.workspace }}/.local/share
         XDG_CONFIG_HOME: ${{ github.workspace }}/.config
@@ -65,7 +65,7 @@ jobs:
     - if: ${{ (matrix.python-version == '3.11') && (matrix.os == 'ubuntu-latest') }}
       name: Test with pytest and make badge
       env:
-          TMPDIR: ${{ github.workspace }}/.tmp
+        TMPDIR: ${{ github.workspace }}/.tmp
         XDG_CACHE_HOME: ${{ github.workspace }}/.cache
         XDG_DATA_HOME: ${{ github.workspace }}/.local/share
         XDG_CONFIG_HOME: ${{ github.workspace }}/.config
