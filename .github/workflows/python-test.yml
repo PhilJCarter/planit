@@ -13,12 +13,12 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
-#    env:
+    env:
 #      HOME: ${{ matrix.os == 'ubuntu-latest' && github.workspace || env.HOME }}
-#      XDG_CACHE_HOME: ${{ github.workspace }}/.cache
-#      XDG_DATA_HOME: ${{ github.workspace }}/.local/share
-#      XDG_CONFIG_HOME: ${{ github.workspace }}/.config
-#      TMPDIR: ${{ github.workspace }}/.tmp
+      XDG_CACHE_HOME: ${{ github.workspace }}/.cache
+      XDG_DATA_HOME: ${{ github.workspace }}/.local/share
+      XDG_CONFIG_HOME: ${{ github.workspace }}/.config
+      TMPDIR: ${{ github.workspace }}/.tmp
 #      PYTHONDONTWRITEBYTECODE: "1"
     permissions:
       contents: write
