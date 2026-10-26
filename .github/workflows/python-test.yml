@@ -13,6 +13,13 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    env:
+      HOME: ${{ github.workspace }}
+      XDG_CACHE_HOME: ${{ github.workspace }}/.cache
+      XDG_DATA_HOME: ${{ github.workspace }}/.local/share
+      XDG_CONFIG_HOME: ${{ github.workspace }}/.config
+      TMPDIR: ${{ github.workspace }}/.tmp
+      PYTHONDONTWRITEBYTECODE: "1"
     permissions:
       contents: write
     strategy:
@@ -52,24 +59,24 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - if: ${{ !(matrix.python-version == '3.11') || !(matrix.os == 'ubuntu-latest') }}
       name: Test with pytest
-      env:
-        TMPDIR: ${{ github.workspace }}/.tmp
-        XDG_CACHE_HOME: ${{ github.workspace }}/.cache
-        XDG_DATA_HOME: ${{ github.workspace }}/.local/share
-        XDG_CONFIG_HOME: ${{ github.workspace }}/.config
-        PYTHONDONTWRITEBYTECODE: "1" 
+      #env:
+      #  TMPDIR: ${{ github.workspace }}/.tmp
+      #  XDG_CACHE_HOME: ${{ github.workspace }}/.cache
+      #  XDG_DATA_HOME: ${{ github.workspace }}/.local/share
+      #  XDG_CONFIG_HOME: ${{ github.workspace }}/.config
+      #  PYTHONDONTWRITEBYTECODE: "1" 
       run: |
         mkdir -p $XDG_CACHE_HOME
         pytest
         
     - if: ${{ (matrix.python-version == '3.11') && (matrix.os == 'ubuntu-latest') }}
       name: Test with pytest and make badge
-      env:
-        TMPDIR: ${{ github.workspace }}/.tmp
-        XDG_CACHE_HOME: ${{ github.workspace }}/.cache
-        XDG_DATA_HOME: ${{ github.workspace }}/.local/share
-        XDG_CONFIG_HOME: ${{ github.workspace }}/.config
-        PYTHONDONTWRITEBYTECODE: "1" 
+      #env:
+      #  TMPDIR: ${{ github.workspace }}/.tmp
+      #  XDG_CACHE_HOME: ${{ github.workspace }}/.cache
+      #  XDG_DATA_HOME: ${{ github.workspace }}/.local/share
+      #  XDG_CONFIG_HOME: ${{ github.workspace }}/.config
+      #  PYTHONDONTWRITEBYTECODE: "1" 
       run: |
         mkdir -p $XDG_CACHE_HOME
         pip install coverage-badge setuptools
