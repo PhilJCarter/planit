@@ -45,6 +45,10 @@ They can be accessed using the names given above (as well as some variations) or
 corresponding SWIFT/WoMa ID number.\
 User supplied SESAME tables can also be loaded into one of five custom slots.
 
+> [!NOTE]
+> If installed via pip, Forsterite and Iron are included, data for other EoS will be downloaded when required.
+
+
 ### Custom SESAME EoS tables
 
 **planit** supports custom tables in the same SESAME-style layout used by its bundled ANEOS
