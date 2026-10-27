@@ -5,7 +5,7 @@ import urllib.request
 import zipfile
 import platformdirs
 
-DATA_VERSION = "v1.2.4"
+DATA_VERSION = "v1.2.5"
 
 CACHE_DIR = platformdirs.user_cache_path("planit")
 #CACHE_DIR = pathlib.Path.home() / ".planit"
