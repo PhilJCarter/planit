@@ -48,10 +48,12 @@ def com_v(m,vx,vy,vz):
     
 
 class Node:
-    def __init__(self, width, origin, pos, mass, ids, leaves=[]):
+    def __init__(self, width, origin, pos, mass, ids, leaves=None):
         self.size = width
         self.origin = origin
         self.children = []
+        if leaves is None:
+            leaves = []
 
         N = len(mass)
         #if N == 1:

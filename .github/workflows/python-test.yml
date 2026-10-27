@@ -14,12 +14,10 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     env:
-#      HOME: ${{ matrix.os == 'ubuntu-latest' && github.workspace || env.HOME }}
       XDG_CACHE_HOME: ${{ github.workspace }}/.cache
       XDG_DATA_HOME: ${{ github.workspace }}/.local/share
       XDG_CONFIG_HOME: ${{ github.workspace }}/.config
       TMPDIR: ${{ github.workspace }}/.tmp
-#      PYTHONDONTWRITEBYTECODE: "1"
     permissions:
       contents: write
     strategy:
@@ -29,7 +27,7 @@ jobs:
         os: [ubuntu-latest, macOS-latest]
 
     steps:
-    - name: Put /tmp back on the root disk (Fixes Ubuntu Quota Crash)
+    - name: Put /tmp back on the root disk #(Fixes Ubuntu Quota Crash)
       if: runner.os == 'Linux'
       run: |
         sudo systemctl mask tmp.mount
@@ -64,24 +62,12 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - if: ${{ !(matrix.python-version == '3.11') || !(matrix.os == 'ubuntu-latest') }}
       name: Test with pytest
-      #env:
-      #  TMPDIR: ${{ github.workspace }}/.tmp
-      #  XDG_CACHE_HOME: ${{ github.workspace }}/.cache
-      #  XDG_DATA_HOME: ${{ github.workspace }}/.local/share
-      #  XDG_CONFIG_HOME: ${{ github.workspace }}/.config
-      #  PYTHONDONTWRITEBYTECODE: "1" 
       run: |
         mkdir -p $XDG_CACHE_HOME
         pytest
         
     - if: ${{ (matrix.python-version == '3.11') && (matrix.os == 'ubuntu-latest') }}
       name: Test with pytest and make badge
-      #env:
-      #  TMPDIR: ${{ github.workspace }}/.tmp
-      #  XDG_CACHE_HOME: ${{ github.workspace }}/.cache
-      #  XDG_DATA_HOME: ${{ github.workspace }}/.local/share
-      #  XDG_CONFIG_HOME: ${{ github.workspace }}/.config
-      #  PYTHONDONTWRITEBYTECODE: "1" 
       run: |
         mkdir -p $XDG_CACHE_HOME
         pip install coverage-badge setuptools

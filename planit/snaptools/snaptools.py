@@ -243,44 +243,50 @@ class Snapshot:
         self.header.npart[0] = self.header.npart[0]-1
         self.N = self.header.npart[0]
         
-        self.x = npy.delete(self.x, npy.where(self.id == pid))
-        self.y = npy.delete(self.y, npy.where(self.id == pid))
-        self.z = npy.delete(self.z, npy.where(self.id == pid))
-        self.vx = npy.delete(self.vx, npy.where(self.id == pid))
-        self.vy = npy.delete(self.vy, npy.where(self.id == pid))
-        self.vz = npy.delete(self.vz, npy.where(self.id == pid))
-        self.m = npy.delete(self.m, npy.where(self.id == pid))
-        if self.materialIDs is not None:
-            self.materialIDs = npy.delete(self.materialIDs, npy.where(self.id == pid))
+        select = self.id != pid
+        
+        self.x = self.x[select]
+        self.y = self.y[select]
+        self.z = self.z[select]
+        self.pos = self.pos[select]
+        self.vx = self.vx[select]
+        self.vy = self.vy[select]
+        self.vz = self.vz[select]
+        self.vel = self.vel[select]
+        if super().__getattribute__('r') is not None:
+            self.r = self.r[select]
+        self.m = self.m[select]
         if len(self.S) > 0:
-            self.S = npy.delete(self.S, npy.where(self.id == pid))
-        self.rho = npy.delete(self.rho, npy.where(self.id == pid))
-        self.hsml = npy.delete(self.hsml, npy.where(self.id == pid))
-        self.pot = npy.delete(self.pot, npy.where(self.id == pid))
+            self.S = self.S[select]
+        if self.materialIDs is not None:
+            self.materialIDs = self.materialIDs[select]
+        self.rho = self.rho[select]
+        self.hsml = self.hsml[select]
+        self.pot = self.pot[select]
         if len(self.P) > 0:
-            self.P = npy.delete(self.P, npy.where(self.id == pid))
+            self.P = self.P[select]
         if len(self.T) > 0:
-            self.T = npy.delete(self.T, npy.where(self.id == pid))
+            self.T = self.T[select]
         if len(self.U) > 0:
-            self.U = npy.delete(self.U, npy.where(self.id == pid))
+            self.U = self.U[select]
         if len(self.cs) > 0:
-            self.cs = npy.delete(self.cs, npy.where(self.id == pid))
+            self.cs = self.cs[select]
 #        if type(self.accel) != int:
 #            self.ax = npy.delete(self.ax, npy.where(self.id == pid))
 #            self.ay = npy.delete(self.ay, npy.where(self.id == pid))
 #            self.az = npy.delete(self.az, npy.where(self.id == pid))
 #            self.dt = npy.delete(self.dt, npy.where(self.id == pid))
         if self.rem is not None:
-            self.rem = npy.delete(self.rem, npy.where(self.id == pid))
+            self.rem = self.rem[select]
         if super().__getattribute__('vapfrac') is not None:
             # calc_phase would be triggered by a normal lookup and requires id to already be shortened, 
             # but id needs to be last attribute in order for particle ID matching. Also don't really want 
             # to calculate in this case anyway
-            self.vapfrac = npy.delete(self.vapfrac, npy.where(self.id == pid))
-            self.meltfrac = npy.delete(self.meltfrac, npy.where(self.id == pid))
-            self.phase = npy.delete(self.phase, npy.where(self.id == pid))
+            self.vapfrac = self.vapfrac[select]
+            self.meltfrac = self.meltfrac[select]
+            self.phase = self.phase[select]
 
-        self.id = npy.delete(self.id, npy.where(self.id == pid))
+        self.id = self.id[select]
 
         
     def write(self, fname):
@@ -379,7 +385,7 @@ class Snapshot:
 
             self.rem[self.id==seed] = r
 
-            while abs((self.m[self.rem==r].sum()-prevmass)/prevmass) > tol and icount < maxiter:
+            while (icount==0 or abs((self.m[self.rem==r].sum()-prevmass)/prevmass) > tol) and icount < maxiter:
                 sm = prevmass = self.m[self.rem==r].astype('float64',copy=False).sum()
                 #sx = (self.x[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
                 #sy = (self.y[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm

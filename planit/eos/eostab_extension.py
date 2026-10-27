@@ -49,8 +49,8 @@ class EOSpasser():
         self.TYPE = ''
         self.womaID = 0
         self.NU = NU
-        self.U_1D = np.zeros(self.NU)
-        self.T_2D = np.zeros((self.NU,self.ND))
+        self.U_1D = npy.zeros(self.NU)
+        self.T_2D = npy.zeros((self.NU,self.ND))
 
 
 # @numba.experimental.jitclass(extEOStable_spec+EOStable_spec)
@@ -90,6 +90,7 @@ class EOStable(extEOStable):
         passer.TYPE = self.TYPE
         passer.womaID = self.womaID
         passer.U_1D = self.U_1D
+        passer.T_2D = self.T_2D
         return passer
         
     def loadaquatable(self,fname):

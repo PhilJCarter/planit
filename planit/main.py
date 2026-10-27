@@ -23,9 +23,9 @@ from .snaptools import Snapshot, io
 from .impacttools import Impact
 
 
-IronEOS       = eos.ANEOSIron        # for backwards compatibility
-AlloyEOS      = eos.ANEOSFeSiAlloy
-ForsteriteEOS = eos.ANEOSForsterite
+IronEOS       = eos.select('ANEOSIron')        # for backwards compatibility
+AlloyEOS      = eos.select('ANEOSFeSiAlloy')
+ForsteriteEOS = eos.select('ANEOSForsterite')
 
 
 def loadsnap(file, headonly = False, thermo=False, compress=False, mats=[402,400]):

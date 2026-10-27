@@ -147,9 +147,8 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False,
     if eostype == 'ANEOS':
         # READ EOS HEADER INFORMATION
         # READ IN ANEOS INPUT FILE
-        aneosinputfile = open(eosdir / 'ANEOS.INPUT', "r")
-        an_in = aneosinputfile.readlines()   # read in the whole ascii file at once because this is fatser
-        aneosinputfile.close()
+        with open(eosdir / 'ANEOS.INPUT', "r") as aneosinputfile:
+            an_in = aneosinputfile.readlines()   # read in the whole ascii file at once because this is fatser
         aneoscount = 1
         for i in npy.arange(len(an_in)):
             if an_in[i].find('ANEOS') == 0:
@@ -173,9 +172,8 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False,
         NewEOS.P0REF = P0REF
 
     # READ SESAME HEADER
-    sesfile = open(eosdir / 'NEW-SESAME-STD.TXT', "r")
-    sesdata = sesfile.readlines(5000)
-    sesfile.close()
+    with open(eosdir / 'NEW-SESAME-STD.TXT', "r") as sesfile:
+        sesdata = sesfile.readlines(5000)
     for i in range(len(sesdata)):
         if sesdata[i].find(' INDEX') == 0:
             tmp = sesdata[i+1]

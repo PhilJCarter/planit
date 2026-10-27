@@ -284,7 +284,7 @@ class Impact:
             plt.subplots_adjust(top=0.975,bottom=0.105,left=0.17,right=0.8)
             ##anim.save(movfile,dpi=200,writer=matplotlib.animation.PillowWriter(fps=fps,bitrate=1000)) #writer='ffmpeg' # 800 # 9000 fps=fps,bitrate=1000
             anim.save(movfile,dpi=dpi,fps=fps,bitrate=bitrate) #writer='ffmpeg' # 800 # 9000 fps=fps,bitrate=1000
-            plt.show()
+            #plt.show()
             plt.close()
             
             html=display.Video(movfile,embed=True,width=500)

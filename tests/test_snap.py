@@ -39,7 +39,7 @@ def test_particle_removal_G2(reference_snapshot,tmp_path):
     s0.write(tmp_path / "test")
     s1 = Snapshot()
     s1.load(tmp_path / "test")
-    print(s1.N,len(s1.m))
+    print(s1.N,len(s1.m),len(s1.S))
     s1.remove(npy.random.choice(s1.id))
     print(s1.N,len(s1.m))
     assert s1.N == len(s1.m) == 99513
