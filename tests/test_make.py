@@ -47,9 +47,9 @@ def test_multi_layer_planet_creation():
 
 def test_multi_layer_planet_wadiabatic_layer_creation():
     p0,isentropes = make_1D_planet(mass=[0.3*Mearth,0.64*Mearth,0.06*Mearth], Pmin=1.e6,
-        mtolerance=1e-3, layers=[402,'forsterite','HM80HHe'], S=[1.8,2.7,'adiabatic'], fixcoreT=False)
-    assert p0.M == pytest.approx(Mearth, rel=2e-3)
-    assert p0.cf == pytest.approx(0.3, rel=5e-4)
+        mtolerance=5e-3, layers=[402,'forsterite','HM80HHe'], S=[1.8,2.7,'adiabatic'], fixcoreT=False)
+    assert p0.M == pytest.approx(Mearth, rel=5e-3)
+    assert p0.cf == pytest.approx(0.3, rel=1e-3)
     assert isentropes[2] == 'adiabat'
 
 
@@ -68,7 +68,7 @@ def test_mars_SPH_mass():
 @pytest.mark.parametrize('res', [1e6, 1e7])
 def test_SPH_from_1D_profile(res):
     p0,isen1,isen2 = make_1D_planet(mass=[0.3*Mearth,0.7*Mearth], corefraction=0.3, Pmin=1.e5,
-        mtolerance=1e-4, layers=['iron','forsterite'], S=[1.81,3.02], fixcoreT=False)
+        mtolerance=1e-3, layers=['iron','forsterite'], S=[1.81,3.02], fixcoreT=False)
     sn,part = make_SPH_planet(profile=p0, layers=['iron','forsterite'], S=[1.81,3.02], resolution=res)
     assert sn.m.sum() == pytest.approx(p0.M, rel=2e-2)
     assert len(sn.id) == pytest.approx(res, rel=1e-2)

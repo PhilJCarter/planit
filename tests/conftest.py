@@ -1,6 +1,7 @@
 import pytest
 import os
 import shutil
+import planit
 
 # __file__ is the absolute path to this current python script.
 # .parent gets the directory containing this script (the 'tests' folder).
@@ -27,15 +28,38 @@ def tmp_reference_snapshot(tmp_path):
     
     yield tmp_file
 
+    #if os.path.exists(tmp_file):
+    #    os.remove(tmp_file)
+
 
 @pytest.fixture
-def tmp_reference_impact_seq(tmp_path):
+def tmp_reference_impact_seq(tmp_path): #_factory
     """Creates a fresh dir with copies of the reference snapshot for any test that requests it."""
-    source_file = DATA_DIR + 'reference_snapshot_100000.hdf5'
+    source_file = DATA_DIR + 'reference_impact_snapshot_50.hdf5'
     
-    tmp_dir = str(tmp_path)
-    for i in range(0,12):
-        shutil.copy(source_file, tmp_dir + '/snap_{:>03d}.hdf5'.format(i))
+    #tmp_dir = str(tmp_path_factory.mktemp("tmpdata")) #+ 'snap_000.hdf5'
+    tmp_dir = str(tmp_path) #+ 'snap_000.hdf5'
+    for j in range(0,12):
+        shutil.copy(source_file, tmp_dir + '/snap_{:>03d}.hdf5'.format(j))
     assert os.path.exists(tmp_dir)
     
     yield tmp_dir
+
+    #if os.path.exists(tmp_dir):
+    #    os.remove(tmp_dir)
+
+
+@pytest.fixture
+def snasphot_class_loaded(reference_snapshot):
+    s = planit.Snapshot()
+    s.load(reference_snapshot, thermo=True)
+
+    yield s
+
+
+@pytest.fixture
+def impact_class_loaded(tmp_reference_impact_seq, scope='module'):
+    imp = planit.Impact()
+    imp.load(tmp_reference_impact_seq, prefix='snap', ndigits=3, thermo=True, compress=False)
+    
+    yield imp

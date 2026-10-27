@@ -32,7 +32,7 @@ def load_snapshot(snap, fname, headonly=False, thermo=False, compress=False, mat
 
     if not headonly:
         # REARRANGE
-        if any(x in ['all','x','y','z'] for x in loadprops):
+        if any(x in ['all','x','y','z','pos'] for x in loadprops):
             snap.pos = npy.array(snap.pos).reshape((snap.N, 3))
         if any(x in ['all','x'] for x in loadprops):
             snap.x = snap.pos.T[0]
@@ -41,7 +41,7 @@ def load_snapshot(snap, fname, headonly=False, thermo=False, compress=False, mat
         if any(x in ['all','z'] for x in loadprops):
             snap.z = snap.pos.T[2]
     
-        if any(x in ['all','vx','vy','vz'] for x in loadprops):
+        if any(x in ['all','vx','vy','vz','vel'] for x in loadprops):
             snap.vel = npy.array(snap.vel).reshape((snap.N, 3))
         if any(x in ['all','vx'] for x in loadprops):
             snap.vx = snap.vel.T[0]
@@ -55,9 +55,9 @@ def load_snapshot(snap, fname, headonly=False, thermo=False, compress=False, mat
         if compress:
             if any(x in ['all','m'] for x in loadprops):
                 snap.m = snap.m.astype('float32', copy=False)
-            if any(x in ['all','x','y','z'] for x in loadprops):
+            if any(x in ['all','x','y','z','pos'] for x in loadprops):
                 snap.pos = npy.array(snap.pos).astype('float32', copy=False)
-            if any(x in ['all','vx','vy','vz'] for x in loadprops):
+            if any(x in ['all','vx','vy','vz','vel'] for x in loadprops):
                 snap.vel = npy.array(snap.vel).astype('float32', copy=False)
             if any(x in ['all','S'] for x in loadprops) and len(snap.S) > 0:
                 snap.S = snap.S.astype('float32', copy=False)
@@ -125,13 +125,13 @@ def load_G2_1(snap, fname, headonly=False, thermo=False, mats=[402, 400], loadpr
     #PARTICLE DATA
     struct.unpack('i', f.read(4))  #SKIP
     buffer = f.read(3*snap.N*4)
-    if any(x in ['all','x','y','z'] for x in loadprops):
+    if any(x in ['all','x','y','z','pos'] for x in loadprops):
         snap.pos = struct.unpack(count3 + 'f', buffer)
     struct.unpack('i', f.read(4))  #SKIP
 
     struct.unpack('i', f.read(4))  #SKIP
     buffer = f.read(3*snap.N*4)
-    if any(x in ['all','vx','vy','vz'] for x in loadprops):
+    if any(x in ['all','vx','vy','vz','vel'] for x in loadprops):
         snap.vel = struct.unpack(count3 + 'f', buffer)
     struct.unpack('i', f.read(4))  #SKIP
 
@@ -151,8 +151,8 @@ def load_G2_1(snap, fname, headonly=False, thermo=False, mats=[402, 400], loadpr
     buffer = f.read(snap.N*4)
     if any(x in ['all','S'] for x in loadprops):
         snap.S = npy.array(struct.unpack(count + 'f', buffer))
-        if (snap.S == 0).all():
-            snap.S = npy.empty(0)
+        #if (snap.S == 0).all():
+        #    snap.S = npy.empty(0)
     struct.unpack('i', f.read(4))  #SKIP
 
     struct.unpack('i', f.read(4))  #SKIP
@@ -297,23 +297,24 @@ def load_hdf5(snap, fname, headonly=False, recenter=True, thermo=False, debug=Fa
             f.close()
             return
     
-        if any(x in ['all','x','y','z'] for x in loadprops):
+        if any(x in ['all','x','y','z','pos'] for x in loadprops):
             snap.pos = part['Coordinates'][:].reshape((snap.header.npart[0], 3)) * Lfactor
             if recenter:
                 snap.pos -= snap.header.BoxSize/2.
-        if any(x in ['all','vx','vy','vz'] for x in loadprops):
+        if any(x in ['all','vx','vy','vz','vel'] for x in loadprops):
             snap.vel = part['Velocities'][:].reshape((snap.header.npart[0], 3)) * Lfactor/Tfactor
         if 'MaterialIDs' in part.keys() and any(x in ['all','materialIDs'] for x in loadprops):
             snap.materialIDs = part['MaterialIDs'][:]
         if any(x in ['all','id'] for x in loadprops):
 #### edit
             # move to conversion routines?
-            if part['ParticleIDs'][:].max() < GADGET_EOS_OFFSET and len(npy.unique(snap.materialIDs)) > 1:
-                snap.id = npy.where(snap.materialIDs > 400, part['ParticleIDs'][:], part['ParticleIDs'][:]+GADGET_EOS_OFFSET)
+            pid = part['ParticleIDs'][:]
+            if pid.max() < GADGET_EOS_OFFSET and len(npy.unique(snap.materialIDs)) > 1:
+                snap.id = npy.where(snap.materialIDs > 400, pid, pid+GADGET_EOS_OFFSET)
                 snap.id = npy.where(snap.materialIDs < 400, snap.id+GADGET_EOS_OFFSET, snap.id)
 #### edit end
             else:
-                snap.id = part['ParticleIDs'][:]
+                snap.id = pid
         if any(x in ['all','m'] for x in loadprops):
             snap.m = part['Masses'][:] * Mfactor
         if any(x in ['all','rho'] for x in loadprops):
@@ -527,7 +528,8 @@ def load_seagen(snap, partplanet, thermo=False, init_h=100e5):
     snap.vx = npy.zeros(snap.N)
     snap.vy = npy.zeros(snap.N)
     snap.vz = npy.zeros(snap.N)
-    snap.vel = npy.zeros((snap.N, 3))
+    snap.vel = npy.array((snap.vx, snap.vy, snap.vz))
+    snap.vel = snap.vel.T
 
     extraIDoff = [len(partplanet.mat[partplanet.mat < x]) for x in npy.unique(partplanet.mat)]
     extraIDoff = npy.array(extraIDoff)
@@ -565,7 +567,7 @@ def write_G2_1(snap, fname):
     f.write(struct.pack('i', 256))  #SKIP
 
     #HEADER
-    if len(snap.header.npart > 6):
+    if len(snap.header.npart) > 6:
         npart = snap.header.npart[0:6]
         mass = snap.header.mass[0:6]
         npartTotal = snap.header.npartTotal[0:6]
@@ -595,42 +597,45 @@ def write_G2_1(snap, fname):
 
     count = str(snap.N)
     count3 = str(3*snap.N)
+    
+    scalblock = snap.N * 4
+    vecblock = 3* scalblock
 
     #PARTICLE DATA
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', vecblock))  #SKIP
     f.write(struct.pack(count3 + 'f', *npy.array(snap.pos).reshape((3*snap.N))))
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', vecblock))  #SKIP
 
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', vecblock))  #SKIP
     f.write(struct.pack(count3 + 'f', *npy.array(snap.vel).reshape((3*snap.N))))
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', vecblock))  #SKIP
 
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', scalblock))  #SKIP
     f.write(struct.pack(count + 'i', *snap.id))
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', scalblock))  #SKIP
 
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', scalblock))  #SKIP
     f.write(struct.pack(count + 'f', *snap.m))
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', scalblock))  #SKIP
 
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', scalblock))  #SKIP
     if len(snap.S) == len(snap.id):
         f.write(struct.pack(count + 'f', *snap.S))
     else:
         f.write(struct.pack(count + 'f', *npy.zeros(snap.N)))
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', scalblock))  #SKIP
 
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', scalblock))  #SKIP
     f.write(struct.pack(count + 'f', *snap.rho))
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', scalblock))  #SKIP
 
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', scalblock))  #SKIP
     f.write(struct.pack(count + 'f', *snap.hsml))
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', scalblock))  #SKIP
     
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', scalblock))  #SKIP
     f.write(struct.pack(count + 'f', *snap.pot))
-    f.write(struct.pack('i', snap.N))  #SKIP
+    f.write(struct.pack('i', scalblock))  #SKIP
 
     print("Wrote", snap.N, "particles.\n")
     f.close()
@@ -710,7 +715,7 @@ def write_hdf5(snap, outname, units='cgs', mats=[401, 400], shift2center=True):
                 part.create_dataset('Pressures', data=snap.P * Mfactor / (Lfactor * Tfactor**2), compression='gzip')
             if len(snap.T) == len(snap.id):
                 part.create_dataset('Temperatures', data=snap.T, compression='gzip')
-        if snap.rem:
+        if snap.rem is not None:
             part.create_dataset('RemnantIDs', data=snap.rem, compression='gzip')
 
 

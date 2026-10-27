@@ -161,11 +161,11 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
         
     dr = rho - r0
     
-    if U1r0==U0r0:
+    if U1r0 == U0r0:
         Qa = Q00
     else:
         Qa  = (U1r0-U)*Q00/(U1r0-U0r0) + (U-U0r0)*Q10/(U1r0-U0r0)
-    if U1r1==U0r1:
+    if U1r1 == U0r1:
         Qb = Q01
     else:
         Qb  = (U1r1-U)*Q01/(U1r1-U0r1) + (U-U0r1)*Q11/(U1r1-U0r1)
@@ -183,9 +183,26 @@ def from_rhoS(Qlab,rho,S,EOS,dolog=True):
     if rho > 2.0:
         dolog = False
 
-    ir0 = npy.where(EOS.rho<rho)[0][-1]
-    iS0r0 = npy.where(EOS.S[:,ir0]<S)[0][-1]
-    iS0r1 = npy.where(EOS.S[:,ir0+1]<S)[0][-1]
+    if rho <= EOS.rho[0]:
+        ir0 = 0
+    else:
+        ir0 = npy.where(EOS.rho<rho)[0][-1]
+    if ir0 == len(EOS.rho)-1:
+        ir0 -=1
+        
+    if S <= EOS.S[0,ir0]:
+        iS0r0 = 0
+    else:
+        iS0r0 = npy.where(EOS.S[:,ir0]<S)[0][-1]
+    if S <= EOS.S[0,ir0+1]:
+        iS0r1 = 0
+    else:
+        iS0r1 = npy.where(EOS.S[:,ir0+1]<S)[0][-1]
+
+    if iS0r0 == len(EOS.S[:,ir0])-1:
+        iS0r0 -=1
+    if iS0r1 == len(EOS.S[:,ir0+1])-1:
+        iS0r1 -=1
     
     r0 = EOS.rho[ir0]
     r1 = EOS.rho[ir0+1]
@@ -193,6 +210,9 @@ def from_rhoS(Qlab,rho,S,EOS,dolog=True):
     S1r0 = EOS.S[iS0r0+1,ir0]
     S0r1 = EOS.S[iS0r1,ir0+1]
     S1r1 = EOS.S[iS0r1+1,ir0+1]
+    
+    if S < min(S0r0,S0r1):
+        S = min(S0r0,S0r1)
 
     if Qlab == 'U':
         Qarr = EOS.U
@@ -220,25 +240,33 @@ def from_rhoS(Qlab,rho,S,EOS,dolog=True):
         Q10 = Qarr[iS0r0+1,ir0]
         Q11 = Qarr[iS0r1+1,ir0+1]
 
-    if dolog:
+    if dolog and min(Q00,Q01,Q10,Q11,rho,S)>0:
         Q00 = npy.log10(Q00)
         Q01 = npy.log10(Q01)
         Q10 = npy.log10(Q10)
         Q11 = npy.log10(Q11)
 
         rho = npy.log10(rho)
-        U = npy.log10(S)
+        S = npy.log10(S)
         r0 = npy.log10(r0)
         r1 = npy.log10(r1)
-        U0r0 = npy.log10(S0r0)
-        U1r0 = npy.log10(S1r0)
-        U0r1 = npy.log10(S0r1)
-        U1r1 = npy.log10(S1r1)
+        S0r0 = npy.log10(S0r0)
+        S1r0 = npy.log10(S1r0)
+        S0r1 = npy.log10(S0r1)
+        S1r1 = npy.log10(S1r1)
+    else:
+        dolog = False
         
     dr = rho - r0
     
-    Qa  = (S1r0-S)*Q00/(S1r0-S0r0) + (S-S0r0)*Q10/(S1r0-S0r0)
-    Qb  = (S1r1-S)*Q01/(S1r1-S0r1) + (S-S0r1)*Q11/(S1r1-S0r1)
+    if S1r0 == S0r0:
+        Qa = Q00
+    else:
+        Qa  = (S1r0-S)*Q00/(S1r0-S0r0) + (S-S0r0)*Q10/(S1r0-S0r0)
+    if S1r1 == S0r1:
+        Qb = Q01
+    else:
+        Qb  = (S1r1-S)*Q01/(S1r1-S0r1) + (S-S0r1)*Q11/(S1r1-S0r1)
     Q  = Qa + dr*(Qb-Qa)/(r1-r0)
     
     if dolog:
@@ -264,6 +292,8 @@ def from_rhoU1D(Qlab,rho,U,EOS,dolog=True):
         iU0 = 0
     else:
         iU0 = npy.where(EOS.U_1D<U)[0][-1]
+    if iU0 == len(EOS.U_1D) - 1:
+        iU0 -= 1
     
     r0 = EOS.rho[ir0]
     r1 = EOS.rho[ir0+1]

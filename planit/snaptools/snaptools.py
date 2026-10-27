@@ -3,14 +3,16 @@
 """
 
 from ..globaldefs import *
-from .. import utils
-from .. import eos
+from .. import utils, eos, plotting
 from . import io
+
 
 import os
 import numpy as npy
 import scipy
 import h5py
+import matplotlib
+import matplotlib.pyplot as plt
 #import struct
 
 
@@ -60,6 +62,8 @@ class Snapshot:
     bound_mass() -- calculate remnant mass(es)
     calc_phase() -- calculate material phases
     calc_vap_frac() -- calculate vapour fractions of particles
+    correct_entropy() -- correct thermal profile of body to give correct entropies
+    plot() -- quick plot of the snapshot
     """
     
     def __init__(self):
@@ -100,7 +104,7 @@ class Snapshot:
         # extras
         self.materialIDs = None  # particle material ID
         self.r = None            # radial distance from center
-        self.rem = None          # ID of remnant particle belongs to
+        self.rem = self.bnd = None          # ID of remnant particle belongs to
         self.vapfrac = None      # vapour fraction
         self.meltfrac = None     # particle melt fraction
         self.phase = None        # particle phase number
@@ -115,6 +119,9 @@ class Snapshot:
         """
         if attr in ['x','y','z','vx','vy','vz','pos','vel','id','m','S','rho','hsml','pot','P','T','U','cs'] and self.file:
             if len(super().__getattribute__(attr))==0 and self.file:
+                self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo, loadprops=[attr,])
+        elif attr in ['materialIDs',]:
+            if super().__getattribute__(attr) is None and self.file:
                 self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo, loadprops=[attr,])
         elif attr in ['rem', 'bnd']:
             if super().__getattribute__(attr) is None and self.file:
@@ -236,44 +243,50 @@ class Snapshot:
         self.header.npart[0] = self.header.npart[0]-1
         self.N = self.header.npart[0]
         
-        self.x = npy.delete(self.x, npy.where(self.id == pid))
-        self.y = npy.delete(self.y, npy.where(self.id == pid))
-        self.z = npy.delete(self.z, npy.where(self.id == pid))
-        self.vx = npy.delete(self.vx, npy.where(self.id == pid))
-        self.vy = npy.delete(self.vy, npy.where(self.id == pid))
-        self.vz = npy.delete(self.vz, npy.where(self.id == pid))
-        self.m = npy.delete(self.m, npy.where(self.id == pid))
-        if self.materialIDs is not None:
-            self.materialIDs = npy.delete(self.materialIDs, npy.where(self.id == pid))
+        select = self.id != pid
+        
+        self.x = self.x[select]
+        self.y = self.y[select]
+        self.z = self.z[select]
+        self.pos = self.pos[select]
+        self.vx = self.vx[select]
+        self.vy = self.vy[select]
+        self.vz = self.vz[select]
+        self.vel = self.vel[select]
+        if super().__getattribute__('r') is not None:
+            self.r = self.r[select]
+        self.m = self.m[select]
         if len(self.S) > 0:
-            self.S = npy.delete(self.S, npy.where(self.id == pid))
-        self.rho = npy.delete(self.rho, npy.where(self.id == pid))
-        self.hsml = npy.delete(self.hsml, npy.where(self.id == pid))
-        self.pot = npy.delete(self.pot, npy.where(self.id == pid))
+            self.S = self.S[select]
+        if self.materialIDs is not None:
+            self.materialIDs = self.materialIDs[select]
+        self.rho = self.rho[select]
+        self.hsml = self.hsml[select]
+        self.pot = self.pot[select]
         if len(self.P) > 0:
-            self.P = npy.delete(self.P, npy.where(self.id == pid))
+            self.P = self.P[select]
         if len(self.T) > 0:
-            self.T = npy.delete(self.T, npy.where(self.id == pid))
+            self.T = self.T[select]
         if len(self.U) > 0:
-            self.U = npy.delete(self.U, npy.where(self.id == pid))
+            self.U = self.U[select]
         if len(self.cs) > 0:
-            self.cs = npy.delete(self.cs, npy.where(self.id == pid))
+            self.cs = self.cs[select]
 #        if type(self.accel) != int:
 #            self.ax = npy.delete(self.ax, npy.where(self.id == pid))
 #            self.ay = npy.delete(self.ay, npy.where(self.id == pid))
 #            self.az = npy.delete(self.az, npy.where(self.id == pid))
 #            self.dt = npy.delete(self.dt, npy.where(self.id == pid))
         if self.rem is not None:
-            self.rem = npy.delete(self.rem, npy.where(self.id == pid))
+            self.rem = self.rem[select]
         if super().__getattribute__('vapfrac') is not None:
             # calc_phase would be triggered by a normal lookup and requires id to already be shortened, 
             # but id needs to be last attribute in order for particle ID matching. Also don't really want 
             # to calculate in this case anyway
-            self.vapfrac = npy.delete(self.vapfrac, npy.where(self.id == pid))
-            self.meltfrac = npy.delete(self.meltfrac, npy.where(self.id == pid))
-            self.phase = npy.delete(self.phase, npy.where(self.id == pid))
+            self.vapfrac = self.vapfrac[select]
+            self.meltfrac = self.meltfrac[select]
+            self.phase = self.phase[select]
 
-        self.id = npy.delete(self.id, npy.where(self.id == pid))
+        self.id = self.id[select]
 
         
     def write(self, fname):
@@ -372,7 +385,7 @@ class Snapshot:
 
             self.rem[self.id==seed] = r
 
-            while abs((self.m[self.rem==r].sum()-prevmass)/prevmass) > tol and icount < maxiter:
+            while (icount==0 or abs((self.m[self.rem==r].sum()-prevmass)/prevmass) > tol) and icount < maxiter:
                 sm = prevmass = self.m[self.rem==r].astype('float64',copy=False).sum()
                 #sx = (self.x[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
                 #sy = (self.y[self.rem==r].astype('float64',copy=False)*self.m[self.rem==r].astype('float64',copy=False)).sum()/sm
@@ -504,4 +517,45 @@ class Snapshot:
         self.T = eos.calcprop('T', 'rho', 'S', self.rho, entropy, self.materialIDs)
         self.U = eos.calcprop('U', 'rho', 'S', self.rho, entropy, self.materialIDs)
         self.S = entropy
+
+
+    def plot(self, ptype='materials', scale='Mm', tcut = 3600., zoom=1., focus='potmin', cmap=None):
+        """
+        tcut -- time cut for pre-contact treatment
+        """
+        scf = plotting.get_scale_fac(scale)
+        axlim = 4*int(npy.ceil((self.x.max()-self.x.min())/scf/4.)) 
+        zcut = axlim/180.*scf
+        axlim /= zoom
+
+        if not cmap:
+            cmap = plotting.get_default_colormap(ptype)
+        if ptype in plotting.phase_type:
+            cmap = matplotlib.colors.ListedColormap(cmap.colors[[0,1,2,3,4,5],:])
+    
+        fig = plt.figure(figsize=(3.5,2.8))
+
+        if ptype in plotting.materials_type:
+            im = plotting.plot_snapshot_scatter(self,cmap=cmap,plotQ=-(self.id/PROJ_ID_OFFSET).astype(int),ptype=ptype,axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,focus=focus)
+        elif ptype in plotting.density_type:
+            im = plotting.plot_snapshot_fluid(self,ax=plt.gca(),cmap=cmap,ptype=ptype,axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.vel.min(),focus=focus)
+        elif ptype in plotting.entropy_type:        
+            im = plotting.plot_snapshot_fluid(self,plotQ=self.S/1e7,ax=plt.gca(),cmap=cmap,ptype=ptype,axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.vel.min(),focus=focus)        
+        elif ptype in plotting.temperature_type:        
+            im = plotting.plot_snapshot_fluid(self,plotQ=self.T,ax=plt.gca(),cmap=cmap,ptype=ptype,axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.vel.min(),focus=focus)        
+        elif ptype in plotting.pressure_type:        
+            im = plotting.plot_snapshot_fluid(self,plotQ=self.P/1e9,ax=plt.gca(),cmap=cmap,ptype=ptype,axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,vcut=0.5*self.vel.min(),focus=focus)        
+        elif ptype in plotting.phase_type:
+            im = plotting.plot_snapshot_scatter(self,cmap=cmap,plotQ=self.phase,ptype=ptype,axlim=axlim,scale=scale,zcut=zcut,tcut=tcut,focus=focus)
+
+        tlab = plt.gca().texts[0]
+        tlab.set_text(tlab.get_text()+' hrs')
+
+        if ptype not in plotting.materials_type:
+            pbox=plt.gca().get_position()
+            cbar_ax = fig.add_axes([pbox.x1*1.02, pbox.y0, 0.035, 1.0*(pbox.y1-pbox.y0)])
+            cbar = fig.colorbar(im, cax=cbar_ax, orientation='vertical')
+            plotting.format_colorbar_axis(cbar, ptype, y=True)
+
+        return fig
 

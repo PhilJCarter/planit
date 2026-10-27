@@ -5,6 +5,7 @@
 from ..main import *
 from .eos_table import *
 from .eostab_extension import *
+from .get_eos_data import get_eosdata_path
 import numpy as npy
 
 
@@ -16,7 +17,8 @@ def loadAQUAEOS(eos='Water-AQUA-v1.0', eostype='AQUA', debug = False):
     """
         
     if eos == 'Water-AQUA-v1.0':
-        eosdir = eospath + 'aqua-water/'
+        #eosdir = eospath + 'aqua-water/'
+        eosdir = get_eosdata_path("aqua-water")
         womaID = 304
         
     NewEOS  = EOStable() # FIRST make new empty EOS object

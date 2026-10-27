@@ -5,7 +5,7 @@ planit  (PLANetary Impact Toolkit)
 Classes and functions for setting-up, accessing, manipulating, 
 and analysing SPH impact simulation data.
 
-Supported planetary impact codes: gadget-2-planetary, swift
+Supported planetary impact codes: gadget-2-planetary, swift, pkdgrav3
 
 
 Philip J. Carter (p.carter@bristol.ac.uk)
@@ -23,9 +23,9 @@ from .snaptools import Snapshot, io
 from .impacttools import Impact
 
 
-IronEOS       = eos.ANEOSIron        # for backwards compatibility
-AlloyEOS      = eos.ANEOSFeSiAlloy
-ForsteriteEOS = eos.ANEOSForsterite
+IronEOS       = eos.select('ANEOSIron')        # for backwards compatibility
+AlloyEOS      = eos.select('ANEOSFeSiAlloy')
+ForsteriteEOS = eos.select('ANEOSForsterite')
 
 
 def loadsnap(file, headonly = False, thermo=False, compress=False, mats=[402,400]):

@@ -37,7 +37,7 @@ def test_snapshot_load_headonly(reference_snapshot):
     s.load(reference_snapshot,headonly=True)
     
     npy.testing.assert_array_equal(npy.array([99514,0,0,0,0,0,0]),s.header.npart)
-    assert s.materialIDs == None
+    assert super(Snapshot,s).__getattribute__('materialIDs') == None
 
 
 def test_snasphot_hdf5_write(reference_snapshot, tmp_path):

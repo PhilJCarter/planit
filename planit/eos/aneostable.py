@@ -5,6 +5,7 @@
 from ..main import *
 from .eos_table import *
 from .eostab_extension import *
+from .get_eos_data import get_eosdata_path
 import numpy as npy
 from pathlib import Path
 
@@ -97,7 +98,8 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False,
         # VERSION = 0.2      # ANEOS Parameters Version number
 
     elif eos == 'Fe85Si15-ANEOS-SLVTv0.2G1':
-        eosdir = eospath + 'aneos-Fe85Si15-2020-master/'
+        #eosdir = eospath + 'aneos-Fe85Si15-2020-master/'
+        eosdir = get_eosdata_path("aneos-Fe85Si15-2020-master")
         womaID = 402
         # MODELNAME = 'Fe85Si15-ANEOS-SLVTv0.2G1'
         # MATID = 1.0        # MATID number
@@ -113,7 +115,8 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False,
         # VERSION = 0.1      # ANEOS Parameters Version number
 
     elif eos == 'Pyrolite_ANEOS_SLVTv0.2':
-        eosdir = eospath + 'aneos-pyrolite-2022/'
+        #eosdir = eospath + 'aneos-pyrolite-2022/'
+        eosdir = get_eosdata_path("aneos-pyrolite-2022")
         womaID = 403
         # MODELNAME = 'Pyrolite_ANEOS_SLVTv0.2'
         # MATID   = 1.0      # MATID number
@@ -121,7 +124,8 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False,
         # VERSION = 0.1      # ANEOS Parameters Version number
 
     elif eos == '5PhaseEOSv8.3':
-        eosdir = eospath + '5-phase-water/'
+        #eosdir = eospath + '5-phase-water/'
+        eosdir = get_eosdata_path("5-phase-water")
         womaID = 303
         # MODELNAME='5PhaseEOSv8.3'
         # The following define the default initial state for material in the 201 table
@@ -143,9 +147,8 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False,
     if eostype == 'ANEOS':
         # READ EOS HEADER INFORMATION
         # READ IN ANEOS INPUT FILE
-        aneosinputfile = open(eosdir / 'ANEOS.INPUT', "r")
-        an_in = aneosinputfile.readlines()   # read in the whole ascii file at once because this is fatser
-        aneosinputfile.close()
+        with open(eosdir / 'ANEOS.INPUT', "r") as aneosinputfile:
+            an_in = aneosinputfile.readlines()   # read in the whole ascii file at once because this is fatser
         aneoscount = 1
         for i in npy.arange(len(an_in)):
             if an_in[i].find('ANEOS') == 0:
@@ -169,9 +172,8 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False,
         NewEOS.P0REF = P0REF
 
     # READ SESAME HEADER
-    sesfile = open(eosdir / 'NEW-SESAME-STD.TXT', "r")
-    sesdata = sesfile.readlines(5000)
-    sesfile.close()
+    with open(eosdir / 'NEW-SESAME-STD.TXT', "r") as sesfile:
+        sesdata = sesfile.readlines(5000)
     for i in range(len(sesdata)):
         if sesdata[i].find(' INDEX') == 0:
             tmp = sesdata[i+1]

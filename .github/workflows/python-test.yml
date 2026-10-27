@@ -13,6 +13,13 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    env:
+      XDG_CACHE_HOME: ${{ github.workspace }}/.cache
+      XDG_DATA_HOME: ${{ github.workspace }}/.local/share
+      XDG_CONFIG_HOME: ${{ github.workspace }}/.config
+      TMPDIR: ${{ github.workspace }}/.tmp
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -20,9 +27,15 @@ jobs:
         os: [ubuntu-latest, macOS-latest]
 
     steps:
+    - name: Put /tmp back on the root disk #(Fixes Ubuntu Quota Crash)
+      if: runner.os == 'Linux'
+      run: |
+        sudo systemctl mask tmp.mount
+        sudo umount -l /tmp || true
     - uses: actions/checkout@v7
       with:
         fetch-depth: 0
+        persist-credentials: true
     - name: Set up Python ${{ matrix.python-version }} on ${{matrix.os}}
       uses: actions/setup-python@v3
       with:
@@ -31,8 +44,13 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest pytest-cov
-        python -m pip install numpy scipy matplotlib seagen==1.5 numba h5py cmasher
+        python -m pip install numpy scipy matplotlib seagen==1.5 numba h5py cmasher IPython
         # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - if: runner.os != 'macOS'
+      name: Set up FFmpeg
+      uses: federicocarboni/setup-ffmpeg@v3
+      with:
+        ffmpeg-version: '6.0'
     - name: Install planit
       run: |
         pip install -e .
@@ -42,15 +60,17 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - if: ${{ !(matrix.python-version == '3.12') || !(matrix.os == 'ubuntu-latest') }}
+    - if: ${{ !(matrix.python-version == '3.11') || !(matrix.os == 'ubuntu-latest') }}
       name: Test with pytest
       run: |
+        mkdir -p $XDG_CACHE_HOME
         pytest
         
-    - if: ${{ (matrix.python-version == '3.12') && (matrix.os == 'ubuntu-latest') }}
+    - if: ${{ (matrix.python-version == '3.11') && (matrix.os == 'ubuntu-latest') }}
       name: Test with pytest and make badge
       run: |
-        pip install coverage-badge
+        mkdir -p $XDG_CACHE_HOME
+        pip install coverage-badge setuptools
         # Tell git who is making the commit
         git config --local user.name "github-actions[bot]"
         git config --local user.email "github-actions[bot]@users.noreply.github.com"

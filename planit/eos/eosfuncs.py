@@ -58,11 +58,11 @@ aquawaternames = ['Water-AQUA-v1.0', 'AQUA', 'AQUAWater', 'aqua', 304]
 fivephasewaternames = ['5PhaseEOSv8.3', '5PhaseWater', '5phasewater', 'SS08', 'SenftStewartWater', 'SenftStewart08', 303]
 hm80HHenames = ['HM80-HHe-v2.0', 'HM80_HHe', 'HM80HHe', 200]
 
-user0names = ['User0', 900]
-user1names = ['User1', 901]
-user2names = ['User2', 902]
-user3names = ['User3', 903]
-user4names = ['User4',904]
+#user0names = ['User0', 900]
+#user1names = ['User1', 901]
+#user2names = ['User2', 902]
+#user3names = ['User3', 903]
+#user4names = ['User4',904]
 
 USER_EOS_SLOTS = {
     'User0': 900,
@@ -217,13 +217,15 @@ class isentrope_class(eos_isentrope_class):
         self.density = EOS.rho
         self.ND = EOS.ND
         
+        self.pressure = npy.empty(self.ND)
+        self.temperature = npy.empty(self.ND)
         # loop across all densities and extract the values for the requested isentrope
         for i in range(0,self.ND):
             ind = npy.where(EOS.S[:,i] > 0)[0]
             interpfunction = interpolate.interp1d(EOS.S[ind,i],EOS.P[ind,i]) # MJ/K/kg, GPa
-            self.pressure = npy.append(self.pressure,interpfunction(self.entropy/1.E3)) # GPa
+            self.pressure[i] = interpfunction(self.entropy/1.E3) # GPa
             interpfunction = interpolate.interp1d(EOS.S[ind,i],EOS.T[ind]) # MJ/K/kg, GPa
-            self.temperature = npy.append(self.temperature,interpfunction(self.entropy/1.E3)) # GPa
+            self.temperature[i] = interpfunction(self.entropy/1.E3) # GPa
 
 
 # cgs / SI unit conversions
@@ -287,10 +289,12 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
     """
     if npy.ndim(X) == 0:
         X = npy.array([X,])
+    if npy.ndim(Y) == 0:
         Y = npy.array([Y,])
-        Z = npy.array([mats,])
+    if npy.ndim(mats) == 0:
+        mats = npy.array([mats,])
     
-    if not len(X)==len(Y)==len(mats):
+    if not (len(X) == len(Y) == len(mats)):
         raise ValueError('X, Y, and mats arrays must be the same size/shape')
         
     if Ylab == 'rho' and Xlab in ['T','U','S']:
@@ -326,34 +330,55 @@ def calcprop(Qlab,Xlab,Ylab,X,Y,mats):
     elif Ylab == 'U':
         Y = Y*uconversion_U
 
-    EOSlist = npy.empty(len(X),dtype=object)
+    Q = npy.zeros(len(X))
+    #EOSlist = npy.empty(len(X),dtype=object)
     for mat in npy.unique(mats):
         EOS = select(mat)
         passer = EOS.make_passer_class()
-        EOSlist = npy.where(mats==mat,passer,EOSlist)
-    
-    Q = _calc_prop(Qlab,Xlab,Ylab,X,Y,EOSlist.tolist())
+        #EOSlist = npy.where(mats==mat,passer,EOSlist)
+        mask = (mats == mat)
+        Q[mask] = _calc_prop(Qlab,Xlab,Ylab,X[mask],Y[mask],passer)
     return Q*uconversion_Q
 
 
 @numba.njit(parallel=True)
-def _calc_prop(Qlab,Xlab,Ylab,X,Y,EOSlist):
+def _calc_prop(Qlab,Xlab,Ylab,X,Y,EOS):
     #print(Qlab,Xlab,Ylab)
     Q = npy.zeros(len(X))
-    for i in numba.prange(len(X)):
+    #for i in numba.prange(len(X)):
 
-        if EOSlist[i].TYPE in ['ANEOS', 'SESAME', 'AQUA']:
-            if Ylab == 'S':
-                Q[i] = tabinterp.from_rhoS(Qlab, X[i], Y[i], EOSlist[i])
-            elif Ylab == 'U':
-                Q[i] = tabinterp.from_rhoU(Qlab, X[i], Y[i], EOSlist[i])
-            elif Ylab == 'T':
-                Q[i] = tabinterp.from_rhoT(Qlab, X[i], Y[i], EOSlist[i])
-        elif EOSlist[i].TYPE == 'HM80':
-            if (Ylab != 'U') or (Qlab not in ['P','T']):
+    if EOS.TYPE in ['ANEOS', 'SESAME', 'AQUA']:
+        if Ylab == 'S':
+            for i in numba.prange(len(X)):
+                Q[i] = tabinterp.from_rhoS(Qlab, X[i], Y[i], EOS)
+        elif Ylab == 'U':
+            for i in numba.prange(len(X)):
+                Q[i] = tabinterp.from_rhoU(Qlab, X[i], Y[i], EOS)
+        elif Ylab == 'T':
+            for i in numba.prange(len(X)):
+                Q[i] = tabinterp.from_rhoT(Qlab, X[i], Y[i], EOS)
+    elif EOS.TYPE == 'HM80':
+        if (Ylab != 'U') or (Qlab not in ['P','T']):
                 #raise NotImplementedError('Calculation of', Qlab, 'from', Xlab, 'and', Ylab, 'is not available' )
                 #print('Calculation of', Qlab, 'from', Xlab, 'and', Ylab, 'is not available. Returning NaN.')
+            for i in numba.prange(len(X)):
                 Q[i] = npy.nan
-            else:
-                Q[i] = tabinterp.from_rhoU1D(Qlab, X[i], Y[i], EOSlist[i])
+        else:
+            for i in numba.prange(len(X)):
+                Q[i] = tabinterp.from_rhoU1D(Qlab, X[i], Y[i], EOS)
+         
+        #if EOSlist[i].TYPE in ['ANEOS', 'SESAME', 'AQUA']:
+ #            if Ylab == 'S':
+#                 Q[i] = tabinterp.from_rhoS(Qlab, X[i], Y[i], EOSlist[i])
+#             elif Ylab == 'U':
+#                 Q[i] = tabinterp.from_rhoU(Qlab, X[i], Y[i], EOSlist[i])
+#             elif Ylab == 'T':
+#                 Q[i] = tabinterp.from_rhoT(Qlab, X[i], Y[i], EOSlist[i])
+#         elif EOSlist[i].TYPE == 'HM80':
+#             if (Ylab != 'U') or (Qlab not in ['P','T']):
+#                 #raise NotImplementedError('Calculation of', Qlab, 'from', Xlab, 'and', Ylab, 'is not available' )
+#                 #print('Calculation of', Qlab, 'from', Xlab, 'and', Ylab, 'is not available. Returning NaN.')
+#                 Q[i] = npy.nan
+#             else:
+#                 Q[i] = tabinterp.from_rhoU1D(Qlab, X[i], Y[i], EOSlist[i])
     return Q
