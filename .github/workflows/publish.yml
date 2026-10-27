@@ -44,10 +44,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            aneos-pyrolite-2022.zip
-            aqua-water.zip
-            aneos-Fe85Si15-2020-master.zip
-            5-phase-water.zip
+            planit/eos/data/aneos-pyrolite-2022.zip
+            planit/eos/data/aqua-water.zip
+            planit/eos/data/aneos-Fe85Si15-2020-master.zip
+            planit/eos/data/5-phase-water.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
