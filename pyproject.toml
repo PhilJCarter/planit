@@ -25,6 +25,8 @@ exclude_also = [
     'class EOScurve',
     'class EOSpoint',
     'def querypt',
+    'def loadaneosidg',
+    'def view',
     'def writestdsesame',
     'def writeextsesame',
     'def writegadgetinitsesame',

@@ -63,3 +63,15 @@ def impact_class_loaded(tmp_reference_impact_seq, scope='module'):
     imp.load(tmp_reference_impact_seq, prefix='snap', ndigits=3, thermo=True, compress=False)
     
     yield imp
+
+
+@pytest.fixture
+def blank_planet_profile():
+    p = planit.makeplanet.planet_profile()
+    yield p
+
+
+@pytest.fixture
+def iron_isentrope():
+    isen = planit.eos.isentrope_class(1.8,'Fe')
+    yield isen

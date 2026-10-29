@@ -224,8 +224,8 @@ class isentrope_class(eos_isentrope_class):
             ind = npy.where(EOS.S[:,i] > 0)[0]
             interpfunction = interpolate.interp1d(EOS.S[ind,i],EOS.P[ind,i]) # MJ/K/kg, GPa
             self.pressure[i] = interpfunction(self.entropy/1.E3) # GPa
-            interpfunction = interpolate.interp1d(EOS.S[ind,i],EOS.T[ind]) # MJ/K/kg, GPa
-            self.temperature[i] = interpfunction(self.entropy/1.E3) # GPa
+            interpfunction = interpolate.interp1d(EOS.S[ind,i],EOS.T[ind]) # MJ/K/kg, K
+            self.temperature[i] = interpfunction(self.entropy/1.E3) # K
 
 
 # cgs / SI unit conversions
