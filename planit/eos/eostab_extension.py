@@ -63,7 +63,11 @@ class EOStable(extEOStable):
     def __init__(self):
         extEOStable.__init__(self)
         # self.__init__ext
-        self.TYPE = ''
+        self.U   = np.zeros([self.ND,self.NT])  # MJ/kg, sp. internal energy(T,rho)
+        self.A   = np.zeros([self.ND,self.NT])  # MJ/kg, Helmholtz free energy(T,rho)
+        self.S   = np.zeros([self.ND,self.NT])  # MJ/K/kg, sp. entropy(T,rho)
+        self.cs  = np.zeros([self.ND,self.NT])  # cm/s, sound speed(T,rho)
+        self.cv  = np.zeros([self.ND,self.NT])  # MJ/K/kg, sp. heat capacity(T,rho)self.TYPE = ''
         self.womaID = 0
         self.NU = 0    # only needed for rho-U format tables
         self.U_1D = npy.zeros(self.NU)  # only needed for rho-U format tables
@@ -130,8 +134,8 @@ class EOStable(extEOStable):
             lrhomin,lrhomax,ND,lUmin,lUmax,NU = tmp.split()
         self.ND = int(ND)
         self.NU = int(NU)
-        self.rho = npy.exp(npy.linspace(float(lrhomin),float(lrhomax),self.ND))/1000.
-        self.U_1D = npy.exp(npy.linspace(float(lUmin),float(lUmax),self.NU))/1.e6
+        self.rho = npy.exp(npy.linspace(float(lrhomin),float(lrhomax),self.ND))/1000.  # kg/m3 --> g/cm3
+        self.U_1D = npy.exp(npy.linspace(float(lUmin),float(lUmax),self.NU))/1.e6  #J/kg --> MJ/kg
         data = npy.loadtxt(fname,skiprows=13,unpack=False)
         self.P = data[:self.ND].reshape(self.ND,self.NU).T/1.e9
         self.T_2D = data[self.ND:].reshape(self.ND,self.NU).T

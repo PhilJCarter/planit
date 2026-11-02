@@ -1,30 +1,102 @@
 import pytest
 from planit.makeplanet import *
+import matplotlib
+matplotlib.use('Agg')
 
 
 def test_profile_creation():
     p = planet_profile()
     assert p.M == p.cf == 0.
+
+
+def test_adiabatic_layer(blank_planet_profile):
+    blank_planet_profile.rarr = npy.array([6000e5])
+    blank_planet_profile.density = npy.array([5])
+    blank_planet_profile.pressure = npy.array([8e10])
+    blank_planet_profile.temperature = npy.array([2000])
+    blank_planet_profile.add_adiabatic_layer(mass=0.01*Mearth, EOS=eos.select('HM80HHe'), Pmin = 1e2)
+    assert blank_planet_profile.M == pytest.approx(0.01*Mearth, rel=1e-3)
+
+
+def test_adiabatic_layer_nonHM80(blank_planet_profile):
+    blank_planet_profile.rarr = npy.array([0])
+    blank_planet_profile.density = npy.array([12])
+    blank_planet_profile.pressure = npy.array([350e10])
+    blank_planet_profile.temperature = npy.array([6000])
+    blank_planet_profile.add_adiabatic_layer(mass=0.5*Mearth, EOS=eos.select('iron'))
+    assert blank_planet_profile.M == pytest.approx(0.5*Mearth, rel=1e-3)
     
+
+def test_adiabatic_layer_no_EOS(blank_planet_profile):
+    with pytest.raises(ValueError):
+        blank_planet_profile.add_adiabatic_layer(mass=0.1*Mearth, EOS=None)
+
+
+def test_adiabatic_layer_no_starting_point(blank_planet_profile):
+    with pytest.raises(ValueError, match='Central values must be provided'):
+        blank_planet_profile.add_adiabatic_layer(mass=0.1*Mearth, EOS=eos.select('Fo'))
+
+
+def test_adiabatic_layer_array_length(blank_planet_profile):
+    with pytest.raises(ValueError, match='must have same length'):
+        blank_planet_profile.rarr = npy.array([6000e5])
+        blank_planet_profile.density = npy.array([5])
+        blank_planet_profile.pressure = npy.array([8e10])
+        blank_planet_profile.temperature = npy.array([2000, 3000])
+        blank_planet_profile.add_adiabatic_layer(mass=0.01*Mearth, EOS=eos.select('HM80HHe'), Pmin = 1e2)
+
+
+def test_isentropic_layer(blank_planet_profile, iron_isentrope):
+    blank_planet_profile.rarr = npy.array([0])
+    blank_planet_profile.density = npy.array([12])
+    blank_planet_profile.pressure = npy.array([350e10])
+    blank_planet_profile.temperature = npy.array([6000])
+    blank_planet_profile.add_isentropic_layer(mass=0.5*Mearth, isentrope=iron_isentrope)
+    assert blank_planet_profile.M == pytest.approx(0.5*Mearth, rel=1e-3)
+
+
+def test_isentropic_layer_no_isentrope(blank_planet_profile):
+    with pytest.raises(ValueError, match='isentrope must be defined'):
+        blank_planet_profile.add_isentropic_layer(mass=0.1*Mearth, isentrope=None)
+
+
+def test_isentropic_layer_no_starting_point(blank_planet_profile, iron_isentrope):
+    with pytest.raises(ValueError, match='Central values must be provided'):
+        blank_planet_profile.add_isentropic_layer(mass=0.1*Mearth, isentrope=iron_isentrope)
+
+
+def test_isentropic_layer_array_length(blank_planet_profile, iron_isentrope):
+    with pytest.raises(ValueError, match='must have same length'):
+        blank_planet_profile.rarr = npy.array([0])
+        blank_planet_profile.density = npy.array([12, 10])
+        blank_planet_profile.pressure = npy.array([350e10])
+        blank_planet_profile.temperature = npy.array([6000])
+        blank_planet_profile.add_isentropic_layer(mass=0.1*Mearth, isentrope=iron_isentrope)
+
+
+@pytest.mark.parametrize( ('m', 'rho'), [(1.0, 5.12), (10, 2.885), (200, 0.3481)] )
+def test_density_estimate(m,rho):
+    assert planet_density(m) == pytest.approx(rho, rel=1e-3)
+
 
 def test_earth_profile_mass():
     p,isen1,isen2 = make_1D_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Smantle=3.02,
-        mtolerance=1e-3, layer1='iron', layer2='forsterite', layers=[], S=[], mantlepotT=False,
+        mtolerance=8e-4, layer1='iron', layer2='forsterite', layers=[], S=[], mantlepotT=False,
         plot=False, fixcoreT=False, rhocent=None, verbose=False)
     assert p.M == pytest.approx(Mearth,rel=1e-3)
 
 
 def test_earth_profile_radius():
-    p,isen1,isen2 = make_1D_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Smantle=3.02,
+    p,isen1,isen2 = make_1D_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.6, Smantle=3.02,
         mtolerance=1e-3, layer1='alloy', layer2='forsterite', layers=[], S=[], mantlepotT=False,
-        plot=False, fixcoreT=False, rhocent=None, verbose=False)
+        plot=False, fixcoreT=False, rhocent=12, verbose=True)
     assert p.rarr[-1] == pytest.approx(Rearth,rel=5e-2)
 
 
 def test_high_mass_planet_profile():
     p,isen1,isen2 = make_1D_planet(mass=5*Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Smantle=3.02,
         mtolerance=1e-3, layer1='iron', layer2='forsterite', layers=[], S=[], mantlepotT=False,
-        plot=False, fixcoreT=False, rhocent=None, verbose=False)
+        plot=True, fixcoreT=False, rhocent=None, verbose=False)
     assert p.M == pytest.approx(5*Mearth,rel=1e-3)
 
 
@@ -72,3 +144,9 @@ def test_SPH_from_1D_profile(res):
     sn,part = make_SPH_planet(profile=p0, layers=['iron','forsterite'], S=[1.81,3.02], resolution=res)
     assert sn.m.sum() == pytest.approx(p0.M, rel=2e-2)
     assert len(sn.id) == pytest.approx(res, rel=1e-2)
+
+
+def test_PREM_load():
+    p = PREMclass()
+    assert p.NR == 504
+    assert p.radius[-1] == pytest.approx(6.371e6, rel=1e-5)

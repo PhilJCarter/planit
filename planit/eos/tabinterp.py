@@ -8,7 +8,7 @@ import numpy as npy
 import numba
 
 @numba.njit
-def from_rhoT(Qlab,rho,T,EOS,dolog=True):
+def from_rhoT(Qlab, rho, T, EOS, dolog=True):
 
     if rho > 2.0:
         dolog = False
@@ -44,14 +44,14 @@ def from_rhoT(Qlab,rho,T,EOS,dolog=True):
     elif Qlab == 'cv':
         Qarr = EOS.cv
     else:
-        raise ValueError('Unknown thermodynamic property:',Qlab)
+        raise ValueError('Unknown thermodynamic property:', Qlab)
     
     Q00 = Qarr[iT0,ir0]
     Q01 = Qarr[iT0,ir0+1]
     Q10 = Qarr[iT0+1,ir0]
     Q11 = Qarr[iT0+1,ir0+1]
 
-    if dolog and min(Q00,Q01,Q10,Q11,rho,T)>0:
+    if dolog and min(Q00,Q01,Q10,Q11,rho,T) > 0:
         Q00 = npy.log10(Q00)
         Q01 = npy.log10(Q01)
         Q10 = npy.log10(Q10)
@@ -81,7 +81,7 @@ def from_rhoT(Qlab,rho,T,EOS,dolog=True):
 
 
 @numba.njit
-def from_rhoU(Qlab,rho,U,EOS,dolog=True):
+def from_rhoU(Qlab, rho, U, EOS, dolog=True):
 
     if rho > 2.0:
         dolog = False
@@ -129,7 +129,7 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
     elif Qlab == 'cv':
         Qarr = EOS.cv
     else:
-        raise ValueError('Unknown thermodynamic property:',Qlab)
+        raise ValueError('Unknown thermodynamic property:', Qlab)
 
     if Qlab == 'T':
         Q00 = Tarr[iU0r0]
@@ -142,7 +142,7 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
         Q10 = Qarr[iU0r0+1,ir0]
         Q11 = Qarr[iU0r1+1,ir0+1]
 
-    if dolog and min(Q00,Q01,Q10,Q11,rho,U)>0:
+    if dolog and min(Q00,Q01,Q10,Q11,rho,U) > 0:
         Q00 = npy.log10(Q00)
         Q01 = npy.log10(Q01)
         Q10 = npy.log10(Q10)
@@ -178,7 +178,7 @@ def from_rhoU(Qlab,rho,U,EOS,dolog=True):
 
 
 @numba.njit
-def from_rhoS(Qlab,rho,S,EOS,dolog=True):
+def from_rhoS(Qlab, rho, S, EOS, dolog=True):
 
     if rho > 2.0:
         dolog = False
@@ -227,7 +227,7 @@ def from_rhoS(Qlab,rho,S,EOS,dolog=True):
     elif Qlab == 'cv':
         Qarr = EOS.cv
     else:
-        raise ValueError('Unknown thermodynamic property:',Qlab)
+        raise ValueError('Unknown thermodynamic property:', Qlab)
 
     if Qlab == 'T':
         Q00 = Tarr[iS0r0]
@@ -240,7 +240,7 @@ def from_rhoS(Qlab,rho,S,EOS,dolog=True):
         Q10 = Qarr[iS0r0+1,ir0]
         Q11 = Qarr[iS0r1+1,ir0+1]
 
-    if dolog and min(Q00,Q01,Q10,Q11,rho,S)>0:
+    if dolog and min(Q00,Q01,Q10,Q11,rho,S) > 0:
         Q00 = npy.log10(Q00)
         Q01 = npy.log10(Q01)
         Q10 = npy.log10(Q10)
@@ -277,7 +277,7 @@ def from_rhoS(Qlab,rho,S,EOS,dolog=True):
 
 
 @numba.njit
-def from_rhoU1D(Qlab,rho,U,EOS,dolog=True):
+def from_rhoU1D(Qlab, rho, U, EOS, dolog=True):
 
     #if rho > 2.0:
     #    dolog = False
@@ -305,14 +305,14 @@ def from_rhoU1D(Qlab,rho,U,EOS,dolog=True):
     elif Qlab == 'T':
         Qarr = EOS.T_2D
     else:
-        raise ValueError('Unknown thermodynamic property:',Qlab)
+        raise ValueError('Unknown thermodynamic property:', Qlab)
     
     Q00 = Qarr[iU0,ir0]
     Q01 = Qarr[iU0,ir0+1]
     Q10 = Qarr[iU0+1,ir0]
     Q11 = Qarr[iU0+1,ir0+1]
 
-    if dolog and min(Q00,Q01,Q10,Q11,rho,U)>0:
+    if dolog and min(Q00,Q01,Q10,Q11,rho,U) > 0:
         Q00 = npy.log10(Q00)
         Q01 = npy.log10(Q01)
         Q10 = npy.log10(Q10)

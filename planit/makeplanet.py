@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import seagen
 
 
-G_mks = 6.67E-11 # Gravitational constant  m3/kg/s2
+G_mks = 6.67E-11  # Gravitational constant  m3/kg/s2
 Rcmb = 348000000. # CMB radius in cm (from PREM)
 
 
@@ -44,7 +44,7 @@ class planet_profile:
     def load(self, file='profile.dat'):
         (self.rarr, self.mat, self.entropy, self.density, self.pressure, self.temperature) = npy.loadtxt(file,unpack=True)
 
-    def add_isentropic_layer(self,mass=0,Pmin=0,iendprevlayer=0,isentrope=None,dR=Rearth/3000.,maxiter=200, firstlayer=False, masstolerance=1e-3):
+    def add_isentropic_layer(self,mass=0,Pmin=0,iendprevlayer=0,isentrope=None,dR=Rearth/3000.,maxiter=2000, firstlayer=False, masstolerance=1e-3):
         if isentrope is None:
             raise ValueError('isentrope must be defined')
         if not len(self.rarr) == len(self.density) == len(self.temperature) == len(self.pressure):
@@ -86,7 +86,7 @@ class planet_profile:
             ii += 1
             j += 1
 
-    def add_adiabatic_layer(self,mass=0,Pmin=0,iendprevlayer=0,EOS=None,dR=Rearth/3000.,maxiter=200, firstlayer=False, masstolerance=1e-3):
+    def add_adiabatic_layer(self,mass=0,Pmin=0,iendprevlayer=0,EOS=None,dR=Rearth/3000.,maxiter=2000, firstlayer=False, masstolerance=1e-3):
         if EOS is None:
             raise ValueError('EOS must be defined')
         if not len(self.rarr) == len(self.density) == len(self.temperature) == len(self.pressure):
@@ -95,13 +95,11 @@ class planet_profile:
             raise ValueError('Central values must be provided!')
 
         if EOS.TYPE != 'HM80':
-            S = eos.tabinterp.from_rhoT('S',self.density[-1],self.temperature[-1],EOS.make_passer_class())*eos.uconversion_S_inv
+            S = eos.tabinterp.from_rhoT('S',self.density[-1],self.temperature[-1],EOS.make_passer_class()) * eos.uconversion_S_inv / 1.e7
             print(S)
             isentrope = eos.isentrope_class(S,EOS.MODELNAME)
             self.add_isentropic_layer(mass=mass,Pmin=Pmin,iendprevlayer=iendprevlayer,isentrope=isentrope,dR=dR,maxiter=maxiter,masstolerance=masstolerance)
         else:  # HM80 only
-            #if self.M == 0:
-            #    firstlayer = True
             menclosed = self.M
 
             j = 0
@@ -302,7 +300,7 @@ def make_1D_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Smant
     if layers or S:
         if not len(layers) == len(S) == len(mass):
             raise ValueError('number of layers must match. layers, S, mass:', len(layers), len(S), len(mass) if npy.ndim(mass) > 0 else 0)
-    if not layers or len(layers) == 2:
+    if (not layers or len(layers) == 2) and not any(x in [*layers,layer1,layer2] for x in [*eos.hm80HHenames]):
         if layers:
             layer1 = layers[0]
             layer2 = layers[1]
@@ -330,14 +328,14 @@ def make_1D_2L_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Sm
     Pcenter = 0
     
     ly1EOS = eos.select(layer1)
-    if ly1EOS is None:
-        print('Unknown core EOS')
-        return
+    #if ly1EOS is None:
+    #    print('Unknown core EOS')
+    #    return
     
     ly2EOS = eos.select(layer2)
-    if ly2EOS is None:
-        print('Unknown mantle EOS')
-        return
+    #if ly2EOS is None:
+    #    print('Unknown mantle EOS')
+    #    return
     
     if mantlepotT:
         refP = Pmin
@@ -364,6 +362,7 @@ def make_1D_2L_planet(mass=Mearth, corefraction=0.325, Pmin=1.e6, Score=1.81, Sm
 
         if plot:
             PREM = PREMclass()
+            print(PREM.temperature,PREM.pressure)
             fig = plt.figure(figsize=(7,5))
             plt.plot(PREM.pressure,PREM.temperature,'-.',color='xkcd:deep blue',label='PREM profile')
             plt.plot(mantle.pressure,mantle.temperature,'-',color='xkcd:purple',label='mantle isentrope',markersize=10)
@@ -695,20 +694,10 @@ def make_SPH_planet(mass=Mearth, corefraction=0.3, Pmin=1.e6, Score=1.81, Smantl
         if len(layers) != len(S):
             raise ValueError('Number of layers must match number of entropies:', len(layers), len(S))
         if not layers or len(layers) == 2:
-            #layer1 = layers[0]
-            #layer2 = layers[1]
-            #Score = S[0]
-            #Smantle = S[1]
-            #totmass = sum(mass)
-            #corefraction = mass[0]/totmass
-            #mass = totmass
             planet,core,mantle = make_1D_planet(plot=plot, mantlepotT=mantlepotT, layer1=layer1, layer2=layer2, mass=mass, corefraction=corefraction, Pmin=Pmin, Score=Score, Smantle=Smantle, mtolerance=mtolerance, fixcoreT=fixcoreT, verbose=verbose, layers=layers, S=S, rhocent=rhocent)
             isentropes = [core, mantle]
         else:
             planet,isentropes = make_1D_planet(plot=plot, mantlepotT=mantlepotT, layer1=layer1, layer2=layer2, mass=mass, corefraction=corefraction, Pmin=Pmin, Score=Score, Smantle=Smantle, mtolerance=mtolerance, fixcoreT=fixcoreT, verbose=verbose, layers=layers, S=S, rhocent=rhocent)
-            
-        #if len(layers) == 0:
-        #    core, mantle = isentropes
     
     partmass = Mearth / resolution   # mass per particle
     Np = int(planet.M / partmass)    # desired total number of particles
@@ -779,8 +768,8 @@ class PREMclass:
         self.NR = 0 # number of radius points
         self.radius = npy.zeros(self.NR) 
         self.density = npy.zeros(self.NR)   
-        self.pwavevel = npy.zeros(self.NR)   
-        self.swavevel = npy.zeros(self.NR)
+        #self.pwavevel = npy.zeros(self.NR)   
+        #self.swavevel = npy.zeros(self.NR)
         self.pressure = npy.zeros(self.NR)
         self.temperature = npy.zeros(self.NR)
         # not going to use all the variables in the file
@@ -788,15 +777,16 @@ class PREMclass:
         
         self.load()
 
+
     def load(self,PREM_filename=datadir+'PREM500_IDV.csv'):
         # Read in PREM: Preliminary Earth Reference Model
 
-        self.radius = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2,usecols=[0]) # radius in m
-        self.density = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2,usecols=[1]) # density in kg/m3
-        self.pwavevel = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2,usecols=[2]) # p-wave velocity m/s
-        self.swavevel = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2,usecols=[3]) # s-wave velocity m/s
+        self.radius, self.density = npy.loadtxt(PREM_filename, delimiter=',', skiprows=2, usecols=[0,1], unpack=True) # radius in m
+        #self.density = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2, usecols=[1]) # density in kg/m3
+        ##self.pwavevel = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2,usecols=[2]) # p-wave velocity m/s
+        ##self.swavevel = npy.loadtxt(PREM_filename,delimiter=',',skiprows=2,usecols=[3]) # s-wave velocity m/s
         self.NR = len(self.radius) # number of radius points
-        self.units = 'radius (m), density (kg/m3), pwavevel (m/s), swavevel (m/s)'
+        self.units = 'radius (m), density (kg/m3)'#, pwavevel (m/s), swavevel (m/s)'
         
         # start at the surface and integrate via a for loop to the center of the planet
         
@@ -826,13 +816,17 @@ class PREMclass:
         self.pressure = self.pressure/1.E9 # GPa
         
         Anzellini_filename = datadir+'Anzellini-2013-Science-coretemp.csv'
-        Anzellini_pressure  = npy.loadtxt(Anzellini_filename,delimiter=',',skiprows=0,usecols=[0]) # GPa
-        Anzellini_temperature  = npy.loadtxt(Anzellini_filename,delimiter=',',skiprows=0,usecols=[1]) # K
+        Anzellini_pressure, Anzellini_temperature  = npy.loadtxt(Anzellini_filename, delimiter=',',skiprows=0, unpack=True) # GPa, K
+        Anzellini_pressure[0] = 0.
+        #Anzellini_temperature  = npy.loadtxt(Anzellini_filename,delimiter=',',skiprows=0,usecols=[1]) # K
         # we want to use this data with PREM but it doesn't have the same number of points
         # interpolate the Anzellini profile to match the PREM profile
         # the following defines a function = y(x)
         interp_func = interpolate.interp1d(Anzellini_pressure,Anzellini_temperature,fill_value="extrapolate") 
         self.temperature = interp_func(self.pressure)
+        
+        self.pressure = self.pressure[1:]
+        self.temperature = self.temperature[1:]
 
 
 
@@ -980,7 +974,6 @@ def plot_planet_prof(planet,particleplanet=None,show=False,path=False,coreEOS='i
     axes[2,0].legend()
     axes[2,1].legend()
 
-    # this saves a pdf file -- vector graphics are preferred
     if path:
         plt.savefig(path, format='pdf', dpi=300,transparent=True)
 
@@ -1011,7 +1004,8 @@ class EquilRun:
         #ie = npy.empty(0)
         self.pe = npy.empty(0)
         self.v = npy.empty(0)
-    
+
+
     def load(self, loc, thermo=False, inter=1, fname1D='planetprofile.dat',names1='equil_',names2='equilB_', icfile='planetIC.sw.hdf5'):
         """for gadget standard set names1 to 'snapshot_' and names2 to None"""
         N1 = N2 = 0
@@ -1104,7 +1098,6 @@ class EquilRun:
         #pe = pe - minpe
         
         #energy = ke+ie+pe
-        
 
     
     def equil_mov_plot(n,scale='Mm'):
