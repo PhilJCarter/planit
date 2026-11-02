@@ -4,7 +4,7 @@ import matplotlib
 matplotlib.use('Agg')
 import IPython
 from planit.globaldefs import *
-from planit import Impact
+from planit import Impact, multiplotseq
 from planit import plotting
 
 @pytest.mark.parametrize(
@@ -37,7 +37,7 @@ def test_impact_plotseq_material(impact_class_loaded):
 
 
 def test_impact_plotseq_phase(impact_class_loaded):
-    fig = impact_class_loaded.plotseq(n=3,ptype='phase')
+    fig = impact_class_loaded.plotseq(n=3,ptype='phase',focus='targcore')
     assert isinstance(fig, matplotlib.pyplot.Figure)
 
 
@@ -69,4 +69,10 @@ def test_impact_mov_temperature(impact_class_loaded):
 def test_snapshot_plot(snasphot_class_loaded, ptype):
     fig = snasphot_class_loaded.plot(ptype=ptype)
     assert isinstance(fig, matplotlib.pyplot.Figure)
+
+
+def test_impact_multiplot_phase_mat(impact_class_loaded):
+    fig = multiplotseq(impact_class_loaded, n=3, types=['phase','mat'])
+    assert isinstance(fig, matplotlib.pyplot.Figure)
+
 

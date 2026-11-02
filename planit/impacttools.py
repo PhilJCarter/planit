@@ -301,17 +301,17 @@ def multiplotseq(imps, n=4, types='materials', seqs=None, times=None, scale='Mm'
         types=[types,]
     if seqs is None: # and times is None:
         if imps[0].nsnaps>n:
-            seqs = npy.logspace(0,npy.log10(len(imps[0].data)-1),n).astype(int)
+            seqs = [npy.logspace(0,npy.log10(len(imps[0].data)-1),n).astype(int),]
         else:
-            seqs = npy.arange(imps[0].nsnaps)
+            seqs = [npy.arange(imps[0].nsnaps),]
     elif not isinstance(seqs,list):
         n = len(seqs)
         seqs = [seqs,]
-    elif seqs:
-        n = [len(s) for s in seqs]
-        if not all(x==n[0] for x in n):
-            print('Warning: unequal sequences will produce ugly plots')
-    
+    #elif seqs:
+    n = [len(s) for s in seqs]
+    if not all(x==n[0] for x in n):
+        print('Warning: unequal sequences will produce ugly plots')
+
     if not isinstance(zoom,list):
         zoom=[zoom,]
  

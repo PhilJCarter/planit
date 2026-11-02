@@ -193,3 +193,16 @@ def test_interp_ANEOS_S(execcount):
     EOSpasser = EOS.make_passer_class()
     #U = eos.tabinterp.from_rhoT('U',EOSpasser.rho[j]*(1.-1e-15),EOSpasser.T[i]*(1.-1e-15),EOSpasser)
     assert eos.tabinterp.from_rhoU('S', EOS.rho[j]*(1.-1e-15), EOS.U[i,j]*(1.-1e-15), EOSpasser) == pytest.approx(EOS.S[i,j], rel=1.2e-1, abs=1e-6)
+
+
+@pytest.mark.parametrize('execcount', range(200))
+def test_interp_HM80_T(execcount):
+    EOS = eos.select('HM80HHe')
+    j = npy.random.randint(0, high=len(EOS.rho)-1)
+    i = npy.random.randint(0, high=len(EOS.U_1D)-1)
+    print(EOS.MODELNAME, j, i)
+    EOSpasser = EOS.make_passer_class()
+    Pinterp = eos.calcprop('T', 'rho', 'U', EOS.rho[j]*(1.+1e-10), EOS.U_1D[i]*(1.+1e-10)*eos.uconversion_U_inv, 'HM80HHe')
+    assert Pinterp == pytest.approx(EOS.T_2D[i,j], rel=1e-3) # * eos.uconversion_T
+
+

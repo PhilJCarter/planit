@@ -1,6 +1,6 @@
 [project]
 name = "planit"
-version = "1.2.5"
+version = "1.2.6"
 authors = [
     {name = "Philip Carter", email = "p.carter@bristol.ac.uk"},
 ]
@@ -14,7 +14,7 @@ dependencies = ["numpy","scipy","matplotlib","numba","h5py","seagen","cmasher","
 Homepage = "https://github.com/PhilJCarter/planit"
 
 [tool.setuptools.package-data]
-planit = ["data/*", "eos/data/aneos-iron-2020-master/*", "eos/data/aneos-forsterite-2019-master/*"]
+planit = ["data/*", "eos/data/aneos-iron-2020-master/*", "eos/data/aneos-forsterite-2019-master/*", "eos/data/HM80_HHe/*"]
 
 #[tool.setuptools.packages.find]
 #exclude = ["planit.eos.data*", "tests*"]
