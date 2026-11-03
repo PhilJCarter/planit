@@ -9,6 +9,7 @@ from .eostab_extension import *
 from .aneostable import *
 from .aquatable import *
 from .rhoUtable import *
+from .hm80 import *
 from . import tabinterp
 
 import numpy as npy
