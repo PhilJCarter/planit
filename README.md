@@ -42,7 +42,7 @@ an impact simulation.\
 - HM80 Hydrogen-Helium ([Hubbard & MacFarlane, 1980](https://ui.adsabs.harvard.edu/link_gateway/1980JGR....85..225H/doi:10.1029/JB085iB01p00225); [Lock & Stewart, 2024](https://ui.adsabs.harvard.edu/link_gateway/2024PSJ.....5...28L/doi:10.3847/PSJ/ad0b16)): `HM80HHe`
 
 They can be accessed using the names given above (as well as some variations) or using the 
-corresponding SWIFT/WoMa ID number.\
+corresponding SWIFT/WoMa or EOSLib ID number.\
 User supplied SESAME tables can also be loaded into one of five custom slots.
 
 > [!NOTE]
@@ -90,9 +90,6 @@ The loader validates the directory and file names, but it does not validate the 
 quality or full internal consistency of a table. `NEW-SESAME-EXT.TXT` is required, so a
 minimal standard SESAME 201/301 file alone is not sufficient. Custom tables are cached
 only in the current Python process, and there are only five simultaneous custom slots.
-
->[!WARNING]
-> HM80 EoS support is not fully tested yet!
 
 > [!NOTE]
 > `ANEOSPyrolite` has been assigned the SWIFT/WoMa ID 403 in planit but does not currently have an 
