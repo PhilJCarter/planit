@@ -123,6 +123,15 @@ def loadANEOSEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS', debug=False,
         # DATE    = 210627.  # Date as a single 6-digit number YYMMDD
         # VERSION = 0.1      # ANEOS Parameters Version number
 
+    elif eos == 'Water-ANEOS-SLVTv0.3G1':
+        #eosdir = eospath + 'aneos-pyrolite-2022/'
+        eosdir = get_eosdata_path("aneos-water")
+        womaID = 404
+        # MODELNAME = 'Water-ANEOS-SLVTv0.3G1'
+        # MATID   = 1.0      # MATID number
+        # DATE    = 221017.  # Date as a single 6-digit number YYMMDD
+        # VERSION = 0.3      # ANEOS Parameters Version number
+
     elif eos == '5PhaseEOSv8.3':
         #eosdir = eospath + '5-phase-water/'
         eosdir = get_eosdata_path("5-phase-water")

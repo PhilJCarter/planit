@@ -117,6 +117,14 @@ def test_multi_layer_planet_creation():
     assert isentropes[2].material == 'SS08'
 
 
+def test_multi_layer_planet_creation_aneos_pyro_water():
+    p0,isentropes = make_1D_planet(mass=[0.3*Mearth,0.65*Mearth,0.05*Mearth], Pmin=1.e6,
+        mtolerance=1e-3, layers=['iron','pyrolite','ANEOSwater'], S=[1.80,2.8,4.0], fixcoreT=True)
+    assert p0.M == pytest.approx(Mearth, rel=2e-3)
+    assert p0.cf == pytest.approx(0.3, rel=5e-4)
+    assert isentropes[2].material == 'ANEOSwater'
+
+
 def test_multi_layer_planet_wadiabatic_layer_creation():
     p0,isentropes = make_1D_planet(mass=[0.3*Mearth,0.64*Mearth,0.06*Mearth], Pmin=1.e6,
         mtolerance=5e-3, layers=[402,'forsterite','HM80HHe'], S=[1.8,2.7,'adiabatic'], fixcoreT=False)

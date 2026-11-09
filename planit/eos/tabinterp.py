@@ -37,14 +37,14 @@ def from_rhoT(Qlab, rho, T, EOS, dolog=True):
         Qarr = EOS.P
     elif Qlab == 'U':
         Qarr = EOS.U
-    elif Qlab == 'A':
+    elif Qlab == 'A' and EOS.TYPE in ['ANEOS', 'SESAME']:
         Qarr = EOS.A
-    elif Qlab == 'cs':
+    elif Qlab == 'cs' and EOS.TYPE in ['ANEOS', 'SESAME', 'AQUA']:
         Qarr = EOS.cs
-    elif Qlab == 'cv':
+    elif Qlab == 'cv' and EOS.TYPE in ['ANEOS', 'SESAME']:
         Qarr = EOS.cv
     else:
-        raise ValueError('Unknown thermodynamic property:', Qlab)
+        raise ValueError('Unknown/unsupported thermodynamic property:', Qlab)
     
     Q00 = Qarr[iT0,ir0]
     Q01 = Qarr[iT0,ir0+1]
@@ -83,7 +83,7 @@ def from_rhoT(Qlab, rho, T, EOS, dolog=True):
 @numba.njit
 def from_rhoU(Qlab, rho, U, EOS, dolog=True):
 
-    if rho > 2.0:
+    if rho > 2.0 and EOS.TYPE != 'SCVH':
         dolog = False
 
     if rho <= EOS.rho[0]:
@@ -122,14 +122,14 @@ def from_rhoU(Qlab, rho, U, EOS, dolog=True):
         Qarr = EOS.P
     elif Qlab == 'T':
         Tarr = EOS.T
-    elif Qlab == 'A':
+    elif Qlab == 'A' and EOS.TYPE in ['ANEOS', 'SESAME']:
         Qarr = EOS.A
-    elif Qlab == 'cs':
+    elif Qlab == 'cs' and EOS.TYPE in ['ANEOS', 'SESAME', 'AQUA']:
         Qarr = EOS.cs
-    elif Qlab == 'cv':
+    elif Qlab == 'cv' and EOS.TYPE in ['ANEOS', 'SESAME']:
         Qarr = EOS.cv
     else:
-        raise ValueError('Unknown thermodynamic property:', Qlab)
+        raise ValueError('Unknown/unsupported thermodynamic property:', Qlab)
 
     if Qlab == 'T':
         Q00 = Tarr[iU0r0]
@@ -180,7 +180,7 @@ def from_rhoU(Qlab, rho, U, EOS, dolog=True):
 @numba.njit
 def from_rhoS(Qlab, rho, S, EOS, dolog=True):
 
-    if rho > 2.0:
+    if rho > 2.0 and EOS.TYPE != 'SCVH':
         dolog = False
 
     if rho <= EOS.rho[0]:
@@ -220,14 +220,14 @@ def from_rhoS(Qlab, rho, S, EOS, dolog=True):
         Qarr = EOS.P
     elif Qlab == 'T':
         Tarr = EOS.T
-    elif Qlab == 'A':
+    elif Qlab == 'A' and EOS.TYPE in ['ANEOS', 'SESAME']:
         Qarr = EOS.A
-    elif Qlab == 'cs':
+    elif Qlab == 'cs' and EOS.TYPE in ['ANEOS', 'SESAME', 'AQUA']:
         Qarr = EOS.cs
-    elif Qlab == 'cv':
+    elif Qlab == 'cv' and EOS.TYPE in ['ANEOS', 'SESAME']:
         Qarr = EOS.cv
     else:
-        raise ValueError('Unknown thermodynamic property:', Qlab)
+        raise ValueError('Unknown/unsupported thermodynamic property:', Qlab)
 
     if Qlab == 'T':
         Q00 = Tarr[iS0r0]
@@ -305,7 +305,7 @@ def from_rhoU1D(Qlab, rho, U, EOS, dolog=True):
     elif Qlab == 'T':
         Qarr = EOS.T_2D
     else:
-        raise ValueError('Unknown thermodynamic property:', Qlab)
+        raise ValueError('Unknown/unsupported thermodynamic property:', Qlab)
     
     Q00 = Qarr[iU0,ir0]
     Q01 = Qarr[iU0,ir0+1]

@@ -92,7 +92,8 @@ class EOStable(extEOStable):
         # passer.KPA = self.KPA
         # passer.MDQ = self.MDQ
         passer.TYPE = self.TYPE
-        passer.womaID = self.womaID
+        if self.womaID:
+            passer.womaID = self.womaID
         passer.U_1D = self.U_1D
         passer.T_2D = self.T_2D
         return passer
@@ -140,6 +141,18 @@ class EOStable(extEOStable):
         self.P = data[:self.ND].reshape(self.ND,self.NU).T/1.e9
         self.T_2D = data[self.ND:].reshape(self.ND,self.NU).T
 
+
+    def loadSCVHtable(self,fname):
+        # logT [K] logRho [g/cc] logP [barye]  logE [erg/g] logS [erg/g/K]
+        T, rho, P, U, S = npy.loadtxt(fname,skiprows=1,unpack=True)
+        self.ND = len(npy.unique(rho))
+        self.NT = len(npy.unique(T))
+        self.T = (10**T)[::self.ND]
+        self.rho = (10**rho)[0:self.ND]
+        self.P = (10**P).reshape(self.NT,self.ND) / 1.e10
+        self.S = (10**S).reshape(self.NT,self.ND) / 1.e10
+        self.U = (10**U).reshape(self.NT,self.ND) / 1.e10
+        
 
 # EOShugoniot_spec = [
 #     ('NH', numba.types.int32),

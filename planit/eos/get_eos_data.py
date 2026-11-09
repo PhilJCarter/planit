@@ -5,25 +5,33 @@ import urllib.request
 import zipfile
 import platformdirs
 
-DATA_VERSION = "v1.2.5"
+# Changing requires a new GitHub/PyPI release!
+DATA_VERSION = "v1.3.0"
 
 CACHE_DIR = platformdirs.user_cache_path("planit")
 #CACHE_DIR = pathlib.Path.home() / ".planit"
 VERSION_FILE = CACHE_DIR / "data_version.txt"
 
 # Map directory keys to their remote zip file names
+# Need to add new EoS here!
 REMOTE_DIRECTORIES = {
     "aneos-pyrolite-2022": "aneos-pyrolite-2022.zip",
     "aqua-water": "aqua-water.zip",
     "5-phase-water": "5-phase-water.zip",
-    "aneos-Fe85Si15-2020-master": "aneos-Fe85Si15-2020-master.zip"
-}
-
+    "aneos-Fe85Si15-2020-master": "aneos-Fe85Si15-2020-master.zip",
+    "SCVH": "SCVH.zip",
+    "aneos-water": "aneos-water.zip",
+    }
+# Map to internal source for testing/install from source
+# Need to add new EoS here!
 REPO_SOURCE_DATA = {
     "aneos-pyrolite-2022": pathlib.Path(__file__).parent.parent / "eos/data/aneos-pyrolite-2022",
     "aqua-water": pathlib.Path(__file__).parent.parent / "eos/data/aqua-water",
     "5-phase-water": pathlib.Path(__file__).parent.parent / "eos/data/5-phase-water",
-    "aneos-Fe85Si15-2020-master": pathlib.Path(__file__).parent.parent / "eos/data/aneos-Fe85Si15-2020-master"}
+    "aneos-Fe85Si15-2020-master": pathlib.Path(__file__).parent.parent / "eos/data/aneos-Fe85Si15-2020-master",
+    "SCVH": pathlib.Path(__file__).parent.parent / "eos/data/SCVH",
+    "aneos-water": pathlib.Path(__file__).parent.parent / "eos/data/aneos-water",
+    }
 
 
 def check_local_version_valid() -> bool:

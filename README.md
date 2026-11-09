@@ -9,8 +9,10 @@ The **Plan**etary **I**mpact **T**oolkit provides tools for accessing, manipulat
 analysing smoothed particle hydrodynamcis (SPH) impact simulation data, and creating 
 planets for SPH impact simulations.
 
-Philip J. Carter (p.carter@bristol.ac.uk)\
-Sarah T. Stewart (sstewa56@asu.edu)
+[Philip J. Carter](https://github.com/PhilJCarter) (p.carter@bristol.ac.uk)\
+[Sarah T. Stewart](https://github.com/ststewart) (sstewa56@asu.edu)\
+[Simon J. Lock](https://github.com/sjl499) (s.lock@bristol.ac.uk)
+
 
 ## Overview
 
@@ -28,8 +30,10 @@ an impact simulation.\
 > [!NOTE]
 > Currently only two-layer planets with a forsterite mantle are *fully* supported.
 
+
 ## Installation
 **planit** is available in PyPI and can be installed with `pip install planit`.
+
 
 ## Equations of State (EoS)
 
@@ -38,18 +42,36 @@ an impact simulation.\
 - ANEOS Iron ([Stewart, 2020](https://github.com/ststewart/aneos-iron-2020)): `ANEOSIron`
 - ANEOS Fe85Si15 ([Stewart, 2020](https://github.com/ststewart/aneos-Fe85Si15-2020/)): `ANEOSFeSiAlloy`
 - ANEOS Pyrolite ([Stewart et al., 2022](https://github.com/ststewart/aneos-pyrolite-2022/)): `ANEOSPyrolite`
-- 5-phase Water ([Senft & Stewart, 2008](https://ui.adsabs.harvard.edu/link_gateway/2008M&PS...43.1993S/doi:10.1111/j.1945-5100.2008.tb00657.x)): `5PhaseWater`
-- HM80 Hydrogen-Helium ([Hubbard & MacFarlane, 1980](https://ui.adsabs.harvard.edu/link_gateway/1980JGR....85..225H/doi:10.1029/JB085iB01p00225); [Lock & Stewart, 2024](https://ui.adsabs.harvard.edu/link_gateway/2024PSJ.....5...28L/doi:10.3847/PSJ/ad0b16)): `HM80HHe`
+- ANEOS Water ([Stewart, 2024](https://github.com/ststewart/aneos-water/)): `ANEOSWater`
+- 5-phase Water ([Senft & Stewart, 2008](https://doi.org/10.1111/j.1945-5100.2008.tb00657.x)): `5PhaseWater`
+- HM80 Hydrogen-Helium ([Hubbard & MacFarlane, 1980](https://ui.adsabs.harvard.edu/link_gateway/1980JGR....85..225H/doi:10.1029/JB085iB01p00225); [Lock & Stewart, 2024](https://doi.org/10.3847/PSJ/ad0b16)): `HM80HHe`
+- SCVH Hydrogen-Helium ([Saumon  et al., 1995](https://ui.adsabs.harvard.edu/abs/1995ApJS...99..713S/abstract); [Reinhardt & Meier](https://github.com/chreinhardt/scvh)): `SCVH_HHe`
 
 They can be accessed using the names given above (as well as some variations) or using the 
 corresponding SWIFT/WoMa or EOSLib ID number.\
-User supplied SESAME tables can also be loaded into one of five custom slots.
+User supplied SESAME tables can also be loaded into one of five custom slots (see below).
 
 > [!NOTE]
 > If installed via pip, Forsterite and Iron are included, data for other EoS will be downloaded when required.
 
+> [!NOTE]
+> `ANEOSPyrolite` has been assigned the SWIFT/WoMa ID 403 in planit but does not currently have an 
+assigned ID in SWIFT.
+> `ANEOSWater` has been assigned the SWIFT/WoMa ID 404 in planit. 
+> Using a modified version of SWIFT or using the user supplied EoS functionality 
+will be required.
 
-### Custom SESAME EoS tables
+
+## Planet generation
+
+`planit.makeplanet` differs from other planet creation code in that produces planets with 
+isentropic layers, integrates outwards from the centre of the planet, and ensures the 
+requested mass and component mass fractions are matched (within tolerance). The default 
+behaviour prevents the unphyiscal scenario of a core cooler than the mantle at the 
+core-mantle boundary.
+
+
+## Custom SESAME EoS tables
 
 **planit** supports custom tables in the same SESAME-style layout used by its bundled ANEOS
 and 5-phase-water tables. A table directory must contain all of these files:
@@ -90,18 +112,4 @@ The loader validates the directory and file names, but it does not validate the 
 quality or full internal consistency of a table. `NEW-SESAME-EXT.TXT` is required, so a
 minimal standard SESAME 201/301 file alone is not sufficient. Custom tables are cached
 only in the current Python process, and there are only five simultaneous custom slots.
-
-> [!NOTE]
-> `ANEOSPyrolite` has been assigned the SWIFT/WoMa ID 403 in planit but does not currently have an 
-assigned ID in SWIFT. Using a modified version of SWIFT or using the user supplied EoS functionality 
-will be required.
-
-
-## Planet generation
-
-`planit.makeplanet` differs from other planet creation code in that produces planets with 
-isentropic layers, integrates outwards from the centre of the planet, and ensures the 
-requested mass and component mass fractions are matched (within tolerance). The default 
-behaviour prevents the unphyiscal scenario of a core cooler than the mantle at the 
-core-mantle boundary.
 

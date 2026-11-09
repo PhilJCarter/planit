@@ -3,9 +3,8 @@
 """
 
 from ..main import *
-from .eos_table import *
+#from .eos_table import *
 from .eostab_extension import *
-import numpy as npy
 
 
 def loadrhoUEOS(eos='HM80-HHe-v2.0', eostype='HM80', debug = False):

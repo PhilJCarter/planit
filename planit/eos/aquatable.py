@@ -3,10 +3,9 @@
 """
 
 from ..main import *
-from .eos_table import *
+#from .eos_table import *
 from .eostab_extension import *
 from .get_eos_data import get_eosdata_path
-import numpy as npy
 
 
 def loadAQUAEOS(eos='Water-AQUA-v1.0', eostype='AQUA', debug = False):

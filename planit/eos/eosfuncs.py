@@ -10,6 +10,7 @@ from .aneostable import *
 from .aquatable import *
 from .rhoUtable import *
 from .hm80 import *
+from .scvhtable import *
 from . import tabinterp
 
 import numpy as npy
@@ -29,6 +30,8 @@ def loadEOS(eos='Iron-ANEOS-SLVTv0.2G1', eostype='ANEOS'):
         return loadAQUAEOS(eos=eos, eostype='AQUA')
     elif eostype == 'HM80':
         return loadrhoUEOS(eos=eos, eostype='HM80')
+    elif eostype == 'SCVH':
+        return loadSCVHEOS(eos=eos, eostype='SCVH')
     else:
         raise ValueError('Error: unsupported EOS type:', eostype)
 
@@ -38,10 +41,12 @@ ANEOSIron       = None
 ANEOSFeSiAlloy  = None
 ANEOSForsterite = None
 ANEOSPyrolite   = None
+ANEOSWater      = None
 
 FivePhaseWater  = None
 AQUAWater = None
 HM80HHe   = None
+SCVHHHe   = None
 
 UserEOS0 = None
 UserEOS1 = None
@@ -55,9 +60,11 @@ ironnames  = ['Iron-ANEOS-SLVTv0.2G1', 'iron', 'ANEOSIron', 'Fe', 'Iron', 401, 6
 alloynames = ['Fe85Si15-ANEOS-SLVTv0.2G1', 'alloy', 'ANEOSFeSiAlloy', 'FeSi', 'Alloy', 'IronAlloy', 'ironalloy', 402, 64]
 forsteritenames = ['Forsterite-ANEOS-SLVTv1.0G1', 'forsterite', 'ANEOSForsterite', 'Forsterite', 'Fo', 400, 62]
 pyrolitenames = ['Pyrolite_ANEOS_SLVTv0.2', 'pyrolite', 'Pyrolite', 'ANEOSPyrolite', 403]
+waternames = ['Water-ANEOS-SLVTv0.3G1', 'ANEOSwater', 'ANEOSWater', 'ANEOSH2O', 'water', 'Water', 404, 66]
 aquawaternames = ['Water-AQUA-v1.0', 'AQUA', 'AQUAWater', 'aqua', 304]
 fivephasewaternames = ['5PhaseEOSv8.3', '5PhaseWater', '5phasewater', 'SS08', 'SenftStewartWater', 'SenftStewart08', 303]
 hm80HHenames = ['HM80-HHe-v2.0', 'HM80_HHe', 'HM80HHe', 200]
+scvhHHenames = ['SCVH_H_He_extended', 'SCVHHHe', 'SCVH_HHe', 114]
 
 #user0names = ['User0', 900]
 #user1names = ['User1', 901]
@@ -166,6 +173,11 @@ def select(name, eosname=None, eosdir=None):
         if not ANEOSPyrolite:
             ANEOSPyrolite = loadEOS(eos='Pyrolite_ANEOS_SLVTv0.2', eostype='ANEOS')
         return ANEOSPyrolite
+    elif name in waternames:
+        global ANEOSWater
+        if not ANEOSWater:
+            ANEOSWater = loadEOS(eos='Water-ANEOS-SLVTv0.3G1', eostype='ANEOS')
+        return ANEOSWater
     elif name in aquawaternames:
         global AQUAWater
         if not AQUAWater:
@@ -181,6 +193,11 @@ def select(name, eosname=None, eosdir=None):
         if not HM80HHe:
             HM80HHe = loadEOS(eos='HM80-HHe-v2.0', eostype='HM80')
         return HM80HHe
+    elif name in scvhHHenames:
+        global SCVHHHe
+        if not SCVHHHe:
+            SCVHHHe = loadEOS(eos='SCVH_H_He_extended', eostype='SCVH')
+        return SCVHHHe
     else:
         raise ValueError('Unknown EOS:', name)
         
@@ -223,9 +240,9 @@ class isentrope_class(eos_isentrope_class):
         # loop across all densities and extract the values for the requested isentrope
         for i in range(0,self.ND):
             ind = npy.where(EOS.S[:,i] > 0)[0]
-            interpfunction = interpolate.interp1d(EOS.S[ind,i],EOS.P[ind,i]) # MJ/K/kg, GPa
+            interpfunction = interpolate.interp1d(EOS.S[ind,i],EOS.P[ind,i], bounds_error=False) # MJ/K/kg, GPa
             self.pressure[i] = interpfunction(self.entropy/1.E3) # GPa
-            interpfunction = interpolate.interp1d(EOS.S[ind,i],EOS.T[ind]) # MJ/K/kg, K
+            interpfunction = interpolate.interp1d(EOS.S[ind,i],EOS.T[ind], bounds_error=False) # MJ/K/kg, K
             self.temperature[i] = interpfunction(self.entropy/1.E3) # K
 
 
@@ -262,6 +279,7 @@ def pkdgrav3towoma(pkdmats):
     swiftmats[pkdmats==63] = 401 # iron
     swiftmats[pkdmats==62] = 400 # forsterite
     swiftmats[pkdmats==64] = 402 # FeSi alloy
+    swiftmats[pkdmats==66] = 404 # water
     
     return swiftmats
 
@@ -272,6 +290,7 @@ def womatopkdgrav3(swiftmats):
     pkdmats[swiftmats==401] = 63 # iron
     pkdmats[swiftmats==400] = 62 # forsterite
     pkdmats[swiftmats==402] = 64 # FeSi alloy
+    pkdmats[swiftmats==404] = 66 # water
     
     return pkdmats
 
@@ -348,7 +367,7 @@ def _calc_prop(Qlab,Xlab,Ylab,X,Y,EOS):
     Q = npy.zeros(len(X))
     #for i in numba.prange(len(X)):
 
-    if EOS.TYPE in ['ANEOS', 'SESAME', 'AQUA']:
+    if EOS.TYPE in ['ANEOS', 'SESAME', 'AQUA', 'SCVH']:
         if Ylab == 'S':
             for i in numba.prange(len(X)):
                 Q[i] = tabinterp.from_rhoS(Qlab, X[i], Y[i], EOS)

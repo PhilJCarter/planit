@@ -38,6 +38,8 @@ jobs:
           zip -r aneos-Fe85Si15-2020-master.zip aneos-Fe85Si15-2020-master
           zip -r aqua-water.zip aqua-water
           zip -r 5-phase-water.zip 5-phase-water
+          zip -r SCVH.zip SCVH
+          zip -r aneos-water.zip aneos-water
 
       # Upload the zipped folder back into the release you just created
       - name: Upload Assets to Existing Release
@@ -48,6 +50,8 @@ jobs:
             planit/eos/data/aqua-water.zip
             planit/eos/data/aneos-Fe85Si15-2020-master.zip
             planit/eos/data/5-phase-water.zip
+            planit/eos/data/SCVH.zip
+            planit/eos/data/aneos-water.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
