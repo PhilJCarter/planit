@@ -10,7 +10,7 @@ def test_header_creation():
 
 
 def test_DM_creation():
-    dm = SnapDM()
+    dm = SnapDark()
     assert dm.vel.shape == (0,3)
 
 
@@ -135,6 +135,6 @@ def test_correct_entropy_dict_len(reference_snapshot):
 
 def test_add_DM(snapshot_class_loaded):
     s = snapshot_class_loaded
-    s.add_DM_obj()
-    assert len(s.dm.id) == 1
-    assert s.dm.x[0] == 0
+    s.add_DarkM_obj()
+    assert len(s.dark.id) == 1
+    assert s.dark.x[0] == 0

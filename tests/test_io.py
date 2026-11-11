@@ -102,14 +102,14 @@ def test_snapshot_tipsy_write(reference_snapshot, tmp_path):
     npy.testing.assert_allclose(s0.pot, s1.pot, rtol=1e-5)
 
 
-def test_snapshot_tipsy_dm_writeread(reference_snapshot, tmp_path):
+def test_snapshot_tipsy_dark_writeread(reference_snapshot, tmp_path):
     s0 = Snapshot()
     s0.load(reference_snapshot)
-    s0.add_DM_obj()
+    s0.add_DarkM_obj()
     s0.write(tmp_path / "test")
     s1 = Snapshot()
     s1.load(tmp_path / "test.std")
     
     assert s0.N == s1.N
-    assert (s0.dm.id == s1.dm.id).all()
-    npy.testing.assert_allclose(s0.dm.vy, s1.dm.vy, rtol=1e-8)
+    assert (s0.dark.id == s1.dark.id).all()
+    npy.testing.assert_allclose(s0.dark.vy, s1.dark.vy, rtol=1e-8)

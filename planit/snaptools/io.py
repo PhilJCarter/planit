@@ -496,23 +496,23 @@ def load_tipsy(snap, fname, headonly=False, recenter=False, thermo=False, debug=
         else:
             print('array mismatch')
 
-    if nDark > 0 and any(x in ['all','dm'] for x in loadprops):
-        if object.__getattribute__(snap,'dm') is None:
-            snap._add_dm()
-        snap.dm.id = npy.arange(len(dark['mass']))
-        snap.dm.x = dark['x'] * Lfactor
-        snap.dm.y = dark['y'] * Lfactor
-        snap.dm.z = dark['z'] * Lfactor
-        snap.dm.pos = npy.array((snap.dm.x, snap.dm.y, snap.dm.z))
-        snap.dm.pos = snap.dm.pos.T
-        snap.dm.vx = dark['vx'] * Lfactor/Tfactor
-        snap.dm.vy = dark['vy'] * Lfactor/Tfactor
-        snap.dm.vz = dark['vz'] * Lfactor/Tfactor
-        snap.dm.vel = npy.array((snap.dm.vx, snap.dm.y, snap.dm.vz))
-        snap.dm.vel = snap.dm.vel.T
-        snap.dm.m = dark['mass'].astype(float) * Mfactor
-        snap.dm.pot = dark['phi'] * Lfactor**2/(Tfactor**2)
-        snap.dm.soft = dark['eps'] * Lfactor
+    if nDark > 0 and any(x in ['all','dark'] for x in loadprops):
+        if object.__getattribute__(snap,'dark') is None:
+            snap._add_dark()
+        snap.dark.id = npy.arange(len(dark['mass']))
+        snap.dark.x = dark['x'] * Lfactor
+        snap.dark.y = dark['y'] * Lfactor
+        snap.dark.z = dark['z'] * Lfactor
+        snap.dark.pos = npy.array((snap.dark.x, snap.dark.y, snap.dark.z))
+        snap.dark.pos = snap.dark.pos.T
+        snap.dark.vx = dark['vx'] * Lfactor/Tfactor
+        snap.dark.vy = dark['vy'] * Lfactor/Tfactor
+        snap.dark.vz = dark['vz'] * Lfactor/Tfactor
+        snap.dark.vel = npy.array((snap.dark.vx, snap.dark.y, snap.dark.vz))
+        snap.dark.vel = snap.dark.vel.T
+        snap.dark.m = dark['mass'].astype(float) * Mfactor
+        snap.dark.pot = dark['phi'] * Lfactor**2/(Tfactor**2)
+        snap.dark.soft = dark['eps'] * Lfactor
 
 
 def load_seagen(snap, partplanet, thermo=False, init_h=100e5):
@@ -756,8 +756,8 @@ def write_tipsy(snap, outname, units='default', mats=[401, 400]):
     snap.inclthermo = True # ensure T will be available if loaded from a non-tipsy file
 
     nDark = 0
-    if snap.dm is not None:
-        nDark = len(snap.dm.id)
+    if snap.dark is not None:
+        nDark = len(snap.dark.id)
 
     N_low, Ngas_low, Ndark_low, Nstar_low, pad = encode_tipsy_header(snap.header.npart[0]+nDark, snap.header.npart[0], nDark, 0)
 
@@ -794,17 +794,17 @@ def write_tipsy(snap, outname, units='default', mats=[401, 400]):
     gas['phi'] = snap.pot * Lfactor**2/(Tfactor**2)
 
     if nDark > 0:
-        dark['x'] = snap.dm.x * Lfactor
-        dark['y'] = snap.dm.y * Lfactor
-        dark['z'] = snap.dm.z * Lfactor
+        dark['x'] = snap.dark.x * Lfactor
+        dark['y'] = snap.dark.y * Lfactor
+        dark['z'] = snap.dark.z * Lfactor
 
-        dark['vx'] = snap.dm.vx * Lfactor/Tfactor
-        dark['vy'] = snap.dm.vy * Lfactor/Tfactor
-        dark['vz'] = snap.dm.vz * Lfactor/Tfactor
+        dark['vx'] = snap.dark.vx * Lfactor/Tfactor
+        dark['vy'] = snap.dark.vy * Lfactor/Tfactor
+        dark['vz'] = snap.dark.vz * Lfactor/Tfactor
 
-        dark['mass'] = snap.dm.m * Mfactor
-        dark['phi'] = snap.dm.pot * Lfactor**2/(Tfactor**2)
-        dark['eps'] = snap.dm.soft * Lfactor
+        dark['mass'] = snap.dark.m * Mfactor
+        dark['phi'] = snap.dark.pot * Lfactor**2/(Tfactor**2)
+        dark['eps'] = snap.dark.soft * Lfactor
 
 
     with open(outname,'wb') as newfile:

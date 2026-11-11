@@ -43,7 +43,7 @@ class SnapHeader:
         self.flag_entr_ics = ent
 
 
-class SnapDM:
+class SnapDark:
     """
     Class for holding dark matter particles
     """
@@ -110,7 +110,7 @@ class Snapshot:
         # extras
         self.file = None            # name of file read from
         self.inclthermo = False     # read/calculate extra thermodynamic variables
-        self.dm = None              # generally don't need dark matter
+        self.dark = None              # generally don't need dark matter
         
 
     def initarrays(self):
@@ -155,7 +155,7 @@ class Snapshot:
         if attr in ['x','y','z','vx','vy','vz','pos','vel','id','m','S','rho','hsml','pot','P','T','U','cs'] and self.file:
             if len(super().__getattribute__(attr))==0 and self.file:
                 self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo, loadprops=[attr,])
-        elif attr in ['materialIDs', 'dm']:
+        elif attr in ['materialIDs', 'dark']:
             if super().__getattribute__(attr) is None and self.file:
                 self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo, loadprops=[attr,])
         elif attr in ['rem', 'bnd']:
@@ -189,8 +189,8 @@ class Snapshot:
         self.initarrays()
 
 
-    def _add_dm(self):
-        self.dm = SnapDM()
+    def _add_dark(self):
+        self.dark = SnapDark()
 
 
     def ensure_matIDs(self,mats):
@@ -558,13 +558,13 @@ class Snapshot:
         self.S = entropy
 
 
-    def add_DM_obj(self, m=Msun, pos=(0,0,0), vel=(0,0,0), soft_l=1e5):
-        if self.dm is None:
-            self._add_dm()
-        nDark = len(self.dm.id)
+    def add_DarkM_obj(self, m=Msun, pos=(0,0,0), vel=(0,0,0), soft_l=1e5):
+        if self.dark is None:
+            self._add_dark()
+        nDark = len(self.dark.id)
         if nDark > 0:
             print('WARNING: Snapshot already contains ', nDark, ' dark matter particle(s)!')
-        self.dm.add_obj(m=m, pos=pos, vel=vel, soft_l=soft_l)
+        self.dark.add_obj(m=m, pos=pos, vel=vel, soft_l=soft_l)
         self.header.npart[1] = self.header.npart[1] + 1
         
 
