@@ -50,7 +50,7 @@ def tmp_reference_impact_seq(tmp_path): #_factory
 
 
 @pytest.fixture
-def snasphot_class_loaded(reference_snapshot):
+def snapshot_class_loaded(reference_snapshot):
     s = planit.Snapshot()
     s.load(reference_snapshot, thermo=True)
 
