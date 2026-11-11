@@ -25,10 +25,8 @@ remnant masses, and vapor fractions.\
 `impacttools` provides the `Impact` class for loading and plotting snapshots produced by 
 an impact simulation.\
 `eos` provides classes and functions for accessing and using equations of state.\
+`plotting` provides functions to assist with making plots.\
 `utils` provides additional utility functions for analysis.
-
-> [!NOTE]
-> Currently only two-layer planets with a forsterite mantle are *fully* supported.
 
 
 ## Installation
@@ -52,7 +50,7 @@ corresponding SWIFT/WoMa or EOSLib ID number.\
 User supplied SESAME tables can also be loaded into one of five custom slots (see below).
 
 > [!NOTE]
-> If installed via pip, Forsterite and Iron are included, data for other EoS will be downloaded when required.
+> Currently only two-layer planets with a forsterite mantle are supported for phase calculations.
 
 > [!NOTE]
 > `ANEOSPyrolite` has been assigned the SWIFT/WoMa ID 403 in planit but does not currently have an 
@@ -60,6 +58,9 @@ assigned ID in SWIFT.
 > `ANEOSWater` has been assigned the SWIFT/WoMa ID 404 in planit. 
 > Using a modified version of SWIFT or using the user supplied EoS functionality 
 will be required.
+
+> [!NOTE]
+> If installed via pip, Forsterite and Iron are included, data for other EoS will be downloaded when required.
 
 
 ## Planet generation

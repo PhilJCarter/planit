@@ -1,12 +1,23 @@
 import pytest
 import numpy as npy
 from planit.globaldefs import *
-from planit import Snapshot
+from planit.snaptools import *
+
+
+def test_header_creation():
+    h = SnapHeader()
+    assert h.time == 0
+
+
+def test_DM_creation():
+    dm = SnapDark()
+    assert dm.vel.shape == (0,3)
 
 
 def test_snapshot_creation():
     s = Snapshot()
     assert s.header.time == s.N == 0
+
 
 def test_snapshot_matID():
     s = Snapshot()
@@ -14,18 +25,19 @@ def test_snapshot_matID():
     s.ensure_matIDs([401,402,400])
     npy.testing.assert_array_equal(npy.array([401,400,402]),s.materialIDs)
 
-def test_phase_calculation(snasphot_class_loaded):
-    snasphot_class_loaded.calc_phase()
-    assert (snasphot_class_loaded.meltfrac*snasphot_class_loaded.m).sum()/snasphot_class_loaded.m.sum() == pytest.approx(0.3,rel=1e-4)
-    assert snasphot_class_loaded.phase[20341] == pytest.approx(6.0,rel=1e-10)
+
+def test_phase_calculation(snapshot_class_loaded):
+    snapshot_class_loaded.calc_phase()
+    assert (snapshot_class_loaded.meltfrac*snapshot_class_loaded.m).sum()/snapshot_class_loaded.m.sum() == pytest.approx(0.3,rel=1e-4)
+    assert snapshot_class_loaded.phase[20341] == pytest.approx(6.0,rel=1e-10)
 
 
-def test_equilibration_check(snasphot_class_loaded):
-    assert snasphot_class_loaded.eq_test(threshold=0.001, verbose=True)
+def test_equilibration_check(snapshot_class_loaded):
+    assert snapshot_class_loaded.eq_test(threshold=0.001, verbose=True)
 
 
-def test_particle_removal(snasphot_class_loaded):
-    s = snasphot_class_loaded
+def test_particle_removal(snapshot_class_loaded):
+    s = snapshot_class_loaded
     print(s.N,len(s.m))
     s.remove(npy.random.choice(s.id))
     print(s.N,len(s.m))
@@ -52,8 +64,8 @@ def test_particle_removal(reference_snapshot):
         s.remove(-396)
 
 
-def test_bound_mass_single_body(snasphot_class_loaded):
-    s = snasphot_class_loaded
+def test_bound_mass_single_body(snapshot_class_loaded):
+    s = snapshot_class_loaded
     s.bound_mass(nrem=5, save=False)
     assert s.m[s.rem==1].sum() == s.m.sum()
     assert len(s.id[s.rem==0]) == 0
@@ -120,3 +132,9 @@ def test_correct_entropy_dict_len(reference_snapshot):
     with pytest.raises(ValueError):
         s.correct_entropy({1:1.81, 2:3.03, 3:5.3})
 
+
+def test_add_DM(snapshot_class_loaded):
+    s = snapshot_class_loaded
+    s.add_DarkM_obj()
+    assert len(s.dark.id) == 1
+    assert s.dark.x[0] == 0

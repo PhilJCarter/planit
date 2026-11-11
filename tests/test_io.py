@@ -90,7 +90,7 @@ def test_load_seagen():
     npy.testing.assert_array_equal(s.P, particles.P)
 
 
-def test_snasphot_tipsy_write(reference_snapshot, tmp_path):
+def test_snapshot_tipsy_write(reference_snapshot, tmp_path):
     s0 = Snapshot()
     s0.load(reference_snapshot)
     s0.write(tmp_path / "test")
@@ -100,3 +100,16 @@ def test_snasphot_tipsy_write(reference_snapshot, tmp_path):
     assert s0.N == s1.N
     assert (s0.materialIDs == s1.materialIDs).all()
     npy.testing.assert_allclose(s0.pot, s1.pot, rtol=1e-5)
+
+
+def test_snapshot_tipsy_dark_writeread(reference_snapshot, tmp_path):
+    s0 = Snapshot()
+    s0.load(reference_snapshot)
+    s0.add_DarkM_obj()
+    s0.write(tmp_path / "test")
+    s1 = Snapshot()
+    s1.load(tmp_path / "test.std")
+    
+    assert s0.N == s1.N
+    assert (s0.dark.id == s1.dark.id).all()
+    npy.testing.assert_allclose(s0.dark.vy, s1.dark.vy, rtol=1e-8)

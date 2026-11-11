@@ -43,6 +43,40 @@ class SnapHeader:
         self.flag_entr_ics = ent
 
 
+class SnapDark:
+    """
+    Class for holding dark matter particles
+    """
+    def __init__(self):
+        self.id = npy.empty(0)
+        self.m = npy.empty(0)
+        self.pos = npy.empty((0,3))
+        self.x = npy.empty(0)
+        self.y = npy.empty(0)
+        self.z = npy.empty(0)
+        self.vel = npy.empty((0,3))
+        self.vx = npy.empty(0)
+        self.vy = npy.empty(0)
+        self.vz = npy.empty(0)
+        self.soft = npy.empty(0)
+        self.pot = npy.empty(0)
+
+
+    def add_obj(self, m=Msun, pos=(0,0,0), vel=(0,0,0), soft_l=1e5):
+        self.id = npy.append(self.id, len(self.id))
+        self.m = npy.append(self.m, m)
+        self.x = npy.append(self.x, pos[0])
+        self.y = npy.append(self.y, pos[1])
+        self.z = npy.append(self.z, pos[2])
+        self.pos = npy.append(self.pos, [pos], axis=0)
+        self.vx = npy.append(self.vx, vel[0])
+        self.vy = npy.append(self.vy, vel[1])
+        self.vz = npy.append(self.vz, vel[2])
+        self.vel = npy.append(self.vel, [vel], axis=0)
+        self.soft = npy.append(self.soft, soft_l)
+        self.pot = npy.append(self.pot, 0)
+
+
 class Snapshot:
     """
     Gadget/Swift snapshot class
@@ -70,23 +104,24 @@ class Snapshot:
         """
         Creates Snapshot object
         """
-        self.header = SnapHeader()
-        self.N = 0              # number of SPH particles
-        self.initarrays()
-        # Extras
-        self.file = None        # name of file read from
-        self.inclthermo = False # read/calculate extra thermodynamic variables
+        self.header = SnapHeader()  # header
+        self.N = 0                  # number of SPH particles
+        self.initarrays()           # initialise particle arrays
+        # extras
+        self.file = None            # name of file read from
+        self.inclthermo = False     # read/calculate extra thermodynamic variables
+        self.dark = None              # generally don't need dark matter
         
 
     def initarrays(self):
         """
         Initialises particle attributes
         """
-        self.pos = npy.empty(0)  # position vector
+        self.pos = npy.empty((0,3))  # position vector
         self.x = npy.empty(0)
         self.y = npy.empty(0)
         self.z = npy.empty(0)
-        self.vel = npy.empty(0)  # velocity vector
+        self.vel = npy.empty((0,3))  # velocity vector
         self.vx = npy.empty(0)
         self.vy = npy.empty(0)
         self.vz = npy.empty(0)
@@ -120,7 +155,7 @@ class Snapshot:
         if attr in ['x','y','z','vx','vy','vz','pos','vel','id','m','S','rho','hsml','pot','P','T','U','cs'] and self.file:
             if len(super().__getattribute__(attr))==0 and self.file:
                 self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo, loadprops=[attr,])
-        elif attr in ['materialIDs',]:
+        elif attr in ['materialIDs', 'dark']:
             if super().__getattribute__(attr) is None and self.file:
                 self.load(self.file, headonly=False, compress=False, thermo=self.inclthermo, loadprops=[attr,])
         elif attr in ['rem', 'bnd']:
@@ -152,6 +187,10 @@ class Snapshot:
         Clear all loaded data
         """
         self.initarrays()
+
+
+    def _add_dark(self):
+        self.dark = SnapDark()
 
 
     def ensure_matIDs(self,mats):
@@ -518,6 +557,16 @@ class Snapshot:
         self.U = eos.calcprop('U', 'rho', 'S', self.rho, entropy, self.materialIDs)
         self.S = entropy
 
+
+    def add_DarkM_obj(self, m=Msun, pos=(0,0,0), vel=(0,0,0), soft_l=1e5):
+        if self.dark is None:
+            self._add_dark()
+        nDark = len(self.dark.id)
+        if nDark > 0:
+            print('WARNING: Snapshot already contains ', nDark, ' dark matter particle(s)!')
+        self.dark.add_obj(m=m, pos=pos, vel=vel, soft_l=soft_l)
+        self.header.npart[1] = self.header.npart[1] + 1
+        
 
     def plot(self, ptype='materials', scale='Mm', tcut = 3600., zoom=1., focus='potmin', cmap=None):
         """
